@@ -37,6 +37,28 @@ function installNode(requiredVersion) {
   }
 }
 
+// Check if Next.js is installed
+function isNextInstalled() {
+  try {
+    execSync("npx next --version", { stdio: "ignore" });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Install Next.js if not installed
+function installNext() {
+  console.log("🚨 Next.js is not installed. Installing Next.js...");
+  try {
+    execSync("npm install next", { stdio: "inherit" });
+    console.log("✅ Next.js installed successfully.");
+  } catch (err) {
+    console.error("❌ Failed to install Next.js.");
+    process.exit(1);
+  }
+}
+
 // Check if .nvmrc exists and read the required version
 const requiredVersion = fs.existsSync(".nvmrc") ? fs.readFileSync(".nvmrc", "utf8").trim() : null;
 
@@ -64,4 +86,11 @@ try {
   }
 } catch (error) {
   installNode(requiredVersion);
+}
+
+// Ensure Next.js is installed
+if (!isNextInstalled()) {
+  installNext();
+} else {
+  console.log("✅ Next.js is already installed.");
 }
