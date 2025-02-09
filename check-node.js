@@ -93,4 +93,20 @@ if (!isNextInstalled()) {
   installNext();
 } else {
   console.log("✅ Next.js is already installed.");
+  console.log("🔧 Installing dependencies...");
+  execSync('npm install', { stdio: 'inherit' });
+  console.log("🚀 Starting the development server...");
+  execSync('npm run dev', { stdio: 'inherit' });
+}
+
+// Lets try to install dependencies and start the development server
+try {
+  console.log("🔧 Installing dependencies...");
+  execSync("npm install", { stdio: "inherit" });
+  console.log("🚀 Starting the development server...");
+  execSync("npm run dev", { stdio: "inherit" });
+
+} catch (error) {
+  console.error("❌ Failed to start the development server.");
+  process.exit(1);
 }
