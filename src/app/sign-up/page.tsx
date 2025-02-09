@@ -4,28 +4,35 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 import {useCreateUserWithEmailAndPassword} from 'react-firebase-hooks/auth';
 import {auth} from '@/app/firebase/config';
+import { useRouter } from 'next/navigation';
 
 const SingUpPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
-
+    const router = useRouter();
     const [createUserWithEmailAndPassword] = useCreateUserWithEmailAndPassword(auth);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setError('');
         if (password !== confirmPassword) {
             setError('Passwords do not match');
             return;
         }
-        const result = await createUserWithEmailAndPassword(email, password);
-        console.log(result);
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-        setError('');
-        console.log('Form submitted:', { email, password });
+
+        try {
+            await createUserWithEmailAndPassword(email, password);
+            console.log('Login successful');
+            setEmail('');
+            setPassword('');
+            setConfirmPassword('');
+            router.push('/login');
+        } catch (err) {
+            setError('Invalid email or password');
+            console.error('Login error:', err);
+        }
     };
 
     return (
@@ -74,9 +81,9 @@ const SingUpPage = () => {
                         Sign Up
                     </button>
                 </form>
-                <h4 className="tex-xs font-thin text-center mt-4 text-black">
+                <h4 className="text-xs font-thin text-center mt-4 text-black">
                     Already have an account?
-                    <Link href="/login" className="tex-xs font-semibold text-center mt-4 text-black hover:text-blue-600"> Login</Link>
+                    <Link href="/login" className="text-xs font-semibold text-black hover:text-blue-600"> Login</Link>
                 </h4>
             </div>
         </div>
