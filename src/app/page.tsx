@@ -9,7 +9,7 @@ const HomePage = () => {
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center bg-blue-600 text-white text-center min-h-screen py-6">
         <h1 className="text-4xl font-bold">Welcome to Our Web APP</h1>
-        <p className="text-lg mt-4">Discover and invest the stock of your dreams.</p>
+        <p className="text-lg mt-4">Discover and invest the stocks of your dreams.</p>
         <div className="mt-6 flex space-x-4">
           <Link href="/home" className="px-6 py-3 bg-blue-700 text-white rounded-lg shadow-md hover:bg-blue-800 transition">
             View Stocks
