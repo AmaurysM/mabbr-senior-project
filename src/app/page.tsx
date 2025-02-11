@@ -14,7 +14,7 @@ const HomePage = () => {
           <Link href="/home" className="px-6 py-3 bg-blue-700 text-white rounded-lg shadow-md hover:bg-blue-800 transition">
             View Stocks
           </Link>
-          <Link href="/login" className="px-6 py-3 bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-800 transition">
+          <Link href="/login-signup" className="px-6 py-3 bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-800 transition">
             Login
           </Link>
         </div>
