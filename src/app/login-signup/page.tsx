@@ -68,7 +68,7 @@ const LoginPage: React.FC = () => {
         <div className="relative flex min-h-screen justify-center bg-gray-200 overflow-hidden">
             {/* Background Image */}
             <div className="absolute inset-0 z-0">
-                <Image src="/sunny-landscape.jpg" layout="fill" objectFit="cover" alt="sunny landscape" />
+            <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/sunny-landscape-tini.jpg')" }} />
             </div>
 
             {/* Login/Sign Up Form */}
