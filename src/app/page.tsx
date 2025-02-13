@@ -26,8 +26,8 @@ const HomePage = () => {
       </div>
 
       {/* Background Animation */}
-      <div className="floating-circles absolute top-0 left-0 w-full h-full z-0">
-        <Bubble numBubbles={15} />
+      <div className="floating-circles absolute -inset-3 top-0 left-0 w-full h-full z-0">
+        <Bubble maxBubbles={15} />
       </div>
 
       {/* Features Section */}

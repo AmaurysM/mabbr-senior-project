@@ -3,66 +3,67 @@
 import React, { useEffect, useState } from "react";
 
 type Bubble = {
+  id: number;
   size: number;
   x: number;
-  y: number;
-  delay: number;
+  speed: number;
 };
 
-const Bubble: React.FC<{ numBubbles?: number }> = ({ numBubbles = 10 }) => {
+const Bubble: React.FC<{ maxBubbles?: number }> = ({ maxBubbles = 10 }) => {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
 
   useEffect(() => {
-    const newBubbles: Bubble[] = [];
-    const minDistance = 100; // Minimum distance between bubbles
-    const maxX = window.innerWidth + 200; // Allow outside screen
-    const maxY = window.innerHeight + 200;
+    const createBubble = () => ({
+      id: Math.random(),
+      size: Math.random() * 80 + 40,
+      x: Math.random() * window.innerWidth,
+      speed: Math.random() * 5 + 2, // Random speed between 2s - 7s
+    });
 
-    for (let i = 0; i < numBubbles; i++) {
-      let newBubble: Bubble;
-      let attempts = 0;
-      const maxAttempts = 50;
+    setBubbles(Array.from({ length: Math.min(maxBubbles, Math.floor(window.innerWidth / 200)) }, createBubble));
 
-      do {
-        newBubble = {
-          size: Math.random() * 80 + 40,
-          x: Math.random() * maxX - 100, // Allow some off-screen placement
-          y: Math.random() * maxY - 100,
-          delay: Math.random() * 5,
-        };
+    const interval = setInterval(() => {
+      setBubbles((prevBubbles) => {
+        // Only add a new bubble if we have room
+        if (prevBubbles.length >= maxBubbles) {
+          return prevBubbles;
+        }
+        return [...prevBubbles, createBubble()];
+      });
+    }, 1000); // Try adding a new bubble every second
+    
 
-        attempts++;
-      } while (
-        attempts < maxAttempts &&
-        newBubbles.some(
-          (bubble) =>
-            Math.hypot(bubble.x - newBubble.x, bubble.y - newBubble.y) <
-            minDistance
-        )
-      );
-
-      newBubbles.push(newBubble);
-    }
-
-    setBubbles(newBubbles);
-  }, []); // Runs once on mount
+    return () => clearInterval(interval);
+  }, [maxBubbles]);
 
   return (
-    <div className="floating-circles absolute top-0 left-0 w-full h-full z-0 overflow-visible">
-      {bubbles.map((bubble, index) => (
+    <div className="floating-circles absolute top-0 left-0 w-full h-full z-0 overflow-hidden">
+      {bubbles.map((bubble) => (
         <div
-          key={index}
+          key={bubble.id}
           className="circle"
           style={{
             width: `${bubble.size}px`,
             height: `${bubble.size}px`,
             left: `${bubble.x}px`,
-            top: `${bubble.y}px`,
-            animationDelay: `${bubble.delay}s`,
-            position: "absolute", // Keep bubbles fixed in place
-          }}
+            bottom: "-100px", // Start below the screen
+            position: "absolute",
+            // backgroundImage: "url('/path-to-your-image.png')", // Replace with actual image
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            borderRadius: "50%",
+            animation: `floatUp ${bubble.speed}s linear infinite`,
+          }}          
         ></div>
       ))}
+      <style>
+        {`
+          @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-110vh); opacity: 0; }
+          }
+        `}
+      </style>
     </div>
   );
 };
