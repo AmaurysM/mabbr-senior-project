@@ -103,10 +103,23 @@ if (!isNextInstalled()) {
 try {
   console.log("🔧 Installing dependencies...");
   execSync("npm install", { stdio: "inherit" });
+  
+  // Add a verification step for critical dependencies
+  const packageJson = require('./package.json');
+  const criticalDeps = ['yahoo-finance2', 'firebase', 'next'];
+  
+  criticalDeps.forEach(dep => {
+    if (!packageJson.dependencies[dep]) {
+      console.error(`❌ Missing critical dependency: ${dep}`);
+      process.exit(1);
+    }
+  });
+
   console.log("🚀 Starting the development server...");
   execSync("npm run dev", { stdio: "inherit" });
 
 } catch (error) {
   console.error("❌ Failed to start the development server.");
+  console.error(error);
   process.exit(1);
 }

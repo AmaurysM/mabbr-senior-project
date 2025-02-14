@@ -87,3 +87,19 @@ body {
     transform: translateY(0);
   }
 }
+
+.bg-white {
+  color: var(--foreground);
+}
+input {
+  color: black;
+}
+.bg-white * {
+  color: inherit;
+}
+.text-blue-600 {
+  color: rgb(37, 99, 235) !important; /*temporary, to override other styles*/
+}
+.text-gray-600 {
+  color: rgb(75, 85, 99) !important;
+}

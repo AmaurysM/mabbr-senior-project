@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "firebase": "^11.3.0",
-    "next": "15.1.6",
+    "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-firebase-hooks": "^5.1.1"
+    "react-firebase-hooks": "^5.1.1",
+    "styled-jsx": "^5.1.6",
+    "yahoo-finance2": "^2.13.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
