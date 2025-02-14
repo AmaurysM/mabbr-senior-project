@@ -2,8 +2,13 @@ import React from 'react';
 import Link from 'next/link';
 import FeatureCard from './components/FeatureCardProps';
 import features from './constants/Features';
+import dynamic from 'next/dynamic';
+import Bubble from './components/Bubble';
+
+
 
 const HomePage = () => {
+  
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Hero Section */}
@@ -21,11 +26,8 @@ const HomePage = () => {
       </div>
 
       {/* Background Animation */}
-      <div className="floating-circles absolute top-0 left-0 w-full h-full z-0">
-        <div className="circle animation-delay-1"></div>
-        <div className="circle animation-delay-2"></div>
-        <div className="circle animation-delay-3"></div>
-        <div className="circle animation-delay-4"></div>
+      <div className="floating-circles absolute -inset-3 top-0 left-0 w-full h-full z-0">
+        <Bubble maxBubbles={15} />
       </div>
 
       {/* Features Section */}
