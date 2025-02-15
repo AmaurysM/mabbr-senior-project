@@ -51,6 +51,11 @@ const Navbar = () => {
                 Login
               </Link>
             </li>
+            <li>
+              <Link href="/lootbox" className="text-gray-600 hover:text-blue-600 transition">
+                Loot Box
+              </Link>
+            </li>
           </ul>
         </div>
 
