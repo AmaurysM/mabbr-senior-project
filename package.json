@@ -12,9 +12,11 @@
     "@heroicons/react": "^2.2.0",
     "firebase": "^11.3.0",
     "next": "^15.1.6",
+    "openai": "^4.28.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-firebase-hooks": "^5.1.1",
+    "recharts": "^2.15.1",
     "styled-jsx": "^5.1.6",
     "yahoo-finance2": "^2.13.3"
   },

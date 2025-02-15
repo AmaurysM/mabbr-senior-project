@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "friends": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
+        }
+      }
+    },
+    "trades": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$tid": {
+        ".validate": "newData.hasChildren(['userId', 'stockSymbol', 'amount', 'type', 'timestamp'])"
+      }
+    }
+  }
+} 
