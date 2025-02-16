@@ -19,6 +19,18 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+@keyframes spin {
+  0% {
+      transform: translateX(0);
+  }
+  100% {
+      transform: translateX(-100%);
+  }
+}
+
+.spinner {
+  animation: spin 10s linear infinite;
+}
 
 /* Animate scircles */
 
