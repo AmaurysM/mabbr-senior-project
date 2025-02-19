@@ -73,7 +73,6 @@ const PortfolioPage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Portfolio</h1>
           <p className="text-gray-400">
             Review your portfolio performance and current holdings.
           </p>
@@ -81,37 +80,7 @@ const PortfolioPage: React.FC = () => {
 
         {/* Portfolio Chart Section */}
         <section className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">
-            Portfolio Value Over Time
-          </h2>
           <PortfolioChart />
-        </section>
-
-        {/* Holdings Table Section */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Current Holdings</h2>
-          <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-2 px-4 text-white">Symbol</th>
-                  <th className="text-left py-2 px-4 text-white">Quantity</th>
-                  <th className="text-left py-2 px-4 text-white">Avg. Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {holdingsData.map((holding, index) => (
-                  <tr key={index} className="border-b border-gray-700">
-                    <td className="py-2 px-4 text-gray-200">{holding.symbol}</td>
-                    <td className="py-2 px-4 text-gray-200">{holding.quantity}</td>
-                    <td className="py-2 px-4 text-gray-200">
-                      ${holding.avgPrice.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </section>
       </div>
     </div>

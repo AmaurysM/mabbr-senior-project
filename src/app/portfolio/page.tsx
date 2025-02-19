@@ -9,10 +9,7 @@ const userPortfolio = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Portfolio</h1>
-          <p className="text-gray-400">
-            Review your portfolio performance and current holdings.
-          </p>
+          <h1 className="text-4xl font-bold text-white mb-2">Welcome To Your Portfolio</h1>
         </div>
 
         {/* Portfolio Chart */}
