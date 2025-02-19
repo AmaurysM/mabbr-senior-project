@@ -19,7 +19,8 @@ const navigationItems: NavItem[] = [
   { name: "Bonds", href: "/bond" },
   { name: "Community", href: "/community" },
   { name: "Trade", href: "/Trade" },
-  { name: "Loot Box", href: "/lootbox" }
+  { name: "Loot Box", href: "/lootbox" },
+  {name: "Portfolio", href: "/portfolio"},
 ];
 
 const Navbar = () => {
