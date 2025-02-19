@@ -9,7 +9,7 @@ interface Holding {
 // Dummy holdings data
 const holdings: Holding[] = [
   { symbol: 'AAPL', quantity: 10, avgPrice: 150 },
-  { symbol: 'GOOGL', quantity: 5, avgPrice: 2800 },
+  { symbol: 'NVDA', quantity: 5, avgPrice: 145 },
   { symbol: 'TSLA', quantity: 3, avgPrice: 700 },
 ];
 

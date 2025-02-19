@@ -69,7 +69,7 @@ const holdingsData: Holding[] = [
 
 const PortfolioPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-900 p-6">
+    <div className="bg-gray-800 p-1">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-8">
