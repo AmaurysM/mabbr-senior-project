@@ -20,7 +20,8 @@ const navigationItems: NavItem[] = [
   { name: "Community", href: "/community" },
   { name: "Trade", href: "/Trade" },
   { name: "Loot Box", href: "/lootbox" },
-  { name: "Leaderboards", href: "/leaderboards" }
+  { name: "Leaderboards", href: "/leaderboards" },
+  { name: "Portfolio", href: "/portfolio"},
 ];
 
 const Navbar = () => {
