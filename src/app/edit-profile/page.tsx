@@ -54,7 +54,7 @@ const Profile: React.FC<ProfileProps> = ({ initialName, initialEmail, initialBio
   return (
     <div style={{ maxWidth: '400px', margin: 'auto', padding: '20px', border: '1px solid #ccc' }}>
       <h2>Edit Profile</h2>
-      <div class="styled-div">
+      <div className="styled-div">
         <h4> Upload Profile Picture:</h4>
         <input type="file" accept="image/*" onChange={handleFileChange} />
         <h4> Add your user info:</h4>
