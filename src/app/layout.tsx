@@ -16,7 +16,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body>
+      <body className="min-h-screen bg-[#1a1b26]">
         {!isLandingPage && <Navbar />}
         <main className={`${!isLandingPage ? 'pt-[64px]' : ''}`}>
           {children}

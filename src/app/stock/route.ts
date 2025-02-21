@@ -4,18 +4,16 @@ import yahooFinance from 'yahoo-finance2';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const symbol = searchParams.get('symbol') || 'NVDA';
-
+export async function GET() {
   try {
+  
     const queryOptions = {
       lang: 'en-US',
       reportsCount: 1,
       modulesList: ['price']
     };
 
-    const result = await yahooFinance.quote(symbol, queryOptions, {
+    const result = await yahooFinance.quote('NVDA', queryOptions, {
       validateResult: false
     });
 
