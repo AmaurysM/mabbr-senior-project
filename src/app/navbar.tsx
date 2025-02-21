@@ -15,6 +15,7 @@ interface User {
 
 const navigationItems: NavItem[] = [
   { name: "Home", href: "/home" },
+  { name: "New Users", href: "/users" },
   { name: "Notes", href: "/note" },
   { name: "Bonds", href: "/bond" },
   { name: "Community", href: "/community" },
