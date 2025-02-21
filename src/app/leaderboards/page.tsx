@@ -32,6 +32,15 @@ const mockTraders: Trader[] = [
     portfolioValue: 380000,
     badges: ["Verified", "Rising Star"]
   },
+  {
+    rank: 3,
+    username: "Amaurys",
+    totalProfit: 100001,
+    winRate: 92.5,
+    totalTrades: 53,
+    portfolioValue: 300000,
+    badges: ["Verified", "Rising Star", "Crypto Maniac"]
+  }
   // Add more mock traders as needed
 ];
 
