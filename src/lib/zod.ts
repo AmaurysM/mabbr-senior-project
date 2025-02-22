@@ -18,7 +18,7 @@ const getNameSchema = () =>
     .min(1, "Name is required")
     .max(50, "Name must be less than 50 characters");
 
-    export const signUpSchema = z
+  export const signUpSchema = z
     .object({
       name: getNameSchema(),
       email: getEmailSchema(),

@@ -42,8 +42,8 @@ model User {
 
 model Friendship {
   id          String @id @default(cuid()) @map("_id")
-  requesterId String @db.ObjectId
-  recipientId String @db.ObjectId
+  requesterId String
+  recipientId String
   status      String @default("pending")
 
   // Relations
