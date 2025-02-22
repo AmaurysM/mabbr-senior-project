@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./navbar";
 import { usePathname } from "next/navigation";
+import { Toaster } from "./components/ui/sonner";
 
 export default function RootLayout({
   children,
@@ -21,6 +22,7 @@ export default function RootLayout({
         <main className={`${!isLandingPage ? 'pt-[64px]' : ''}`}>
           {children}
         </main>
+        <Toaster />
       </body>
     </html>
   );
