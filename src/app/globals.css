@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
 @keyframes spin {
   0% {
       transform: translateX(0);
@@ -106,11 +105,67 @@ input {
   color: inherit;
 }
 .text-blue-600 {
-  color: rgb(37, 99, 235) !important; /*temporary, to override other styles*/
+  color: rgb(37, 99, 235) !important; 
 }
 .text-gray-600 {
   color: rgb(75, 85, 99) !important;
 }
+
+:root {
+  --background: 220 50% 98%;
+  --foreground: 220 45% 25%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 45% 25%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 45% 25%;
+  --primary: 217 91% 53%;      
+  --primary-foreground: 0 0% 98%;
+  --secondary: 217 91% 95%;    
+  --secondary-foreground: 220 45% 25%;
+  --muted: 217 20% 90%;
+  --muted-foreground: 220 35% 45%;
+  --accent: 217 91% 85%;       
+  --accent-foreground: 220 45% 25%;
+  --destructive: 0 65% 85%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 217 30% 85%;
+  --input: 217 30% 85%;
+  --ring: 217 91% 53%;        
+  --chart-1: 217 91% 53%;     
+  --chart-2: 217 85% 45%;    
+  --chart-3: 217 80% 60%;     
+  --chart-4: 217 75% 40%;     
+  --chart-5: 217 70% 65%;    
+  --radius: 1rem;
+}
+
+.dark {
+  --background: 217 50% 8%;    
+  --foreground: 220 30% 90%;
+  --card: 217 50% 10%;
+  --card-foreground: 220 30% 90%;
+  --popover: 217 50% 10%;
+  --popover-foreground: 220 30% 90%;
+  --primary: 217 91% 53%;      
+  --primary-foreground: 220 30% 10%;
+  --secondary: 217 50% 20%;
+  --secondary-foreground: 220 30% 90%;
+  --muted: 217 50% 20%;
+  --muted-foreground: 220 20% 70%;
+  --accent: 217 50% 30%;
+  --accent-foreground: 220 30% 90%;
+  --destructive: 0 50% 30%;
+  --destructive-foreground: 220 30% 90%;
+  --border: 217 50% 25%;
+  --input: 217 50% 25%;
+  --ring: 217 91% 53%;
+  --chart-1: 217 91% 53%;     
+  --chart-2: 217 85% 60%;
+  --chart-3: 217 80% 45%;
+  --chart-4: 217 75% 65%;
+  --chart-5: 217 70% 40%;
+}
+
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
@@ -139,3 +194,4 @@ input {
   scrollbar-color: rgba(75, 85, 99, 0.5) rgba(31, 32, 45, 0.5);
 
 }
+
