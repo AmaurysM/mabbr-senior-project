@@ -1,17 +1,15 @@
-import { prismaClientSingleton } from "@/lib/prisma";
+import prismaClientSingleton  from "@/lib/prisma";
 import { Prisma, PrismaClient, Stock } from "@prisma/client";
-import { ObjectId } from "mongodb";
 
 type DatabaseOperation<T> = Promise<T>;
 type DbResult<T> = Promise<[T | null, Error | null]>;
 
 export const db = {
-
   async execute<T>(
     operation: (client: PrismaClient) => DatabaseOperation<T>
   ): DbResult<T> {
     try {
-      const result = await operation(prismaClientSingleton());
+      const result = await operation(prismaClientSingleton);
       return [result, null];
     } catch (err) {
       const error =
@@ -25,7 +23,7 @@ export const db = {
     findById: (id: string) =>
       db.execute((client) =>
         client.user.findUnique({
-          where: { id: new ObjectId(id).toHexString() }, // Convert ID properly
+          where: { id }, // Convert ID properly
         })
       ),
 
@@ -47,7 +45,7 @@ export const db = {
     ) =>
       db.execute((client) =>
         client.user.update({
-          where: {  id: new ObjectId(id).toHexString() },
+          where: { id},
           data,
         })
       ),
@@ -59,7 +57,7 @@ export const db = {
           if (!user) throw new Error("User not found");
 
           return tx.user.update({
-            where: { id: new ObjectId(id).toHexString() },
+            where: { id},
             data: { balance: user.balance + amount },
           });
         })
@@ -79,8 +77,8 @@ export const db = {
       db.execute((client) =>
         client.friendship.updateMany({
           where: {
-            requesterId: new ObjectId(requesterId).toHexString(),
-            recipientId: new ObjectId(recipientId).toHexString(),
+            requesterId,
+            recipientId,
             status: "pending",
           },
           data: {
@@ -94,8 +92,14 @@ export const db = {
         client.friendship.deleteMany({
           where: {
             OR: [
-              { requesterId: new ObjectId(userId1).toHexString(), recipientId: new ObjectId(userId2).toHexString() },
-              { requesterId: new ObjectId(userId2).toHexString(), recipientId: new ObjectId(userId1).toHexString() },
+              {
+                requesterId: userId1,
+                recipientId: userId2,
+              },
+              {
+                requesterId: userId2,
+                recipientId: userId1,
+              },
             ],
           },
         })
@@ -106,8 +110,14 @@ export const db = {
         client.friendship.findMany({
           where: {
             OR: [
-              { requesterId: new ObjectId(userId).toHexString() , status: "accepted" },
-              { recipientId: new ObjectId(userId).toHexString() , status: "accepted" },
+              {
+                requesterId: userId,
+                status: "accepted",
+              },
+              {
+                recipientId: userId,
+                status: "accepted",
+              },
             ],
           },
           include: {
@@ -121,7 +131,7 @@ export const db = {
       db.execute((client) =>
         client.friendship.findMany({
           where: {
-            recipientId: new ObjectId(userId).toHexString(),
+            recipientId: userId,
             status: "pending",
           },
           include: {
@@ -135,52 +145,65 @@ export const db = {
     findByUser: (userId: string) =>
       db.execute((client) =>
         client.stock.findMany({
-          where: { userId: new ObjectId(userId).toHexString() },
+          where: { userId: userId },
         })
       ),
 
-      findBySymbol: (userId: string, symbol: string) =>
-        db.execute((client) =>
-          client.stock.findUnique({
-            where: { userId_symbol: { userId: new ObjectId(userId).toHexString(), symbol } },
-          })
-        ),
-      
+    findBySymbol: (userId: string, symbol: string) =>
+      db.execute((client) =>
+        client.stock.findUnique({
+          where: {
+            userId_symbol: {
+              userId: userId,
+              symbol,
+            },
+          },
+        })
+      ),
 
-        upsert: (userId: string, symbol: string, quantity: number, price: number) =>
-          db.execute((client) =>
-            client.$transaction(async (tx: Prisma.TransactionClient) => {
-              const existingStock = await tx.stock.findUnique({
-                where: { userId_symbol: { userId: new ObjectId(userId).toHexString(), symbol } },
-              });
-        
-              if (existingStock) {
-                const newQuantity = existingStock.quantity + quantity;
-                const newAvgPrice =
-                  (existingStock.quantity * existingStock.avgPrice +
-                    quantity * price) /
-                  newQuantity;
-        
-                return tx.stock.update({
-                  where: { userId_symbol: { userId: new ObjectId(userId).toHexString(), symbol } },
-                  data: {
-                    quantity: newQuantity,
-                    avgPrice: newAvgPrice,
-                  },
-                });
-              }
-        
-              return tx.stock.create({
-                data: {
-                  userId: new ObjectId(userId).toHexString(),
+    upsert: (userId: string, symbol: string, quantity: number, price: number) =>
+      db.execute((client) =>
+        client.$transaction(async (tx: Prisma.TransactionClient) => {
+          const existingStock = await tx.stock.findUnique({
+            where: {
+              userId_symbol: {
+                userId: userId,
+                symbol,
+              },
+            },
+          });
+
+          if (existingStock) {
+            const newQuantity = existingStock.quantity + quantity;
+            const newAvgPrice =
+              (existingStock.quantity * existingStock.avgPrice +
+                quantity * price) /
+              newQuantity;
+
+            return tx.stock.update({
+              where: {
+                userId_symbol: {
+                  userId: userId,
                   symbol,
-                  quantity,
-                  avgPrice: price,
                 },
-              });
-            })
-          ),
-        
+              },
+              data: {
+                quantity: newQuantity,
+                avgPrice: newAvgPrice,
+              },
+            });
+          }
+
+          return tx.stock.create({
+            data: {
+              userId: userId,
+              symbol,
+              quantity,
+              avgPrice: price,
+            },
+          });
+        })
+      ),
   },
 
   transactions: {
