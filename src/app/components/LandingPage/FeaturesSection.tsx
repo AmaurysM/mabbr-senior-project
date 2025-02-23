@@ -1,17 +1,42 @@
-import { Suspense } from "react";
+import React, { Suspense } from "react";
 import FeatureCard, { FeatureCardProps } from "../FeatureCardProps";
 
-const FeaturesSection = ({ features }: { features: FeatureCardProps[] }) => (
-    <div className="flex flex-col items-center justify-center p-6 mt-12">
-        <h2 className="text-3xl font-bold text-gray-800">Features</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-8">
-            {features.map((feature, index) => (
-                <Suspense key={index} fallback={<div className="h-48 bg-gray-200 rounded-lg animate-pulse"></div>}>
-                    <FeatureCard {...feature} />
-                </Suspense>
-            ))}
+
+
+const FeaturesSection = ({ features }: { features: FeatureCardProps[] }) => {
+  return (
+    <div className="relative py-24 bg-gradient-to-br from-blue-950 to-blue-900">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute h-96 w-96 left-1/4 top-1/4 rounded-full bg-blue-500" />
+        <div className="absolute h-96 w-96 right-1/4 bottom-1/4 rounded-full bg-blue-400" />
+      </div>
+
+      <div className="relative container mx-auto px-6">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-white">
+            Upcoming Features
+          </h2>
+          <p className="mt-4 text-lg text-blue-200">
+            Discover what's next for our trading platform
+          </p>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((feature, index) => (
+            <Suspense
+              key={index}
+              fallback={
+                <div className="h-64 bg-blue-800/50 rounded-xl animate-pulse" />
+              }
+            >
+              <FeatureCard {...feature} />
+            </Suspense>
+          ))}
+        </div>
+      </div>
     </div>
-);
+  );
+};
 
 export default FeaturesSection;

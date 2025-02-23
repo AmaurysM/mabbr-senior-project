@@ -15,14 +15,14 @@ const LoginPage = () => {
                 <link rel="preload" href="/sunny-landscape-tini.jpg" as="image" />
             </Head>
 
-            <div className="relative flex min-h-screen justify-center bg-gray-200 overflow-hidden">
+            <div className="relative flex min-h-screen justify-center items-center bg-gray-200">
                 {/* Background Image */}
                 <Image
                     src="/sunny-landscape-tini.jpg"
                     alt="Sunny Landscape"
-                    width={1920}
-                    height={1080}
-                    className="absolute inset-0 z-0"
+                    layout="fill"
+                    objectFit="cover"
+                    className="fixed top-0 left-0 w-full h-full "
                 />
 
                 {/* Login Form (Client Component) */}

@@ -1,6 +1,6 @@
 import "./globals.css";
-import Navbar from "./Navbar";
 import { Toaster } from "./components/ui/sonner";
+import Navbar from "./navbar";
 
 export default function RootLayout({
   children,

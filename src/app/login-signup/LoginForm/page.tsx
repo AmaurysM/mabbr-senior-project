@@ -161,12 +161,7 @@ const LoginForm: React.FC = () => {
                                 <LoadingButton pending={pendingCredentials}>Sign in</LoadingButton>
                             </form>
                         </Form>
-                        <div className="mt-4">
-                            <LoadingButton pending={pendingGithub} onClick={handleSignInWithGithub}>
-                                <GithubIcon className="w-4 h-4 mr-2" />
-                                Continue with GitHub
-                            </LoadingButton>
-                        </div>
+                        
                         <div className="mt-4 text-center text-sm">
                             <button onClick={() => setIsLogin(false)} className="text-xs font-semibold text-black hover:text-blue-600 ml-1">
                                 Don't have an account? Sign up
