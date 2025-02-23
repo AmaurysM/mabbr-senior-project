@@ -13,6 +13,7 @@ export default function RootLayout({
         <main className="">
           {children}
         </main>
+        {/* Lazy load the Toaster component */}
         <Toaster />
       </body>
     </html>
