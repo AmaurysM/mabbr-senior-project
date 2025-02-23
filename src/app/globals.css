@@ -2,23 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #2a35c5;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@layer base {
 @keyframes spin {
   0% {
       transform: translateX(0);
@@ -153,4 +137,5 @@ input {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(75, 85, 99, 0.5) rgba(31, 32, 45, 0.5);
+
 }

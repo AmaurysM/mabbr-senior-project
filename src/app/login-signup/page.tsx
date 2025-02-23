@@ -1,67 +1,137 @@
-'use client';
-
+"use client";
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/app/firebase/config';
 import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/app/components/ui/form";
+import { Input } from "@/app/components/ui/input";
+import { signInSchema, signUpSchema } from "@/lib/zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { authClient } from "../../auth-client";
+
+import { ErrorContext } from "@better-fetch/fetch";
+import { GithubIcon } from "lucide-react";
+import { useToast } from '../hooks/use-toast';
+import LoadingButton from '../components/LoadingButton';
 
 const LoginPage: React.FC = () => {
-    const [email, setEmail] = useState<string>('');
-    const [password, setPassword] = useState<string>('');
-    const [confirmPassword, setConfirmPassword] = useState('');
 
-    const [error, setError] = useState<string>('');
     const [isLogin, setIsLogin] = useState<boolean>(true);
     const router = useRouter();
 
-    const [leftOpacity, setLeftOpacity] = useState<string>('');
-    const [righOpacity, setRightOpacity] = useState<string>('');
+    const [pending, setPending] = useState(false);
+    const { toast } = useToast();
+    const [pendingCredentials, setPendingCredentials] = useState(false);
+    const [pendingGithub, setPendingGithub] = useState(false);
 
-    const wipeInputInfo = () => {
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-        setError('');
-    }
+    const singInForm = useForm<z.infer<typeof signInSchema>>({
+        resolver: zodResolver(signInSchema),
+        defaultValues: {
+            email: "",
+            password: "",
+        },
+    });
 
+    const singUpForm = useForm<z.infer<typeof signUpSchema>>({
+        resolver: zodResolver(signUpSchema),
+        defaultValues: {
+            name: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+        },
+    });
 
-    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError('');
-
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            console.log('Login successful');
-            wipeInputInfo();
-            router.push('/home');
-        } catch (err) {
-            setError('Invalid email or password');
-        }
+    const handleLogin = async (
+        values: z.infer<typeof signInSchema>
+    ) => {
+        await authClient.signIn.email(
+            {
+                email: values.email,
+                password: values.password,
+            },
+            {
+                onRequest: () => {
+                    setPendingCredentials(true);
+                },
+                onSuccess: async () => {
+                    router.push("/portfolio");
+                    router.refresh();
+                    singUpForm.reset();
+                },
+                onError: (ctx: ErrorContext) => {
+                    console.log(ctx);
+                    toast({
+                        title: "Something went wrong",
+                        description: ctx.error.message ?? "Something went wrong."
+                    });
+                },
+            }
+        );
+        setPendingCredentials(false);
+    };
+    const handleSignUp = async (values: z.infer<typeof signUpSchema>) => {
+        await authClient.signUp.email(
+            {
+                email: values.email,
+                password: values.password,
+                name: values.name,
+            },
+            {
+                onRequest: () => {
+                    setPending(true);
+                },
+                onSuccess: () => {
+                    setIsLogin(true);
+                    singInForm.reset();
+                    toast({
+                        title: "Account created",
+                        description:
+                            "Your account has been created. Check your email for a verification link.",
+                    });
+                },
+                onError: (ctx) => {
+                    console.log("error", ctx);
+                    toast({
+                        title: "Something went wrong",
+                        description: ctx.error.message ?? "Something went wrong.",
+                    });
+                },
+            }
+        );
+        setPending(false);
     };
 
-    const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError('');
-
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
-            return;
-        }
-
-        if (password.length < 8) {
-            setError("The password must be 8+ characters long");
-            return;
-        }
-
-        try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            console.log('Sign up successful');
-            wipeInputInfo();
-            router.push('/home');
-        } catch (err) {
-            setError('Error signing up');
-            console.error('Sign up error:', err);
-        }
+    const handleSignInWithGithub = async () => {
+        await authClient.signIn.social(
+            {
+                provider: "github",
+            },
+            {
+                onRequest: () => {
+                    setPendingGithub(true);
+                },
+                onSuccess: async () => {
+                    router.push("/");
+                    router.refresh();
+                },
+                onError: (ctx: ErrorContext) => {
+                    toast({
+                        title: "Something went wrong",
+                        description: ctx.error.message ?? "Something went wrong."
+                    });
+                },
+            }
+        );
+        setPendingGithub(false);
     };
 
     return (
@@ -74,107 +144,129 @@ const LoginPage: React.FC = () => {
             {/* Login/Sign Up Form */}
             <div className="relative w-full min-h-screen flex overflow-hidden">
                 {/* Login Form */}
-                
-                    <div className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin ? 'translate-x-0 opacity-100 duration-700 right-0 ' : 'translate-x-[100vw] opacity-0 duration-200 right-0'}`}>
-                        <h2 className="text-2xl font-semibold text-center mb-4 text-blue-600">Login</h2>
-                        <form onSubmit={handleLogin}>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Email</label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full px-4 py-2 mt-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700"
-                                    placeholder="Enter your email"
-                                    required
-                                />
+                <div className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin ? 'translate-x-0 opacity-100 duration-700 right-0 ' : 'translate-x-[100vw] opacity-0 duration-200 right-0'}`}>
+                    <Card className="w-full max-w-md">
+                        <CardHeader>
+                            <CardTitle className="text-3xl font-bold text-center text-gray-800">
+                                Sign In
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...singInForm}>
+                                <form
+                                    onSubmit={singInForm.handleSubmit(handleLogin)}
+                                    className="space-y-6"
+                                >
+                                    {["email", "password"].map((field) => (
+                                        <FormField
+                                            control={singInForm.control}
+                                            key={field}
+                                            name={field as keyof z.infer<typeof signInSchema>}
+                                            render={({ field: fieldProps }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {field.charAt(0).toUpperCase() + field.slice(1)}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type={field === "password" ? "password" : "email"}
+                                                            placeholder={`Enter your ${field}`}
+                                                            {...fieldProps}
+                                                            name={fieldProps.name as string}
+                                                            autoComplete={
+                                                                field === "password" ? "current-password" : "email"
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ))}
+                                    <LoadingButton pending={pendingCredentials}>
+                                        Sign in
+                                    </LoadingButton>
+                                </form>
+                            </Form>
+                            <div className="mt-4">
+                                <LoadingButton
+                                    pending={pendingGithub}
+                                    onClick={handleSignInWithGithub}
+                                >
+                                    <GithubIcon className="w-4 h-4 mr-2" />
+                                    Continue with GitHub
+                                </LoadingButton>
                             </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Password</label>
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-2 mt-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700"
-                                    placeholder="Enter your password"
-                                    required
-                                />
+                            <div className="mt-4 text-center text-sm">
+                                <button
+                                    onClick={() => { setIsLogin(false); }}
+                                    className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
+                                >
+                                    Dont have an account? Sing up
+                                </button>
                             </div>
-                            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                            <button
-                                type="submit"
-                                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300"
-                            >
-                                Login
-                            </button>
-                        </form>
-                        <h4 className="text-xs font-thin text-center mt-4 text-black">
-                            Don't have an account?
-                            <button
-                                onClick={() => { setIsLogin(false); wipeInputInfo(); }}
-                                className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
-                            >
-                                Sign Up
-                            </button>
-                        </h4>
-                    </div>
-                
-                    // {/* Sign Up Form */}
-                    <div className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin ? '-translate-x-[100vw] opacity-0 duration-200 left-0' : 'translate-x-0 opacity-100 duration-700 left-0'}`}>
-                        <h2 className="text-2xl font-semibold text-center mb-4 text-blue-600">Sign Up</h2>
-                        <form onSubmit={handleSignUp}>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Email</label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full px-4 py-2 mt-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700"
-                                    placeholder="Enter your email"
-                                    required
-                                />
+                        </CardContent>
+                    </Card>
+
+                </div>
+
+                {/* Sign Up Form */}
+                <div className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin ? '-translate-x-[100vw] opacity-0 duration-200 left-0' : 'translate-x-0 opacity-100 duration-700 left-0'}`}>
+                    <Card className="w-full max-w-md">
+                        <CardHeader>
+                            <CardTitle className="text-3xl font-bold text-center text-gray-800">
+                                Create Account
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...singUpForm}>
+                                <form onSubmit={singUpForm.handleSubmit(handleSignUp)} className="space-y-6">
+                                    {["name", "email", "password", "confirmPassword"].map((field) => (
+                                        <FormField
+                                            control={singUpForm.control}
+                                            key={field}
+                                            name={field as keyof z.infer<typeof signUpSchema>}
+                                            render={({ field: fieldProps }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {field.charAt(0).toUpperCase() + field.slice(1)}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type={
+                                                                field.includes("password")
+                                                                    ? "password"
+                                                                    : field === "email"
+                                                                        ? "email"
+                                                                        : "text"
+                                                            }
+                                                            placeholder={`Enter your ${field}`}
+                                                            {...fieldProps}
+                                                            name={fieldProps.name as string}
+                                                            autoComplete="off"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ))}
+                                    <LoadingButton pending={pending}>Sign up</LoadingButton>
+                                </form>
+                            </Form>
+                            <div className="mt-4 text-center text-sm">
+                                <button
+                                    onClick={() => { setIsLogin(true); }}
+                                    className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
+                                >
+                                    Already have an account? Sign in
+                                </button>
                             </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Password</label>
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-2 mt-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700"
-                                    placeholder="Enter your password"
-                                    required
-                                />
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Confirm Password</label>
-                                <input
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="w-full px-4 py-2 mt-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700"
-                                    placeholder="Confirm your password"
-                                    required
-                                />
-                            </div>
-                            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                            <button
-                                type="submit"
-                                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300"
-                            >
-                                Sign Up
-                            </button>
-                        </form>
-                        <h4 className="text-xs font-thin text-center mt-4 text-black">
-                            Already have an account?
-                            <button
-                                onClick={() => { setIsLogin(true); wipeInputInfo() }}
-                                className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
-                            >
-                                Login
-                            </button>
-                        </h4>
-                    </div>
-                
+                        </CardContent>
+                    </Card>
+
+                </div>
+
             </div>
         </div>
     );

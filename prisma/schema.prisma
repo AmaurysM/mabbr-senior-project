@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid()) @map("_id")
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  premium       Boolean  @default(false)
+  role          String   @default("user")
+  banned        Boolean  @default(false)
+  banReason     String?
+  banExpires    Int? // Unix timestamp for ban expiration
+  balance       Float    @default(25000.0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  sessions     Session[]
+  accounts     Account[]
+  stocks       Stock[]
+  lootBoxes    LootBox[]
+  transactions Transaction[]
+  // Friend relations using explicit join model
+  following    Friendship[]  @relation(name: "FollowerRelation")
+  followers    Friendship[]  @relation(name: "FollowingRelation")
+
+  @@map("user")
+}
+
+// Explicit many-to-many relation for friendships
+
+model Friendship {
+  id          String @id @default(cuid()) @map("_id")
+  requesterId String
+  recipientId String
+  status      String @default("pending")
+
+  // Relations
+  requester User @relation(name: "FollowerRelation", fields: [requesterId], references: [id])
+  recipient User @relation(name: "FollowingRelation", fields: [recipientId], references: [id])
+  // Prevents duplicate follow relationships
+  @@unique([requesterId, recipientId])
+}
+
+model Stock {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  symbol    String
+  quantity  Int
+  avgPrice  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}
+
+model Transaction {
+  id          String   @id @default(cuid()) @map("_id")
+  userId      String
+  stockSymbol String
+  type        String // "BUY" or "SELL"
+  quantity    Int
+  price       Float
+  totalCost   Float
+  timestamp   DateTime @default(now())
+  status      String   @default("COMPLETED")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stockSymbol])
+  @@index([timestamp])
+}
+
+model LootBox {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  type      String
+  opened    Boolean  @default(false)
+  reward    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Session {
+  id             String   @id @default(cuid()) @map("_id")
+  userId         String
+  token          String   @unique
+  expiresAt      DateTime
+  ipAddress      String?
+  userAgent      String?
+  impersonatedBy String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid()) @map("_id")
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  idToken String?
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid()) @map("_id")
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+  @@index([identifier])
+  @@map("verification")
+}
