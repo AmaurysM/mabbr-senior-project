@@ -53,6 +53,7 @@ export const auth = betterAuth({
     //   }
     // },
   },
+  
 
 } satisfies BetterAuthOptions);
 
