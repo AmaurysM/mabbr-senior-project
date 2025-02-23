@@ -1,10 +1,11 @@
 'use client';
 
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from 'recharts';
 import { useState } from 'react';
 
 interface StockCardProps {
   symbol: string;
+  name: string;
   price: number;
   change: number;
   changePercent: number;
@@ -17,6 +18,7 @@ interface StockCardProps {
 
 const StockCard: React.FC<StockCardProps> = ({
   symbol,
+  name,
   price,
   change,
   changePercent,
@@ -30,6 +32,11 @@ const StockCard: React.FC<StockCardProps> = ({
   const [publicNote, setPublicNote] = useState('');
   const [privateNote, setPrivateNote] = useState('');
   const [isTrading, setIsTrading] = useState(false);
+
+  // Calculate total position value and profit/loss
+  const positionValue = shares * price;
+  const profitLoss = shares * (price - averagePrice);
+  const profitLossPercent = averagePrice ? ((price - averagePrice) / averagePrice) * 100 : 0;
 
   const handleTrade = async (type: 'buy' | 'sell') => {
     const numAmount = parseFloat(amount);
@@ -50,12 +57,18 @@ const StockCard: React.FC<StockCardProps> = ({
     }
   };
 
+  // Calculate min and max prices for chart scaling
+  const prices = chartData.map(d => d.price);
+  const minPrice = Math.min(...prices) * 0.9995; // Add small padding
+  const maxPrice = Math.max(...prices) * 1.0005;
+
   return (
     <div className="relative">
       {/* Stock Header */}
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-2xl font-bold text-white">{symbol}</h3>
+          <p className="text-gray-400 text-sm mb-1">{name}</p>
           <div className="flex items-center space-x-2">
             <span className="text-xl text-white">${price.toFixed(2)}</span>
             <span className={`text-sm ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -70,20 +83,44 @@ const StockCard: React.FC<StockCardProps> = ({
             <div className="text-sm text-gray-400">Position</div>
             <div className="text-white font-semibold">{shares} shares</div>
             <div className="text-sm text-gray-400">Avg. ${averagePrice.toFixed(2)}</div>
+            <div className="text-sm mt-1">
+              <span className="text-gray-400">Value: </span>
+              <span className="text-white">${positionValue.toFixed(2)}</span>
+            </div>
+            <div className={`text-sm ${profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {profitLoss >= 0 ? '+' : ''}{profitLoss.toFixed(2)} ({profitLossPercent.toFixed(2)}%)
+            </div>
           </div>
         )}
       </div>
 
       {/* Chart */}
-      <div className="h-24 mb-4">
+      <div className="h-32 mb-4 -mx-2">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
+            <YAxis 
+              domain={[minPrice, maxPrice]}
+              hide
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <div className="bg-gray-800 border border-gray-700 p-2 rounded-lg shadow-lg">
+                      <p className="text-white">${payload[0].value.toFixed(2)}</p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
             <Line
               type="monotone"
               dataKey="price"
               stroke={change >= 0 ? '#4ade80' : '#f87171'}
               strokeWidth={2}
               dot={false}
+              isAnimationActive={false}
             />
           </LineChart>
         </ResponsiveContainer>

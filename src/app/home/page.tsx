@@ -66,7 +66,8 @@ const HomePage = () => {
   const [friendEmail, setFriendEmail] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendTrades, setFriendTrades] = useState<Trade[]>([]);
-  const [error, setError] = useState('');
+  const [newsError, setNewsError] = useState<string>('');
+  const [friendError, setFriendError] = useState<string>('');
   const [portfolio, setPortfolio] = useState<UserPortfolio>({
     balance: 0,
     positions: {}
@@ -79,6 +80,12 @@ const HomePage = () => {
     AAPL: { amount: 0, publicNote: '', privateNote: '' },
     GOOGL: { amount: 0, publicNote: '', privateNote: '' },
   });
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredStocks, setFilteredStocks] = useState<any[]>([]);
+  const [isLoadingStocks, setIsLoadingStocks] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -156,13 +163,13 @@ const HomePage = () => {
         const data = await response.json();
         
         if (data.error) {
-          setError('Failed to fetch news. Please try again later.');
+          setNewsError('Failed to fetch news. Please try again later.');
           return;
         }
         
         setNewsItems(data.news || []);
       } catch (err) {
-        setError('Failed to fetch news. Please try again later.');
+        setNewsError('Failed to fetch news. Please try again later.');
       } finally {
         setIsLoadingNews(false);
       }
@@ -193,35 +200,27 @@ const HomePage = () => {
             return null;
           }
 
-          const result = data.quoteResponse.result[0];
           return {
             symbol,
-            price: result.regularMarketPrice,
-            change: result.regularMarketChange,
-            changePercent: result.regularMarketChangePercent,
             name: DEFAULT_STOCKS.find(s => s.symbol === symbol)?.name || symbol,
             description: DEFAULT_STOCKS.find(s => s.symbol === symbol)?.description || '',
+            price: data.quoteResponse.result[0].regularMarketPrice,
+            change: data.quoteResponse.result[0].regularMarketChange,
+            changePercent: data.quoteResponse.result[0].regularMarketChangePercent,
             chartData: Array(24).fill(0).map((_, i) => ({
               time: i.toString(),
-              price: result.regularMarketPrice + Math.random() * 10 - 5
+              price: data.quoteResponse.result[0].regularMarketPrice + Math.random() * 10 - 5
             }))
           };
         });
 
         const stockData = (await Promise.all(stockDataPromises)).filter(Boolean);
-
-        // Sort stocks: owned stocks first, then others
-        const sortedStocks = stockData.sort((a, b) => {
-          const aOwned = Boolean(portfolio?.positions?.[a.symbol]);
-          const bOwned = Boolean(portfolio?.positions?.[b.symbol]);
-          if (aOwned && !bOwned) return -1;
-          if (!aOwned && bOwned) return 1;
-          return 0;
-        });
-
-        setStocks(sortedStocks);
+        setStocks(stockData);
+        setFilteredStocks(stockData);
+        setIsLoadingStocks(false);
       } catch (error) {
         console.error('Error fetching stock data:', error);
+        setIsLoadingStocks(false);
       }
     };
 
@@ -229,6 +228,75 @@ const HomePage = () => {
       fetchStockData();
     }
   }, [portfolio]);
+
+  // Add debounced search function
+  const searchStock = async (symbol: string) => {
+    try {
+      setIsSearching(true);
+      setSearchError('');
+      
+      const response = await fetch(`/api/stock?symbol=${symbol}`);
+      const data = await response.json();
+      
+      if (data.error) {
+        setSearchError(`No stock found for "${symbol}"`);
+        return null;
+      }
+
+      return {
+        symbol: symbol.toUpperCase(),
+        name: data.quoteResponse.result[0].shortName || symbol,
+        description: data.quoteResponse.result[0].longName || '',
+        price: data.quoteResponse.result[0].regularMarketPrice,
+        change: data.quoteResponse.result[0].regularMarketChange,
+        changePercent: data.quoteResponse.result[0].regularMarketChangePercent,
+        chartData: Array(24).fill(0).map((_, i) => ({
+          time: i.toString(),
+          price: data.quoteResponse.result[0].regularMarketPrice + Math.random() * 10 - 5
+        }))
+      };
+    } catch (error) {
+      console.error('Error searching stock:', error);
+      setSearchError('Failed to fetch stock data');
+      return null;
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle search with debounce
+  useEffect(() => {
+    const handleSearch = async () => {
+      if (!searchTerm.trim()) {
+        setFilteredStocks(stocks);
+        return;
+      }
+
+      const term = searchTerm.toUpperCase().trim();
+      
+      // First, filter existing stocks
+      const existingMatches = stocks.filter(stock => 
+        stock.symbol.toUpperCase().includes(term) || 
+        stock.name.toUpperCase().includes(term) ||
+        stock.description.toUpperCase().includes(term)
+      );
+
+      // If no matches and the term looks like a stock symbol, try to fetch it
+      if (existingMatches.length === 0 && /^[A-Z]{1,5}$/.test(term)) {
+        const newStock = await searchStock(term);
+        if (newStock) {
+          setFilteredStocks([newStock]);
+        } else {
+          setFilteredStocks([]);
+        }
+      } else {
+        setFilteredStocks(existingMatches);
+      }
+    };
+
+    const timeoutId = setTimeout(handleSearch, 500); // Debounce for 500ms
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, stocks]);
 
   const handleAddFriend = async () => {
     if (!user || !friendEmail) return;
@@ -246,7 +314,7 @@ const HomePage = () => {
       );
 
       if (!friendUser) {
-        setError('User not found');
+        setFriendError('User not found');
         return;
       }
 
@@ -260,10 +328,9 @@ const HomePage = () => {
       });
 
       setFriendEmail('');
-      setError('');
-    } catch (err) {
-      setError('Failed to add friend');
-      console.error(err);
+      setFriendError('');
+    } catch (error) {
+      setFriendError('Failed to add friend. Please try again later.');
     }
   };
 
@@ -271,11 +338,11 @@ const HomePage = () => {
     if (!user) return;
     
     try {
-      setError('');
+      setFriendError('');
       
       const input = tradeInputs[symbol];
       if (!input.amount || input.amount <= 0) {
-        setError('Please enter a valid amount');
+        setFriendError('Please enter a valid amount');
         return;
       }
 
@@ -291,13 +358,13 @@ const HomePage = () => {
       // Validate trade
       if (type === 'buy') {
         if (totalCost > portfolio.balance) {
-          setError(`Insufficient funds. Cost: $${totalCost.toFixed(2)}, Balance: $${portfolio.balance.toFixed(2)}`);
+          setFriendError(`Insufficient funds. Cost: $${totalCost.toFixed(2)}, Balance: $${portfolio.balance.toFixed(2)}`);
           return;
         }
       } else if (type === 'sell') {
         const currentPosition = portfolio.positions[symbol];
         if (!currentPosition || currentPosition.shares < input.amount) {
-          setError(`Insufficient shares. You own: ${currentPosition?.shares || 0} shares`);
+          setFriendError(`Insufficient shares. You own: ${currentPosition?.shares || 0} shares`);
           return;
         }
       }
@@ -356,7 +423,7 @@ const HomePage = () => {
       }));
       
     } catch (err) {
-      setError('Failed to execute trade');
+      setFriendError('Failed to execute trade');
       console.error(err);
     }
   };
@@ -369,12 +436,14 @@ const HomePage = () => {
       {/* Paper Trading Account Header */}
       <div className="mb-6 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
         <h2 className="text-2xl font-bold text-white mb-2">Paper Trading Account</h2>
-        <p className="text-3xl font-semibold text-green-400">${portfolio.balance.toFixed(2)}</p>
+        <p className="text-3xl font-semibold text-green-400">${portfolio?.balance.toFixed(2)}</p>
       </div>
       
       <div className="grid grid-cols-[300px_1fr_300px] gap-6">
         {/* Left Column - Market Insights */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10 overflow-auto max-h-[calc(100vh-2rem)]">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10 
+                    overflow-auto max-h-[calc(100vh-2rem)]
+                    scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
           <h2 className="text-xl font-bold text-white mb-6">Market Insights</h2>
           {isLoadingNews ? (
             <div className="animate-pulse space-y-4">
@@ -385,9 +454,9 @@ const HomePage = () => {
                 </div>
               ))}
             </div>
-          ) : error ? (
+          ) : newsError ? (
             <div className="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/20">
-              {error}
+              {newsError}
             </div>
           ) : newsItems.length > 0 ? (
             <div className="space-y-4">
@@ -444,35 +513,62 @@ const HomePage = () => {
         {/* Center Column - Trading Interface */}
         <div className="space-y-6">
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
-            <input
-              type="text"
-              placeholder="Search stocks..."
-              className="w-full px-6 py-3 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search for a stock"
+                className="w-full px-6 py-3 rounded-xl bg-gray-700/30 border border-white/5 
+                         focus:border-blue-500/50 focus:outline-none transition-colors text-white"
+              />
+              {isSearching && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                </div>
+              )}
+            </div>
+            {searchError && (
+              <p className="text-red-400 text-sm mt-2 px-2">{searchError}</p>
+            )}
           </div>
 
-          {/* Stock Cards */}
-          <div className="space-y-6">
-            {stocks.map((stock) => (
-              <div key={stock.symbol} 
-                className={`bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg 
-                  border ${portfolio?.positions?.[stock.symbol] 
-                    ? 'border-blue-500/20' 
-                    : 'border-white/10'} 
-                  transition-all duration-200 hover:bg-gray-700/50`}
-              >
-                <StockCard
-                  {...stock}
-                  shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
-                  averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
-                  onBuy={(amount, publicNote, privateNote) => 
-                    handleTrade(stock.symbol, 'buy', amount, publicNote, privateNote)}
-                  onSell={(amount, publicNote, privateNote) => 
-                    handleTrade(stock.symbol, 'sell', amount, publicNote, privateNote)}
-                />
-              </div>
-            ))}
-          </div>
+          {/* Loading State */}
+          {isLoadingStocks ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse bg-gray-800/50 rounded-2xl p-6 h-64" />
+              ))}
+            </div>
+          ) : filteredStocks.length === 0 && !searchError ? (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 text-center">
+              <p className="text-gray-400">
+                {searchTerm ? `No stocks found matching "${searchTerm}"` : "Enter a stock symbol to search"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredStocks.map((stock) => (
+                <div key={stock.symbol} 
+                  className={`bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg 
+                    border ${portfolio?.positions?.[stock.symbol] 
+                      ? 'border-blue-500/20' 
+                      : 'border-white/10'} 
+                    transition-all duration-200 hover:bg-gray-700/50`}
+                >
+                  <StockCard
+                    {...stock}
+                    shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
+                    averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
+                    onBuy={(amount, publicNote, privateNote) => 
+                      handleTrade(stock.symbol, 'buy', amount, publicNote, privateNote)}
+                    onSell={(amount, publicNote, privateNote) => 
+                      handleTrade(stock.symbol, 'sell', amount, publicNote, privateNote)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Column - Social Feed */}
@@ -484,15 +580,17 @@ const HomePage = () => {
                 value={friendEmail}
                 onChange={(e) => setFriendEmail(e.target.value)}
                 placeholder="Friend's email..."
-                className="w-full px-6 py-3 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors"
+                className="w-full px-6 py-3 rounded-xl bg-gray-700/30 border border-white/5 
+                           focus:border-blue-500/50 focus:outline-none transition-colors text-white"
               />
               <button 
                 onClick={handleAddFriend}
-                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl transition-colors duration-200 font-semibold"
+                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl 
+                           transition-colors duration-200 font-semibold"
               >
                 Add Friend
               </button>
-              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {friendError && <p className="text-red-400 text-sm">{friendError}</p>}
             </div>
 
             <div>
@@ -501,7 +599,8 @@ const HomePage = () => {
                 {friends.map((friend) => (
                   <div 
                     key={friend.userId} 
-                    className="px-4 py-2 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 
+                               transition-colors cursor-pointer"
                     onClick={() => router.push(`/profile/${friend.userId}`)}
                   >
                     {friend.email}
