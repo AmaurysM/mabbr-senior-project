@@ -1,7 +1,10 @@
 "use client";
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { TrendingUp, Users, Shield } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const Bubble = dynamic(() => import('../Bubble'));
 
 const HeroSection = () => {
   useEffect(() => {
@@ -23,6 +26,13 @@ const HeroSection = () => {
         <div className="absolute h-96 w-96 -left-16 -top-16 rounded-full bg-blue-500" />
         <div className="absolute h-96 w-96 -right-16 -bottom-16 rounded-full bg-blue-400" />
       </div>
+
+      {/* Back ground animation */}
+      <Suspense fallback={null}>
+        <div className="floating-circles absolute -inset-3 top-0 left-0 w-full h-full z-0">
+          <Bubble maxBubbles={15} />
+        </div>
+      </Suspense>
 
       {/* Main Content */}
       <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-16 text-white">
