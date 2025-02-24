@@ -26,51 +26,77 @@ model User {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  sessions      Session[]
-  accounts      Account[]
-  stocks        Stock[]
-  userLootBoxes UserLootBox[] // Changed to many-to-many relationship
-  transactions  Transaction[]
+  sessions     Session[]
+  accounts     Account[]
+  transactions Transaction[]
   // Friend relations using explicit join model
-  following     Friendship[]  @relation(name: "FollowerRelation")
-  followers     Friendship[]  @relation(name: "FollowingRelation")
+  following    Friendship[]  @relation(name: "FollowerRelation")
+  followers    Friendship[]  @relation(name: "FollowingRelation")
+
+  ownedLootBoxes UserLootBox[] // Many-to-many relationship with lootboxes
 
   @@map("user")
 }
 
-model LootBox {
-  id        String   @id @default(cuid()) @map("_id")
-  type      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model LootBoxStock {
+  id        String  @id @default(cuid()) @map("_id")
+  lootBox   LootBox @relation(fields: [lootBoxId], references: [id])
+  lootBoxId String
+  symbol    String // Stock symbol (e.g., "AAPL", "GOOGL")
+  quantity  Int // Number of stocks in the loot box
 
-  // Relations
-  users UserLootBox[] // Many-to-many relationship with User
+  // Prevent duplicate stocks in the same loot box
+  @@unique([lootBoxId, symbol])
+  @@map("lootbox_stock")
+}
+
+model UserLootBox {
+  id          String             @id @default(cuid()) @map("_id")
+  user        User               @relation(fields: [userId], references: [id])
+  userId      String
+  lootBox     LootBox            @relation(fields: [lootBoxId], references: [id])
+  lootBoxId   String
+  purchasedAt DateTime           @default(now())
+  stocks      UserLootBoxStock[] // Many-to-many relationship with stocks
+
+  // Prevents duplicate purchases of the same loot box
+  @@unique([userId, lootBoxId])
+  @@map("user_lootbox")
+}
+
+model LootBox {
+  id        String         @id @default(cuid()) @map("_id")
+  name      String
+  price     Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  stocks    LootBoxStock[] // Many-to-many relationship with stocks
+  owners    UserLootBox[] // Many-to-many relationship with users
 
   @@map("lootbox")
 }
 
-// Join table for User-LootBox many-to-many relationship
+model UserLootBoxStock {
+  id            String      @id @default(cuid()) @map("_id")
+  userLootBox   UserLootBox @relation(fields: [userLootBoxId], references: [id])
+  userLootBoxId String
+  symbol        String
+  quantity      Int // Number of stocks the user receives from this loot box
 
-model UserLootBox {
-  id        String   @id @default(cuid()) @map("_id")
-  userId    String
-  lootBoxId String
-  opened    Boolean  @default(false)
-  reward    Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lootBox LootBox @relation(fields: [lootBoxId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([lootBoxId])
-  @@map("user_lootbox")
+  // Ensures one entry per stock per loot box
+  @@unique([userLootBoxId, symbol])
+  @@map("user_lootbox_stock")
 }
 
-// Explicit many-to-many relation for friendships
+model Stock {
+  id       String @id @default(cuid()) @map("_id")
+  userId   String
+  symbol   String
+  quantity Int
+  avgPrice Float
+
+  @@unique([userId, symbol])
+}
 
 model Friendship {
   id          String @id @default(cuid()) @map("_id")
@@ -81,23 +107,9 @@ model Friendship {
   // Relations
   requester User @relation(name: "FollowerRelation", fields: [requesterId], references: [id])
   recipient User @relation(name: "FollowingRelation", fields: [recipientId], references: [id])
+
   // Prevents duplicate follow relationships
   @@unique([requesterId, recipientId])
-}
-
-model Stock {
-  id        String   @id @default(cuid()) @map("_id")
-  userId    String
-  symbol    String
-  quantity  Int
-  avgPrice  Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, symbol])
-  @@index([userId])
 }
 
 model Transaction {

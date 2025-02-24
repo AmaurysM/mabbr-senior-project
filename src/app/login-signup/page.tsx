@@ -20,8 +20,7 @@ const LoginPage = () => {
                 <Image
                     src="/sunny-landscape-tini.jpg"
                     alt="Sunny Landscape"
-                    layout="fill"
-                    objectFit="cover"
+                    fill
                     className="fixed top-0 left-0 w-full h-full "
                 />
 

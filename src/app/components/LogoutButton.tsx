@@ -1,21 +1,35 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import LoadingButton from "./LoadingButton";
+import { authClient } from "@/lib/auth-client";
 
-export default function LogoutButton() {
-  const router = useRouter();
+export default function SignoutButton() {
+	const router = useRouter();
+	const [pending, setPending] = useState(false);
 
-  const handleLogout = async () => {
-    await fetch("/api/logout", { method: "POST" }); // Call the logout API
-    router.refresh(); // Refresh the page to reflect logout
-  };
+	const handleSignOut = async () => {
+		try {
+			setPending(true);
+			await authClient.signOut({
+				fetchOptions: {
+					onSuccess: () => {
+						router.push("/sign-in");
+						router.refresh();
+					},
+				},
+			});
+		} catch (error) {
+			console.error("Error signing out:", error);
+		} finally {
+			setPending(false);
+		}
+	};
 
-  return (
-    <button
-      onClick={handleLogout}
-      className="ml-4 px-6 py-2 text-white font-semibold bg-red-600 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
-    >
-      Logout
-    </button>
-  );
+	return (
+		<LoadingButton pending={pending} onClick={handleSignOut}>
+			Sign Out
+		</LoadingButton>
+	);
 }

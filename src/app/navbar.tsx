@@ -6,14 +6,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { authClient } from "@/lib/auth-client";
 
 interface NavItem {
   name: string;
   href: string;
-}
-
-interface User {
-  profilePicture: string;
 }
 
 const navigationItems: NavItem[] = [
@@ -29,14 +26,13 @@ const navigationItems: NavItem[] = [
 ];
 
 const Navbar = () => {
-  const pathname = usePathname(); // Get current route
+  const pathname = usePathname(); 
+  const { data: session, isPending } = authClient.useSession();
+  const user = session?.user || null;
+
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [imageError, setImageError] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
-
-  const user: User = {
-    profilePicture: "/path/to/profile-picture.jpg",
-  };
 
   // Hide navbar if the current route is "/"
   if (pathname === "/") {
@@ -67,13 +63,22 @@ const Navbar = () => {
                   <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-200" />
                 </Link>
               ))}
-
-              <Link
-                href="/login-signup"
-                className="ml-4 px-6 py-2 text-white font-semibold bg-blue-600 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                Login
-              </Link>
+              
+              {user ? (
+                <button
+                  onClick={() => authClient.signOut()}
+                  className="ml-4 px-6 py-2 text-white font-semibold bg-red-600 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
+                >
+                  Logout
+                </button>
+              ) : (
+                <Link
+                  href="/login-signup"
+                  className="ml-4 px-6 py-2 text-white font-semibold bg-blue-600 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
+                >
+                  Login
+                </Link>
+              )}
 
               <Link href="/profile" className="ml-2">
                 <div className="relative w-10 h-10 transform hover:scale-105 transition-all duration-200">
@@ -86,7 +91,7 @@ const Navbar = () => {
                   ) : (
                     <div className="w-10 h-10 rounded-full p-0.5">
                       <Image
-                        src={user.profilePicture}
+                        src={user?.image || "/default-profile.png"}
                         alt="User Profile"
                         width={40}
                         height={40}
