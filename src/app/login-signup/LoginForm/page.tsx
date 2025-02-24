@@ -18,7 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ErrorContext } from "@better-fetch/fetch";
 import { GithubIcon } from "lucide-react";
-import { authClient } from "@/auth-client";
+import { authClient } from "@/lib/auth-client";
 import LoadingButton from "@/app/components/LoadingButton";
 import { useToast } from "@/app/hooks/use-toast";
 

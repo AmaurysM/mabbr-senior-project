@@ -1,4 +1,4 @@
-import prismaClientSingleton  from "@/lib/prisma";
+import prismaClientSingleton from "@/lib/prisma";
 import { Prisma, PrismaClient, Stock } from "@prisma/client";
 
 type DatabaseOperation<T> = Promise<T>;
@@ -45,7 +45,7 @@ export const db = {
     ) =>
       db.execute((client) =>
         client.user.update({
-          where: { id},
+          where: { id },
           data,
         })
       ),
@@ -57,7 +57,7 @@ export const db = {
           if (!user) throw new Error("User not found");
 
           return tx.user.update({
-            where: { id},
+            where: { id },
             data: { balance: user.balance + amount },
           });
         })
@@ -141,70 +141,6 @@ export const db = {
       ),
   },
 
-  stocks: {
-    findByUser: (userId: string) =>
-      db.execute((client) =>
-        client.stock.findMany({
-          where: { userId: userId },
-        })
-      ),
-
-    findBySymbol: (userId: string, symbol: string) =>
-      db.execute((client) =>
-        client.stock.findUnique({
-          where: {
-            userId_symbol: {
-              userId: userId,
-              symbol,
-            },
-          },
-        })
-      ),
-
-    upsert: (userId: string, symbol: string, quantity: number, price: number) =>
-      db.execute((client) =>
-        client.$transaction(async (tx: Prisma.TransactionClient) => {
-          const existingStock = await tx.stock.findUnique({
-            where: {
-              userId_symbol: {
-                userId: userId,
-                symbol,
-              },
-            },
-          });
-
-          if (existingStock) {
-            const newQuantity = existingStock.quantity + quantity;
-            const newAvgPrice =
-              (existingStock.quantity * existingStock.avgPrice +
-                quantity * price) /
-              newQuantity;
-
-            return tx.stock.update({
-              where: {
-                userId_symbol: {
-                  userId: userId,
-                  symbol,
-                },
-              },
-              data: {
-                quantity: newQuantity,
-                avgPrice: newAvgPrice,
-              },
-            });
-          }
-
-          return tx.stock.create({
-            data: {
-              userId: userId,
-              symbol,
-              quantity,
-              avgPrice: price,
-            },
-          });
-        })
-      ),
-  },
 
   transactions: {
     create: (data: {
@@ -227,24 +163,138 @@ export const db = {
   },
 
   lootBoxes: {
-    findUnopened: (userId: string) =>
+    /**
+     * Find all loot boxes a user has purchased.
+     */
+    findByUser: (userId: string) =>
       db.execute((client) =>
-        client.lootBox.findMany({
-          where: {
-            userId,
-            opened: false,
-          },
+        client.userLootBox.findMany({
+          where: { userId },
+          include: { lootBox: { include: { stocks: true } }, stocks: true },
         })
       ),
 
-    open: (id: string, reward: Stock) =>
+    /**
+     * Find a specific loot box by its ID.
+     */
+    findById: (lootBoxId: string) =>
       db.execute((client) =>
-        client.lootBox.update({
-          where: { id },
-          data: {
-            opened: true,
-            reward,
-          },
+        client.lootBox.findUnique({
+          where: { id: lootBoxId },
+          include: { stocks: true }, // Include stocks inside loot box
+        })
+      ),
+
+    /**
+     * Create a new loot box with given stocks.
+     */
+    create: (stockSymbols: { symbol: string; quantity: number }[]) =>
+      db.execute((client) =>
+        client.$transaction(async (tx: Prisma.TransactionClient) => {
+          // Create the loot box
+          const lootBox = await tx.lootBox.create({ data: {} });
+
+          // Add stocks to the loot box
+          const stocks = await Promise.all(
+            stockSymbols.map((stock) =>
+              tx.lootBoxStock.create({
+                data: {
+                  lootBoxId: lootBox.id,
+                  symbol: stock.symbol,
+                  quantity: stock.quantity,
+                },
+              })
+            )
+          );
+
+          return { lootBox, stocks };
+        })
+      ),
+
+    /**
+     * Allow a user to buy a loot box (tracks ownership and stocks received).
+     */
+    buy: (userId: string, lootBoxId: string) =>
+      db.execute((client) =>
+        client.$transaction(async (tx: Prisma.TransactionClient) => {
+          // Retrieve loot box stocks
+          const lootBoxStocks = await tx.lootBoxStock.findMany({
+            where: { lootBoxId },
+          });
+
+          if (!lootBoxStocks.length) {
+            throw new Error("Loot box has no stocks.");
+          }
+
+          // Create a record in UserLootBox
+          const userLootBox = await tx.userLootBox.create({
+            data: {
+              userId,
+              lootBoxId,
+            },
+          });
+
+          // Create UserLootBoxStock records
+          const userStocks = await Promise.all(
+            lootBoxStocks.map((stock) =>
+              tx.userLootBoxStock.create({
+                data: {
+                  userLootBoxId: userLootBox.id,
+                  symbol: stock.symbol,
+                  quantity: stock.quantity,
+                },
+              })
+            )
+          );
+
+          return { userLootBox, userStocks };
+        })
+      ),
+
+    /**
+     * Open a loot box and transfer all stocks to the user's portfolio.
+     * The loot box record is deleted after opening.
+     */
+    open: (userLootBoxId: string) =>
+      db.execute((client) =>
+        client.$transaction(async (tx: Prisma.TransactionClient) => {
+          // Retrieve the user's loot box
+          const userLootBox = await tx.userLootBox.findUnique({
+            where: { id: userLootBoxId },
+          });
+    
+          if (!userLootBox) throw new Error("User loot box not found.");
+    
+          // Find all stock entries related to this loot box
+          const lootBoxStocks = await tx.userLootBoxStock.findMany({
+            where: { userLootBoxId },
+          });
+    
+          // Transfer stocks from the loot box to the user's portfolio
+          await Promise.all(
+            lootBoxStocks.map((stock) =>
+              tx.stock.upsert({
+                where: { userId_symbol: { userId: userLootBox.userId, symbol: stock.symbol } },
+                update: { quantity: { increment: stock.quantity } },
+                create: {
+                  userId: userLootBox.userId,
+                  symbol: stock.symbol,
+                  quantity: stock.quantity,
+                  avgPrice: 0, // Set actual price if necessary
+                },
+              })
+            )
+          );
+    
+          // Delete all stock records associated with this loot box
+          await tx.userLootBoxStock.deleteMany({
+            where: { userLootBoxId },
+          });
+    
+          // Delete the user's loot box
+          return tx.userLootBox.delete({
+            where: { id: userLootBoxId },
+          });
         })
       ),
   },

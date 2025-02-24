@@ -37,7 +37,7 @@ const HeroSection = () => {
       {/* Main Content */}
       <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-16 text-white">
         <div className="max-w-4xl text-center ">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text pb-1 text-transparent bg-gradient-to-r from-blue-200 to-white">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text pb-5 text-transparent bg-gradient-to-r from-blue-200 to-white">
             Trade Smarter, Together
           </h1>
           <p className="text-xl md:text-2xl text-blue-100 mb-8">
