@@ -5,37 +5,37 @@ import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { db } from "../util/helperFunctions";
 import { LootBox } from "@prisma/client";
-import { StockRarity } from "../constants/LootBoxDataTest";
+import { lootboxes, StockRarity } from "../constants/LootBoxDataTest";
 import { FaBoxOpen } from "react-icons/fa"; // Importing an icon for empty state
 
 const Page = () => {
   const { data: session, isPending } = authClient.useSession();
-  const user = session?.user || null;
+  // const user = session?.user || null;
 
-  const [allLootboxes, setAllLootboxes] = useState<LootBox[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [allLootboxes, setAllLootboxes] = useState<LootBox[]>([]);
+  // const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchLootboxes = async () => {
-      try {
-        const [lootboxes, error]: [LootBox[] | null, Error | null] =
-          await db.lootBoxes.getAll();
-        if (error) {
-          console.error("Failed to fetch lootboxes:", error);
-        } else if (lootboxes) {
-          setAllLootboxes(lootboxes);
-        }
-      } catch (error) {
-        console.error("Failed to fetch lootboxes:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchLootboxes = async () => {
+  //     try {
+  //       const [lootboxes, error]: [LootBox[] | null, Error | null] =
+  //         await db.lootBoxes.getAll();
+  //       if (error) {
+  //         console.error("Failed to fetch lootboxes:", error);
+  //       } else if (lootboxes) {
+  //         setAllLootboxes(lootboxes);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to fetch lootboxes:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchLootboxes();
-  }, []);
+  //   fetchLootboxes();
+  // }, []);
 
-  if (isPending || loading) return <div>Loading...</div>;
+  // if (isPending || loading) return <div>Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
@@ -49,16 +49,16 @@ const Page = () => {
         </div>
 
         {/* Lootbox Grid or Empty State */}
-        {allLootboxes.length > 0 ? (
+        {lootboxes.length > 0 ? (
           <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-            {allLootboxes.map((box, index) => (
+            {lootboxes.map((box, index) => (
               <Link
                 href={"/lootbox/" + box.id}
                 key={index}
                 className="break-inside-avoid transform hover:scale-[1.02] transition-transform duration-200"
               >
                 <div className="relative w-full pb-4">
-                  <LootboxTile name={StockRarity.Common} stocks={[]} {...box} />
+                  <LootboxTile {...box} />
                 </div>
               </Link>
             ))}
