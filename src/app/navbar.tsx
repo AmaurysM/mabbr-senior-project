@@ -15,6 +15,7 @@ interface NavItem {
 
 const navigationItems: NavItem[] = [
   { name: "Home", href: "/home" },
+  { name: "New Users", href: "/users" },
   { name: "Notes", href: "/note" },
   { name: "Bonds", href: "/bond" },
   { name: "Community", href: "/community" },
@@ -23,6 +24,7 @@ const navigationItems: NavItem[] = [
   { name: "Leaderboards", href: "/leaderboards" },
   { name: "Portfolio", href: "/portfolio" },
   { name: "Profile", href: "/profile" },
+  { name: "Edit Profile", href: "/edit-profile" }
 ];
 
 const Navbar = () => {
