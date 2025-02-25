@@ -16,6 +16,7 @@ model User {
   email         String   @unique
   emailVerified Boolean  @default(false)
   image         String?
+  badgeImage    String? // New field for the badge image
   premium       Boolean  @default(false)
   role          String   @default("user")
   banned        Boolean  @default(false)
@@ -26,42 +27,17 @@ model User {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  sessions     Session[]
-  accounts     Account[]
-  transactions Transaction[]
-  // Friend relations using explicit join model
-  following    Friendship[]  @relation(name: "FollowerRelation")
-  followers    Friendship[]  @relation(name: "FollowingRelation")
-
-  ownedLootBoxes UserLootBox[] // Many-to-many relationship with lootboxes
+  sessions       Session[]
+  accounts       Account[]
+  transactions   Transaction[]
+  following      Friendship[]  @relation(name: "FollowerRelation")
+  followers      Friendship[]  @relation(name: "FollowingRelation")
+  // Many-to-many relationship with LootBox via an explicit join table
+  ownedLootBoxes UserLootBox[] @relation("UserLootBoxRelation")
+  // A user can hold many stocks
+  stocks         Stock[]
 
   @@map("user")
-}
-
-model LootBoxStock {
-  id        String  @id @default(cuid()) @map("_id")
-  lootBox   LootBox @relation(fields: [lootBoxId], references: [id])
-  lootBoxId String
-  symbol    String // Stock symbol (e.g., "AAPL", "GOOGL")
-  quantity  Int // Number of stocks in the loot box
-
-  // Prevent duplicate stocks in the same loot box
-  @@unique([lootBoxId, symbol])
-  @@map("lootbox_stock")
-}
-
-model UserLootBox {
-  id          String             @id @default(cuid()) @map("_id")
-  user        User               @relation(fields: [userId], references: [id])
-  userId      String
-  lootBox     LootBox            @relation(fields: [lootBoxId], references: [id])
-  lootBoxId   String
-  purchasedAt DateTime           @default(now())
-  stocks      UserLootBoxStock[] // Many-to-many relationship with stocks
-
-  // Prevents duplicate purchases of the same loot box
-  @@unique([userId, lootBoxId])
-  @@map("user_lootbox")
 }
 
 model LootBox {
@@ -70,10 +46,39 @@ model LootBox {
   price     Int
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
-  stocks    LootBoxStock[] // Many-to-many relationship with stocks
-  owners    UserLootBox[] // Many-to-many relationship with users
+  stocks    LootBoxStock[] // A lootbox holds many stocks
+
+  // Many-to-many relationship with User via an explicit join table
+  owners UserLootBox[] @relation("UserLootBoxRelation")
 
   @@map("lootbox")
+}
+
+model UserLootBox {
+  id          String             @id @default(cuid()) @map("_id")
+  // Explicit many-to-many join table for Users and LootBoxes using a named relation
+  user        User               @relation("UserLootBoxRelation", fields: [userId], references: [id])
+  userId      String
+  lootBox     LootBox            @relation("UserLootBoxRelation", fields: [lootBoxId], references: [id])
+  lootBoxId   String
+  purchasedAt DateTime           @default(now())
+  stocks      UserLootBoxStock[] // Additional relation for stocks if needed
+
+  // Prevents duplicate purchases of the same lootbox by the same user
+  @@unique([userId, lootBoxId])
+  @@map("user_lootbox")
+}
+
+model LootBoxStock {
+  id        String  @id @default(cuid()) @map("_id")
+  lootBox   LootBox @relation(fields: [lootBoxId], references: [id])
+  lootBoxId String
+  symbol    String // Stock symbol (e.g., "AAPL", "GOOGL")
+  quantity  Int // Number of stocks in the lootbox
+
+  // Prevent duplicate stocks in the same lootbox
+  @@unique([lootBoxId, symbol])
+  @@map("lootbox_stock")
 }
 
 model UserLootBoxStock {
@@ -81,9 +86,9 @@ model UserLootBoxStock {
   userLootBox   UserLootBox @relation(fields: [userLootBoxId], references: [id])
   userLootBoxId String
   symbol        String
-  quantity      Int // Number of stocks the user receives from this loot box
+  quantity      Int // Number of stocks the user receives from this lootbox
 
-  // Ensures one entry per stock per loot box
+  // Ensures one entry per stock per lootbox purchase
   @@unique([userLootBoxId, symbol])
   @@map("user_lootbox_stock")
 }
@@ -95,6 +100,9 @@ model Stock {
   quantity Int
   avgPrice Float
 
+  // Added the back relation to the User model
+  user User @relation(fields: [userId], references: [id])
+
   @@unique([userId, symbol])
 }
 
@@ -104,7 +112,7 @@ model Friendship {
   recipientId String
   status      String @default("pending")
 
-  // Relations
+  // Relations for friend relationships
   requester User @relation(name: "FollowerRelation", fields: [requesterId], references: [id])
   recipient User @relation(name: "FollowingRelation", fields: [recipientId], references: [id])
 
