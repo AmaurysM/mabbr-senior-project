@@ -4,15 +4,13 @@ import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 
 const NotFoundPage = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
+    <div className="w-screen h-screen flex items-center justify-center px-6 z-0 overflow-hidden relative">
       {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/sunny-landscape-tini.jpg')" }}
-        />
-      </div>
-      <div className="w-full max-w-lg p-8 rounded-3xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-lg text-center">
+      <div className="absolute inset-0 w-full h-full bg-cover bg-center" 
+        style={{ backgroundImage: "url('/sunny-landscape-tini.jpg')" }} 
+      />
+
+      <div className="relative w-full max-w-lg p-8 rounded-3xl bg-white/60 backdrop-blur-sm border border-white/50 shadow-lg text-center z-10">
         <div className="relative">
           <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
             <div className="w-24 h-24 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-lg">
