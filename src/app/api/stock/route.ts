@@ -16,7 +16,7 @@ export async function GET() {
     const result = await yahooFinance.quote('NVDA', queryOptions, {
       validateResult: false
     });
-
+      //averageAnalystRating
     const transformedData = {
       quoteResponse: {
         result: [{
@@ -28,7 +28,7 @@ export async function GET() {
       }
     };
 
-    return NextResponse.json(transformedData);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Yahoo Finance API Error:', error);
     return NextResponse.json({ error: 'Failed to fetch stock data' }, { status: 500 });
