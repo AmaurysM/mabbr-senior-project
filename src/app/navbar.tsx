@@ -113,13 +113,6 @@ const Navbar = () => {
                             >
                               Your Profile
                             </Link>
-                            <Link
-                                href="/edit-profile"
-                                className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                                onClick={() => setProfileDropdownOpen(false)}
-                            >
-                              Edit Profile
-                            </Link>
                             <hr className="my-1 border-gray-200" />
                             <button
                                 onClick={handleSignOut}
@@ -175,13 +168,6 @@ const Navbar = () => {
                               onClick={() => setMenuOpen(false)}
                           >
                             Your Profile
-                          </Link>
-                          <Link
-                              href="/edit-profile"
-                              className="block px-4 py-2 text-gray-700 hover:text-blue-600 font-medium"
-                              onClick={() => setMenuOpen(false)}
-                          >
-                            Edit Profile
                           </Link>
                           <button
                               onClick={handleSignOut}
