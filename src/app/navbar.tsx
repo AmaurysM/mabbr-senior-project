@@ -8,6 +8,8 @@ import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { authClient } from "@/lib/auth-client";
 
+
+
 interface NavItem {
   name: string;
   href: string;
