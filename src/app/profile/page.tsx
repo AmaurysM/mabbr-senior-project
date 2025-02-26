@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PencilIcon, CheckIcon, XMarkIcon, CameraIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
+import { authClient } from "@/lib/auth-client";
 
 interface EditableFieldProps {
     value: string;
@@ -16,6 +17,11 @@ const EditableField: React.FC<EditableFieldProps> = ({ value, label, onSave, req
     const [newValue, setNewValue] = useState(value);
     const [confirmValue, setConfirmValue] = useState('');
     const [error, setError] = useState('');
+
+    // Update newValue when the prop value changes
+    useEffect(() => {
+        setNewValue(value);
+    }, [value]);
 
     const handleSave = () => {
         if (requireConfirmation && newValue !== confirmValue) {
@@ -91,11 +97,34 @@ const EditableField: React.FC<EditableFieldProps> = ({ value, label, onSave, req
 const ProfilePage = () => {
     const [profileImage, setProfileImage] = useState<string>('/default-profile.png');
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [name, setName] = useState('John Doe');
-    const [email, setEmail] = useState('john@example.com');
+    const [name, setName] = useState<string>('');
+    const [email, setEmail] = useState<string>('');
     const [bio, setBio] = useState('No bio yet.');
     const [isEditingBio, setIsEditingBio] = useState(false);
     const [newBio, setNewBio] = useState(bio);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Fetch user data when component mounts
+        const fetchUserData = async () => {
+            try {
+                setLoading(true);
+                const { data: session } = await authClient.getSession();
+
+                if (session?.user) {
+                    // Set user data from session
+                    setName(session.user.name || '');
+                    setEmail(session.user.email || '');
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, []);
 
     const handleImageClick = () => {
         fileInputRef.current?.click();
@@ -111,6 +140,15 @@ const ProfilePage = () => {
             reader.readAsDataURL(file);
         }
     };
+
+    // Show loading state while fetching user data
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
+                <div className="text-white">Loading profile...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 p-8">
