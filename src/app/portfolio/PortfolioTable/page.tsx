@@ -16,7 +16,7 @@ const PortfolioTable = () => {
         if (!res.ok) {
           throw new Error("Failed to fetch portfolio");
         }
-        // API now returns an object with { holdings, chartData }
+        // API now returns an object with both { holdings, chartData } 
         const data = await res.json();
         setHoldings(data.holdings);
       } catch (error) {
