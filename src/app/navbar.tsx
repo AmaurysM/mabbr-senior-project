@@ -24,6 +24,9 @@ const navigationItems: NavItem[] = [
   { name: "Loot Box", href: "/lootbox" },
   { name: "Leaderboards", href: "/leaderboards" },
   { name: "Portfolio", href: "/portfolio" },
+  { name: "Profile", href: "/profile" },
+  { name: "Edit Profile", href: "/edit-profile" },
+  { name: "Verify Investor", href: "/verify-investor"}
 ];
 
 const Navbar = () => {
