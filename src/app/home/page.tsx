@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getDatabase, ref, onValue, push, set, get } from 'firebase/database';
 import { useAuth } from '@/app/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import StockCard from '@/app/components/StockCard';
 import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
+import CompactStockCard from '../components/CompactStockCard';
 
 interface Trade {
   userId: string;
@@ -334,14 +335,13 @@ const HomePage = () => {
     }
   };
 
-  const executeTrade = async (symbol: string, type: 'buy' | 'sell') => {
+  const executeTrade = async (symbol: string, type: 'buy' | 'sell', amount: number, publicNote: string, privateNote: string) => {
     if (!user) return;
     
     try {
       setFriendError('');
       
-      const input = tradeInputs[symbol];
-      if (!input.amount || input.amount <= 0) {
+      if (!amount || amount <= 0) {
         setFriendError('Please enter a valid amount');
         return;
       }
@@ -351,9 +351,14 @@ const HomePage = () => {
         NVDA: 875.35,
         AAPL: 175.04,
         GOOGL: 147.68,
+        MSFT: 321.14,
+        AMZN: 187.25,
+        TSLA: 245.80,
+        META: 522.45,
+        AMD: 174.12,
       }[symbol] || 0;
 
-      const totalCost = mockPrice * input.amount;
+      const totalCost = mockPrice * amount;
 
       // Validate trade
       if (type === 'buy') {
@@ -363,7 +368,7 @@ const HomePage = () => {
         }
       } else if (type === 'sell') {
         const currentPosition = portfolio.positions[symbol];
-        if (!currentPosition || currentPosition.shares < input.amount) {
+        if (!currentPosition || currentPosition.shares < amount) {
           setFriendError(`Insufficient shares. You own: ${currentPosition?.shares || 0} shares`);
           return;
         }
@@ -382,7 +387,7 @@ const HomePage = () => {
           };
         }
         const position = newPortfolio.positions[symbol];
-        const totalShares = position.shares + input.amount;
+        const totalShares = position.shares + amount;
         const totalCostBasis = (position.shares * position.averagePrice) + totalCost;
         position.averagePrice = totalCostBasis / totalShares;
         position.shares = totalShares;
@@ -391,7 +396,7 @@ const HomePage = () => {
         newPortfolio.balance += totalCost;
         // Update position
         const position = newPortfolio.positions[symbol];
-        position.shares -= input.amount;
+        position.shares -= amount;
         if (position.shares === 0) {
           delete newPortfolio.positions[symbol];
         }
@@ -407,20 +412,13 @@ const HomePage = () => {
         userId: user.uid,
         userEmail: user.email || 'unknown',
         stockSymbol: symbol,
-        amount: input.amount,
+        amount: amount,
         type,
-        price: mockPrice,
-        publicNote: input.publicNote,
-        privateNote: input.privateNote,
+        publicNote: publicNote,
+        privateNote: privateNote,
         timestamp: Date.now(),
       };
       await push(tradeRef, newTrade);
-
-      // Reset input fields
-      setTradeInputs(prev => ({
-        ...prev,
-        [symbol]: { amount: 0, publicNote: '', privateNote: '' }
-      }));
       
     } catch (err) {
       setFriendError('Failed to execute trade');
@@ -432,19 +430,19 @@ const HomePage = () => {
   if (!user) return null;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="px-1 py-6 w-full h-full">
       {/* Paper Trading Account Header */}
-      <div className="mb-6 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
-        <h2 className="text-2xl font-bold text-white mb-2">Paper Trading Account</h2>
+      <div className="mb-2 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+        <h2 className="text-2xl font-bold text-white mb-1">Paper Trading Account</h2>
         <p className="text-3xl font-semibold text-green-400">${portfolio?.balance.toFixed(2)}</p>
       </div>
       
-      <div className="grid grid-cols-[300px_1fr_300px] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_2.6fr_1.2fr] lg:grid-cols-[1fr_2fr_1fr] gap-2 w-full">
         {/* Left Column - Market Insights */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10 
-                    overflow-auto max-h-[calc(100vh-2rem)]
-                    scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
-          <h2 className="text-xl font-bold text-white mb-6">Market Insights</h2>
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 
+                     overflow-auto max-h-[calc(100vh-12rem)]
+                     scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
+          <h2 className="text-xl font-bold text-white mb-4">Market Insights</h2>
           {isLoadingNews ? (
             <div className="animate-pulse space-y-4">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -492,7 +490,7 @@ const HomePage = () => {
                     })}
                   </div>
                   <p className="text-xs text-gray-400 mt-2">
-                    {new Date(item.time_published || item.time).toLocaleString('en-US', {
+                    {new Date(item.time).toLocaleString('en-US', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
@@ -510,16 +508,17 @@ const HomePage = () => {
           )}
         </div>
 
-        {/* Center Column - Trading Interface */}
-        <div className="space-y-6">
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
+        {/* Middle Column - Stock Dashboard */}
+        <div className="flex flex-col space-y-2">
+          {/* Search Bar */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/10">
             <div className="relative">
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search for a stock"
-                className="w-full px-6 py-3 rounded-xl bg-gray-700/30 border border-white/5 
+                className="w-full px-5 py-2 rounded-xl bg-gray-700/30 border border-white/5 
                          focus:border-blue-500/50 focus:outline-none transition-colors text-white"
               />
               {isSearching && (
@@ -532,47 +531,49 @@ const HomePage = () => {
               <p className="text-red-400 text-sm mt-2 px-2">{searchError}</p>
             )}
           </div>
-
-          {/* Loading State */}
-          {isLoadingStocks ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse bg-gray-800/50 rounded-2xl p-6 h-64" />
-              ))}
-            </div>
-          ) : filteredStocks.length === 0 && !searchError ? (
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 text-center">
-              <p className="text-gray-400">
-                {searchTerm ? `No stocks found matching "${searchTerm}"` : "Enter a stock symbol to search"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {filteredStocks.map((stock) => (
-                <div key={stock.symbol} 
-                  className={`bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg 
-                    border ${portfolio?.positions?.[stock.symbol] 
-                      ? 'border-blue-500/20' 
-                      : 'border-white/10'} 
-                    transition-all duration-200 hover:bg-gray-700/50`}
-                >
-                  <StockCard
+          
+          {/* Stocks Grid */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/10 
+                       overflow-auto max-h-[calc(100vh-14rem)] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
+            <h2 className="text-xl font-bold text-white mb-3">
+              {Object.keys(portfolio?.positions || {}).length > 0 ? 'Your Portfolio & Market' : 'Market Overview'}
+            </h2>
+            
+            {isLoadingStocks ? (
+              <div className="grid grid-cols-1 gap-3 animate-pulse">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-24 bg-gray-800/50 rounded-xl"></div>
+                ))}
+              </div>
+            ) : filteredStocks.length === 0 && !searchError ? (
+              <div className="text-center p-6">
+                <p className="text-gray-400">
+                  {searchTerm ? `No stocks found matching "${searchTerm}"` : "Enter a stock symbol to search"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {filteredStocks.map((stock) => (
+                  <CompactStockCard
+                    key={stock.symbol}
                     {...stock}
                     shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
                     averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
                     onBuy={(amount, publicNote, privateNote) => 
-                      handleTrade(stock.symbol, 'buy', amount, publicNote, privateNote)}
+                      executeTrade(stock.symbol, 'buy', amount, publicNote, privateNote)}
                     onSell={(amount, publicNote, privateNote) => 
-                      handleTrade(stock.symbol, 'sell', amount, publicNote, privateNote)}
+                      executeTrade(stock.symbol, 'sell', amount, publicNote, privateNote)}
                   />
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Column - Social Feed */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10
+                     overflow-auto max-h-[calc(100vh-12rem)]
+                     scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
           <div className="space-y-6">
             <div className="space-y-4">
               <input
