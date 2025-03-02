@@ -175,3 +175,15 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+model AlphaVantageNews {
+  id         String   @id @default(cuid()) @map("_id")
+  tickers    String   @default("NVDA") // Comma-separated list of tickers
+  data       Json     // Store the full API response as JSON
+  expiresAt  DateTime // When the cache expires
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tickers])
+  @@map("alphavantage_news")
+}

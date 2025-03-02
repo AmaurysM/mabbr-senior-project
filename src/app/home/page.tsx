@@ -430,7 +430,7 @@ const HomePage = () => {
   if (!user) return null;
 
   return (
-    <div className="px-1 py-6 w-full h-full">
+    <div className="px-8 py-6 w-full h-full max-w-[1920px] mx-auto">
       {/* Paper Trading Account Header */}
       <div className="mb-2 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
         <h2 className="text-2xl font-bold text-white mb-1">Paper Trading Account</h2>
