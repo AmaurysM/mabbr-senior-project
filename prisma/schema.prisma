@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  url      = env("NEXT_PUBLIC_DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -22,95 +22,85 @@ model User {
   banned        Boolean  @default(false)
   banReason     String?
   banExpires    Int? // Unix timestamp for ban expiration
-  balance       Float    @default(25000.0)
+  balance       Float    @default(100000.0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Relations
-  sessions       Session[]
-  accounts       Account[]
-  transactions   Transaction[]
-  following      Friendship[]  @relation(name: "FollowerRelation")
-  followers      Friendship[]  @relation(name: "FollowingRelation")
-  // Many-to-many relationship with LootBox via an explicit join table
-  ownedLootBoxes UserLootBox[] @relation("UserLootBoxRelation")
-  // A user can hold many stocks
-  stocks         Stock[]
+  sessions      Session[]
+  accounts      Account[]
+  transactions  Transaction[]
+  following     Friendship[]  @relation(name: "FollowerRelation")
+  followers     Friendship[]  @relation(name: "FollowingRelation")
+
+  userStocks    UserStock[]
+  userLootBoxes UserLootBox[]
 
   @@map("user")
 }
 
 model LootBox {
-  id        String         @id @default(cuid()) @map("_id")
-  name      String
-  price     Int
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  stocks    LootBoxStock[] // A lootbox holds many stocks
-
-  // Many-to-many relationship with User via an explicit join table
-  owners UserLootBox[] @relation("UserLootBoxRelation")
+  id            String         @id @default(cuid()) @map("_id")
+  name          String
+  price         Float
+  userLootBoxes UserLootBox[]
+  lootBoxStocks LootBoxStock[]
 
   @@map("lootbox")
 }
 
-model UserLootBox {
-  id          String             @id @default(cuid()) @map("_id")
-  // Explicit many-to-many join table for Users and LootBoxes using a named relation
-  user        User               @relation("UserLootBoxRelation", fields: [userId], references: [id])
-  userId      String
-  lootBox     LootBox            @relation("UserLootBoxRelation", fields: [lootBoxId], references: [id])
-  lootBoxId   String
-  purchasedAt DateTime           @default(now())
-  stocks      UserLootBoxStock[] // Additional relation for stocks if needed
+model UserStock {
+  id       String @id @default(cuid()) @map("_id")
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  stock    Stock  @relation(fields: [stockId], references: [id])
+  stockId  String
+  quantity Int
 
-  // Prevents duplicate purchases of the same lootbox by the same user
+  @@unique([userId, stockId]) // Ensures each user can only have one entry per stock
+
+}
+
+model UserLootBox {
+  id        String  @id @default(cuid()) @map("_id")
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String
+  lootBox   LootBox @relation(fields: [lootBoxId], references: [id])
+  lootBoxId String
+  quantity  Int
+
   @@unique([userId, lootBoxId])
-  @@map("user_lootbox")
+  @@map("userlootbox")
+}
+
+model Stock {
+  id            String        @id @default(cuid()) @map("_id")
+  name          String
+  price         Float         @default(0)
+  userStocks    UserStock[]
+  lootBoxStocks LootBoxStock[]
+
+  @@map("stock")
 }
 
 model LootBoxStock {
   id        String  @id @default(cuid()) @map("_id")
   lootBox   LootBox @relation(fields: [lootBoxId], references: [id])
   lootBoxId String
-  symbol    String // Stock symbol (e.g., "AAPL", "GOOGL")
-  quantity  Int // Number of stocks in the lootbox
+  stock     Stock   @relation(fields: [stockId], references: [id])
+  stockId   String
+  quantity  Int
 
-  // Prevent duplicate stocks in the same lootbox
-  @@unique([lootBoxId, symbol])
-  @@map("lootbox_stock")
-}
-
-model UserLootBoxStock {
-  id            String      @id @default(cuid()) @map("_id")
-  userLootBox   UserLootBox @relation(fields: [userLootBoxId], references: [id])
-  userLootBoxId String
-  symbol        String
-  quantity      Int // Number of stocks the user receives from this lootbox
-
-  // Ensures one entry per stock per lootbox purchase
-  @@unique([userLootBoxId, symbol])
-  @@map("user_lootbox_stock")
-}
-
-model Stock {
-  id       String @id @default(cuid()) @map("_id")
-  userId   String
-  symbol   String
-  quantity Int
-  avgPrice Float
-
-  // Added the back relation to the User model
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, symbol])
+  @@unique([lootBoxId, stockId])
+  @@map("lootboxstock")
 }
 
 model Friendship {
-  id          String @id @default(cuid()) @map("_id")
+  id          String   @id @default(cuid()) @map("_id")
   requesterId String
   recipientId String
-  status      String @default("pending")
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations for friend relationships
   requester User @relation(name: "FollowerRelation", fields: [requesterId], references: [id])
@@ -130,6 +120,8 @@ model Transaction {
   totalCost   Float
   timestamp   DateTime @default(now())
   status      String   @default("COMPLETED")
+  publicNote  String?  // Optional public note
+  privateNote String?  // Optional private note
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -189,4 +181,16 @@ model Verification {
   @@unique([identifier, value])
   @@index([identifier])
   @@map("verification")
+}
+
+model AlphaVantageNews {
+  id         String   @id @default(cuid()) @map("_id")
+  tickers    String   @default("NVDA") // Comma-separated list of tickers
+  data       Json     // Store the full API response as JSON
+  expiresAt  DateTime // When the cache expires
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tickers])
+  @@map("alphavantage_news")
 }

@@ -1,0 +1,26 @@
+.user-profile-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .user-profile {
+    display: flex;
+    align-items: center;
+    background-color: #e0f7fa; /* Light blue background */
+    border-radius: 20px; /* Rounded corners */
+    padding: 15px; /* Padding around the content */
+    margin: 10px 0; /* Margin between profiles */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  }
+  
+  .profile-picture {
+    border-radius: 50%; /* Circular profile picture */
+    width: 50px; /* Width of the profile picture */
+    height: 50px; /* Height of the profile picture */
+    margin-right: 15px; /* Space between image and text */
+  }
+  
+  .user-info {
+    display: flex;
+    flex-direction: column; /* Stack text vertically */
+  }

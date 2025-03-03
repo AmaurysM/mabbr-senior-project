@@ -1,0 +1,30 @@
+h2 {
+    font-size: 2em; /* Increases the font size */
+    color: #4A90E2; /* Changes the text color */
+    margin: 20px 0; /* Adds vertical spacing */
+    padding: 10px; /* Adds padding around the text */
+    text-align: center; /* Centers the text */
+    font-family: 'Arial', sans-serif; /* Changes the font family */
+    text-transform: uppercase; /* Transforms text to uppercase */
+    border-bottom: 2px solid #4A90E2; /* Adds a bottom border */
+    letter-spacing: 1px; /* Increases spacing between letters */
+    transition: color 0.3s ease; /* Adds a transition effect for color */
+}
+
+h2:hover {
+    color: #D0021B; /* Changes color on hover */
+}
+
+.styled-div {
+    background-color: #f0f8ff; /* Light blue background */
+    border: 2px solid #007BFF; /* Blue border */
+    border-radius: 10px; /* Rounded corners */
+    padding: 20px; /* Space inside the div */
+    margin: 20px; /* Space outside the div */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+    font-family: Arial, sans-serif; /* Font style */
+}
+
+textarea {
+    color: #000000;
+}
