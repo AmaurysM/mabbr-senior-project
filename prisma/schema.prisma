@@ -26,13 +26,12 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Relations
   sessions      Session[]
   accounts      Account[]
   transactions  Transaction[]
   following     Friendship[]  @relation(name: "FollowerRelation")
   followers     Friendship[]  @relation(name: "FollowingRelation")
-  // Many-to-many relationship with LootBox via an explicit join table
+
   userStocks    UserStock[]
   userLootBoxes UserLootBox[]
 
@@ -56,6 +55,9 @@ model UserStock {
   stock    Stock  @relation(fields: [stockId], references: [id])
   stockId  String
   quantity Int
+
+  @@unique([userId, stockId]) // Ensures each user can only have one entry per stock
+
 }
 
 model UserLootBox {
@@ -71,8 +73,9 @@ model UserLootBox {
 }
 
 model Stock {
-  id            String         @id @default(cuid()) @map("_id")
+  id            String        @id @default(cuid()) @map("_id")
   name          String
+  price         Float         @default(0)
   userStocks    UserStock[]
   lootBoxStocks LootBoxStock[]
 
