@@ -274,7 +274,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
         {/* Right section: Mini chart */}
         <div className="flex-none w-48 h-16">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData.slice(-10)}>
+            <LineChart data={chartData}>
               <YAxis domain={[minPrice, maxPrice]} hide />
               <Line
                 type="monotone"
