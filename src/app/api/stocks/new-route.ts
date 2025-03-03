@@ -15,7 +15,13 @@ export async function GET(request: Request) {
     const symbols = searchParams.get('symbols')?.split(',') || [];
     
     if (symbols.length === 0) {
-      return NextResponse.json({ stocks: [] });
+      try {
+        const stocks = await prisma.stock.findMany();
+        return NextResponse.json({ stocks });
+      } catch (error) {
+        console.error('Error fetching stocks from database:', error);
+        return NextResponse.json({ stocks: [] });
+      }
     }
 
     // Check cache first
@@ -25,13 +31,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ stocks: cache[cacheKey].data });
     }
 
-    // Batch fetch stock data
+    // Batch fetch stock data from Yahoo Finance
     const stocksData = await Promise.all(
       symbols.map(async (symbol) => {
         try {
           const result = await yahooFinance.quote(symbol);
           if (!result) {
-            throw new Error('No data returned');
+            throw new Error(`No data returned for ${symbol}`);
           }
 
           // Get chart data
@@ -78,14 +84,41 @@ export async function GET(request: Request) {
           };
         } catch (error) {
           console.error(`Error fetching data for ${symbol}:`, error);
-          // Return null for failed requests
-          return null;
+          
+          // Try to get from database as fallback
+          try {
+            const dbStock = await prisma.stock.findFirst({
+              where: { 
+                name: symbol 
+              }
+            });
+            
+            if (!dbStock) {
+              return null;
+            }
+
+            return {
+              symbol: symbol,
+              name: dbStock.name,
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              chartData: []
+            };
+          } catch (dbError) {
+            console.error(`Error fetching from database for ${symbol}:`, dbError);
+            return null;
+          }
         }
       })
     );
 
     // Filter out failed requests
     const validStocks = stocksData.filter(Boolean);
+
+    if (validStocks.length === 0) {
+      return NextResponse.json({ stocks: [] });
+    }
 
     // Store in cache
     cache[cacheKey] = {
@@ -96,7 +129,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ stocks: validStocks });
   } catch (error) {
     console.error('Error fetching stock data:', error);
-    return NextResponse.json({ stocks: [] }, { status: 200 });
+    return NextResponse.json({ stocks: [] });
   }
 }
 
@@ -104,18 +137,17 @@ export async function GET(request: Request) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, price } = body;
+    const { name } = body;
 
-    if (!name || price === undefined) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'Name and price are required' },
-
+        { error: 'Name is required' },
         { status: 400 }
       );
     }
-    const newStock = await prisma.stock.create({
-      data: { name, price }
 
+    const newStock = await prisma.stock.create({
+      data: { name }
     });
 
     return NextResponse.json(newStock, { status: 201 });
