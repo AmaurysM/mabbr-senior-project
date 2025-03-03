@@ -11,66 +11,149 @@ interface FriendRequest {
   timestamp: string;
 }
 
+interface NotificationDropdownProps {
+  requests: FriendRequest[];
+  loading: boolean;
+  handleAcceptRequest: (requestId: string) => void;
+  handleRejectRequest: (requestId: string) => void;
+  onClose: () => void;
+}
+
+// Create a separate component for the dropdown
+const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ 
+  requests, 
+  loading, 
+  handleAcceptRequest, 
+  handleRejectRequest, 
+  onClose 
+}) => {
+  if (!requests || requests.length === 0 && !loading) {
+    return (
+      <div className="p-4 text-center text-gray-400">
+        No new notifications
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-h-96 overflow-y-auto">
+      {loading ? (
+        <div className="p-4 text-center text-gray-400">
+          Loading notifications...
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-700/50">
+          {requests.map((request) => (
+            <div key={request.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-medium">
+                    {request.requester.name || request.requester.email}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    wants to follow your trading activity
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleAcceptRequest(request.id)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleRejectRequest(request.id)}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Add portal container state
   const [mounted, setMounted] = useState(false);
+  const bellRef = useRef<HTMLButtonElement>(null);
 
+  useEffect(() => {
+    setMounted(true);
+    
+    return () => {
+      setMounted(false);
+    };
+  }, []);
+  
   // Fetch friend requests
   const fetchRequests = async () => {
     try {
-      const res = await fetch('/api/user/friend-requests');
-      const data = await res.json();
+      setLoading(true);
+      const response = await fetch('/api/user/friend-requests');
+      const data = await response.json();
       
       if (data.success) {
-        setRequests(data.requests);
+        setRequests(data.requests || []);
+      } else {
+        console.error('Failed to fetch friend requests');
+        setRequests([]);
       }
     } catch (error) {
       console.error('Error fetching friend requests:', error);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Fetch requests initially
     fetchRequests();
-    // Poll for new requests every minute
+    
+    // Set up interval to refresh every minute
     const intervalId = setInterval(fetchRequests, 60000);
+    
     return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
   }, []);
 
   // Handle click outside to close dropdown
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (bellRef.current && !bellRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleAcceptRequest = async (requestId: string) => {
     try {
-      const res = await fetch('/api/user/accept-friend', {
+      const response = await fetch('/api/user/accept-friend', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requestId }),
       });
       
-      if (res.ok) {
-        // Remove the accepted request from the list
+      if (response.ok) {
+        // Remove the request from the list
         setRequests(prev => prev.filter(req => req.id !== requestId));
+      } else {
+        console.error('Failed to accept friend request');
       }
     } catch (error) {
       console.error('Error accepting friend request:', error);
@@ -79,85 +162,29 @@ const NotificationBell: React.FC = () => {
 
   const handleRejectRequest = async (requestId: string) => {
     try {
-      const res = await fetch('/api/user/reject-friend', {
+      const response = await fetch('/api/user/reject-friend', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requestId }),
       });
       
-      if (res.ok) {
-        // Remove the rejected request from the list
+      if (response.ok) {
+        // Remove the request from the list
         setRequests(prev => prev.filter(req => req.id !== requestId));
+      } else {
+        console.error('Failed to reject friend request');
       }
     } catch (error) {
       console.error('Error rejecting friend request:', error);
     }
   };
 
-  const notificationDropdown = isOpen && (
-    <div 
-      className="fixed inset-0 z-[99999] pointer-events-none"
-      style={{ backgroundColor: 'transparent' }}
-    >
-      <div 
-        className="absolute right-4 top-16 w-80 bg-gray-800 rounded-xl shadow-xl border border-gray-700/50 overflow-hidden pointer-events-auto"
-      >
-        <div className="p-4 border-b border-gray-700/50">
-          <h3 className="text-lg font-semibold text-white">Notifications</h3>
-        </div>
-
-        <div className="max-h-96 overflow-y-auto">
-          {loading ? (
-            <div className="p-4 text-center text-gray-400">
-              Loading notifications...
-            </div>
-          ) : requests.length === 0 ? (
-            <div className="p-4 text-center text-gray-400">
-              No new notifications
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-700/50">
-              {requests.map(request => (
-                <div key={request.id} className="p-4 hover:bg-gray-700/30 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-white">
-                        <span className="font-semibold">
-                          {request.requester.name || request.requester.email.split('@')[0]}
-                        </span>
-                        {' wants to be your friend'}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        {new Date(request.timestamp).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleAcceptRequest(request.id)}
-                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 transition-colors"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() => handleRejectRequest(request.id)}
-                        className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-gray-600 transition-colors"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <button
+        ref={bellRef}
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-400 hover:text-white transition-colors"
       >
@@ -181,7 +208,27 @@ const NotificationBell: React.FC = () => {
           </span>
         )}
       </button>
-      {mounted && createPortal(notificationDropdown, document.body)}
+
+      {mounted && isOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-transparent pointer-events-none">
+          <div 
+            className="fixed top-16 right-4 w-80 bg-gray-800 rounded-xl shadow-xl border border-gray-700/50 overflow-hidden pointer-events-auto"
+            style={{ zIndex: 99999 }}
+          >
+            <div className="p-4 border-b border-gray-700/50">
+              <h3 className="text-lg font-semibold text-white">Notifications</h3>
+            </div>
+            <NotificationDropdown 
+              requests={requests}
+              loading={loading}
+              handleAcceptRequest={handleAcceptRequest}
+              handleRejectRequest={handleRejectRequest}
+              onClose={() => setIsOpen(false)}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 };
