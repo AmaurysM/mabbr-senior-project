@@ -552,9 +552,7 @@ const HomePage = () => {
       
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_2.6fr_1.2fr] lg:grid-cols-[1fr_2fr_1fr] gap-2 w-full">
         {/* Left Column - Market Insights */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 
-                     overflow-auto max-h-[calc(100vh-12rem)]
-                     scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
           <h2 className="text-xl font-bold text-white mb-4">Market Insights</h2>
           {isLoadingNews ? (
             <div className="animate-pulse space-y-4">
@@ -646,8 +644,7 @@ const HomePage = () => {
           </div>
           
           {/* Stocks Grid */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/10 
-                       overflow-auto max-h-[calc(100vh-14rem)] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/10">
             <h2 className="text-xl font-bold text-white mb-3">
               {Object.keys(portfolio?.positions || {}).length > 0 ? 'Your Portfolio & Market' : 'Market Overview'}
             </h2>
@@ -719,9 +716,7 @@ const HomePage = () => {
               </div>
               
               {/* Trade Activity */}
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10
-                           flex-grow overflow-auto max-h-[calc(100vh-25rem)]
-                           scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800/50">
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
                 <h2 className="text-xl font-bold text-white mb-4">Trade Activity</h2>
                 
                 {transactions.length === 0 ? (
