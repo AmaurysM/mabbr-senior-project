@@ -7,6 +7,7 @@ import Image from "next/image";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { authClient } from "@/lib/auth-client";
+import NotificationBell from "./components/NotificationBell";
 
 
 
@@ -44,8 +45,8 @@ const Navbar = () => {
   }
 
   return (
-    <div className="top-0 w-full z-0">
-      <nav className="bg-white/80 backdrop-blur-md shadow-lg">
+    <div className="top-0 w-full z-50">
+      <nav className="bg-white/80 backdrop-blur-md shadow-lg relative">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center px-4 py-3">
             {/* Logo Section */}
@@ -83,6 +84,8 @@ const Navbar = () => {
                   Login
                 </Link>
               )}
+
+              {user && <NotificationBell />}
 
               <Link href="/profile" className="ml-2">
                 <div className="relative w-10 h-10 transform hover:scale-105 transition-all duration-200">

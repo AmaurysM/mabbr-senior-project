@@ -92,10 +92,12 @@ model LootBoxStock {
 }
 
 model Friendship {
-  id          String @id @default(cuid()) @map("_id")
+  id          String   @id @default(cuid()) @map("_id")
   requesterId String
   recipientId String
-  status      String @default("pending")
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations for friend relationships
   requester User @relation(name: "FollowerRelation", fields: [requesterId], references: [id])
