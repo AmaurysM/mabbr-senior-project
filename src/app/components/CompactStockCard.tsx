@@ -167,6 +167,12 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
   const minPrice = prices.length > 0 ? Math.min(...prices) * 0.9995 : 0; // Add small padding
   const maxPrice = prices.length > 0 ? Math.max(...prices) * 1.0005 : 0;
 
+  // Determine chart color based on actual chart data trend
+  const firstPrice = chartData.length > 0 ? chartData[0].price : 0;
+  const lastPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
+  const chartTrend = lastPrice - firstPrice;
+  const chartColor = chartTrend >= 0 ? '#4ade80' : '#f87171'; // Green for up, red for down
+
   // Calculate date ranges for detailed chart data
   const formatChartTime = (time: string) => {
     if (!time) return '';
@@ -279,7 +285,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
               <Line
                 type="monotone"
                 dataKey="price"
-                stroke={change >= 0 ? '#4ade80' : '#f87171'}
+                stroke={chartColor}
                 strokeWidth={1.5}
                 dot={false}
                 isAnimationActive={false}
@@ -537,8 +543,8 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                       >
                         <defs>
                           <linearGradient id={`gradient-${symbol}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity={0}/>
+                            <stop offset="5%" stopColor={chartColor} stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <XAxis 
@@ -568,7 +574,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                         <Area 
                           type="monotone" 
                           dataKey="price" 
-                          stroke={change >= 0 ? '#4ade80' : '#f87171'} 
+                          stroke={chartColor} 
                           fillOpacity={1}
                           fill={`url(#gradient-${symbol})`}
                           isAnimationActive={false}
