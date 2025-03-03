@@ -532,26 +532,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                     <h3 className="text-xl font-bold text-white mb-4">5-Day Price Chart</h3>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart 
-                        data={(() => {
-                          // Process and normalize the chart data to ensure unique dates
-                          const data = [...(detailedData?.chartData || chartData)];
-                          
-                          // Make sure we're working with Date objects for the time
-                          return data.map((point, index) => {
-                            // Create a proper date by adding index days to ensure uniqueness 
-                            // This ensures dates are distributed across the 5-day period
-                            const baseDate = new Date();
-                            baseDate.setDate(baseDate.getDate() - 4 + Math.floor(index / (data.length / 5)));
-                            
-                            return {
-                              ...point,
-                              // Store original time for tooltips if needed
-                              originalTime: point.time,
-                              // Create a properly formatted date string
-                              time: baseDate.toISOString()
-                            };
-                          });
-                        })()}
+                        data={chartData}
                         margin={{ top: 10, right: 10, left: 25, bottom: 0 }}
                       >
                         <defs>
@@ -562,29 +543,20 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                         </defs>
                         <XAxis 
                           dataKey="time" 
-                          tick={{ fill: '#9ca3af' }}
-                          tickFormatter={(time) => {
-                            if (!time) return '';
-                            // Parse the ISO string to a Date object
-                            const date = new Date(time);
-                            // Format as Month/Day (e.g., "2/27")
-                            return `${date.getMonth() + 1}/${date.getDate()}`;
-                          }}
-                          interval="preserveEnd"
-                          minTickGap={50}
+                          hide={true}
                         />
                         <YAxis 
-                          domain={['auto', 'auto']}
+                          domain={[minPrice, maxPrice]}
                           tick={{ fill: '#9ca3af' }}
                           tickFormatter={(value) => `$${value.toFixed(2)}`}
+                          width={65}
                         />
                         <Tooltip
                           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
                           labelFormatter={(label) => {
                             const date = new Date(label);
                             return date.toLocaleString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
+                              month: 'numeric',
                               day: 'numeric',
                               hour: 'numeric',
                               minute: '2-digit',
@@ -599,6 +571,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                           stroke={change >= 0 ? '#4ade80' : '#f87171'} 
                           fillOpacity={1}
                           fill={`url(#gradient-${symbol})`}
+                          isAnimationActive={false}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
