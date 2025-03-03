@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -31,16 +31,50 @@ const Navbar = () => {
   const { data: session, isPending } = authClient.useSession();
   const user = session?.user || null;
 
+  const [profileImage, setProfileImage] = useState<string>("/default-profile.png");
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [imageError, setImageError] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState<boolean>(false);
 
+  // Fetch the user's current profile image from the database
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user?.id) {
+        try {
+          const response = await fetch(`/api/user/${user.id}`, {
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            if (userData.image) {
+              setProfileImage(userData.image);
+              // Set image as loaded since we have a valid URL
+              setImageLoaded(true);
+              setImageError(false);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user profile image:', error);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [user?.id]);
+
   const handleSignOut = async () => {
     try {
-      await authClient.signOut();
-      setProfileDropdownOpen(false);
-      router.push('/');
+      await authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            setProfileDropdownOpen(false);
+            router.push('/');
+            router.refresh();
+          }
+        }
+      });
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -52,8 +86,8 @@ const Navbar = () => {
   }
 
   return (
-      <div className="top-0 w-full z-0">
-        <nav className="bg-white/80 backdrop-blur-md shadow-lg">
+      <div className="relative top-0 w-full z-50">
+        <nav className="bg-white/80 backdrop-blur-md shadow-lg relative">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center px-4 py-3">
               {/* Logo Section */}
@@ -82,21 +116,21 @@ const Navbar = () => {
                           onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                           className="relative w-10 h-10 transform hover:scale-105 transition-all duration-200 focus:outline-none"
                       >
-                        {!imageLoaded || imageError ? (
+                        {imageError || !profileImage ? (
                             <div className="w-10 h-10 bg-blue-600 rounded-full p-0.5">
                               <div className="w-full h-full bg-white rounded-full p-1">
                                 <UserCircleIcon className="w-full h-full text-gray-600" />
                               </div>
                             </div>
                         ) : (
-                            <div className="w-10 h-10 rounded-full p-0.5">
+                            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500">
                               <Image
-                                  src={user?.image || "/default-profile.png"}
+                                  key={profileImage}
+                                  src={profileImage}
                                   alt="User Profile"
                                   width={40}
                                   height={40}
-                                  className="rounded-full object-cover"
-                                  onLoad={() => setImageLoaded(true)}
+                                  className="w-full h-full object-cover"
                                   onError={() => setImageError(true)}
                               />
                             </div>
@@ -105,7 +139,7 @@ const Navbar = () => {
 
                       {/* Profile Dropdown */}
                       {profileDropdownOpen && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-[150]">
                             <Link
                                 href="/profile"
                                 className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
@@ -164,9 +198,24 @@ const Navbar = () => {
                         <>
                           <Link
                               href="/profile"
-                              className="block px-4 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                              className="flex items-center px-4 py-2 text-gray-700 hover:text-blue-600 font-medium"
                               onClick={() => setMenuOpen(false)}
                           >
+                            {!imageError && profileImage ? (
+                              <div className="w-6 h-6 rounded-full overflow-hidden mr-2">
+                                <Image
+                                  key={profileImage}
+                                  src={profileImage}
+                                  alt="User Profile"
+                                  width={24}
+                                  height={24}
+                                  className="w-full h-full object-cover"
+                                  onError={() => setImageError(true)}
+                                />
+                              </div>
+                            ) : (
+                              <UserCircleIcon className="w-6 h-6 mr-2 text-gray-600" />
+                            )}
                             Your Profile
                           </Link>
                           <button
