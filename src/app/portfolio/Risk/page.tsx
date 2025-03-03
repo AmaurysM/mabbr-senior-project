@@ -1,42 +1,66 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useState } from "react";
 
-// Define an interface for an asset in the portfolio.
-interface Asset {
-  symbol: string;
-  weight: number;      // Fraction of the portfolio (0 to 1)
-  volatility: number;  // Annualized volatility (e.g., 0.25 for 25%)
-}
-
-// Dummy portfolio data this will be replaced with real data or api response
-const portfolio: Asset[] = [
-  { symbol: 'AAPL', weight: 0.4, volatility: 0.25 },
-  { symbol: 'GOOGL', weight: 0.3, volatility: 0.2 },
-  { symbol: 'TSLA', weight: 0.3, volatility: 0.5 },
-];
-
-// Simplified risk calculation: overall portfolio volatility.
-// This ignores asset correlations and simply sums the weighted volatilities
-const overallVolatility = portfolio.reduce(
-  (sum, asset) => sum + asset.weight * asset.volatility,
-  0
-);
-
-// Map the calculated volatility to a risk score (0-100).
-// For example, assume that a volatility of 0.5 (50%) maps to a risk score of 100.
-const overallRiskScore = Math.min(100, (overallVolatility / 0.5) * 100);
-
-// Determine risk level based on the risk score.
-let riskLevel: string;
-if (overallRiskScore < 40) {
-  riskLevel = "Low";
-} else if (overallRiskScore < 70) {
-  riskLevel = "Moderate";
-} else {
-  riskLevel = "High";
+interface AnalystData {
+  averageAnalystRating: number | string;
+  recommendationMean: number | null;
+  recommendationKey: string | null;
+  numberOfAnalystOpinions: number;
+  timestamp: number;
 }
 
 const Risk: React.FC = () => {
+  const [analystData, setAnalystData] = useState<AnalystData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAnalystData = async () => {
+      try {
+        const res = await fetch("/api/analystResponse");
+        if (!res.ok) {
+          throw new Error("Failed to fetch analyst data");
+        }
+        const data = await res.json();
+        // Expected shape: { analystResponse: { result: [ { ... } ] } }
+        if (data?.analystResponse?.result?.length) {
+          setAnalystData(data.analystResponse.result[0]);
+        } else {
+          throw new Error("No analyst data found");
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalystData();
+  }, []);
+
+  if (loading) {
+    return <div>Loading risk assessment...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
+  // Use recommendationMean (scale 1-5) to compute a risk score (0-100).
+  // Default to 2.5 if recommendationMean is missing.
+  const recommendationMean = analystData?.recommendationMean ?? 2.5;
+  const riskScore = Math.min(100, Math.max(0, ((recommendationMean - 1) / 4) * 100));
+
+  // Determine risk level based on the risk score.
+  let riskLevel: string;
+  if (riskScore < 40) {
+    riskLevel = "Low";
+  } else if (riskScore < 70) {
+    riskLevel = "Moderate";
+  } else {
+    riskLevel = "High";
+  }
+
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
       <p className="text-gray-300 mb-4">
@@ -47,17 +71,13 @@ const Risk: React.FC = () => {
       <div className="w-full bg-gray-700 rounded-full h-6">
         <div
           className={`h-6 rounded-full ${
-            overallRiskScore < 40
-              ? "bg-green-500"
-              : overallRiskScore < 70
-              ? "bg-yellow-500"
-              : "bg-red-500"
+            riskScore < 40 ? "bg-green-500" : riskScore < 70 ? "bg-yellow-500" : "bg-red-500"
           }`}
-          style={{ width: `${overallRiskScore}%` }}
+          style={{ width: `${riskScore}%` }}
         ></div>
       </div>
       <p className="text-gray-300 mt-2">
-        Risk Score: {overallRiskScore.toFixed(2)}/100
+        Risk Score: {riskScore.toFixed(2)}/100
       </p>
     </div>
   );

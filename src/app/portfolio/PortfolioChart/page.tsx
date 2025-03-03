@@ -28,7 +28,7 @@ const PortfolioChart: React.FC = () => {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // When the component mounts, set isClient to true
+    // When the component mounts, set is client to true
     setIsClient(true);
   }, []);
 
