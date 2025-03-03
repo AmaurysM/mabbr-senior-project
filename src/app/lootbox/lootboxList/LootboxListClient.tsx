@@ -1,105 +1,131 @@
 "use client";
 
 import React, { useState } from "react";
-import { LootBox, Stock } from "@prisma/client";
-import { FaStar, FaGem, FaCrown, FaBox } from "react-icons/fa";
 import { useLootboxUpdates } from "@/hooks/useLootboxUpdates";
+import { getQuality } from "../page";
+import { AllLootboxesWithStocks, LootboxWithStocks } from "@/lib/prisma_types";
+import LootboxTile from "@/app/components/LootboxTile";
+import { authClient } from "@/lib/auth-client";
 
-type LootboxWithStocks = LootBox & { stocks: Stock[] };
 
-type Props = {
-  initialLootboxes: LootboxWithStocks[];
-};
+const LootboxListClient = ({ initialLootboxes, title = "Market", subtitle = "Select a case to reveal potential stocks" }: 
+  { initialLootboxes: AllLootboxesWithStocks, title?: string, subtitle?: string }) => {
+  
+  const { data: session, isPending } = authClient.useSession();
+  const user = session?.user || null;
 
-// Function to determine quality based on price
-const getQuality = (price: number) => {
-  if (price < 10) return { name: "Common", icon: <FaBox className="text-gray-400" size={30} />, color: "border-gray-500 bg-gray-700" };
-  if (price < 50) return { name: "Rare", icon: <FaStar className="text-blue-400" size={30} />, color: "border-blue-500 bg-blue-800" };
-  if (price < 200) return { name: "Epic", icon: <FaGem className="text-purple-400" size={30} />, color: "border-purple-500 bg-purple-800" };
-  return { name: "Legendary", icon: <FaCrown className="text-yellow-400" size={30} />, color: "border-yellow-500 bg-yellow-800" };
-};
-
-export default function LootboxListClient({ initialLootboxes }: Props) {
   const lootboxes = useLootboxUpdates(initialLootboxes);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedLootbox, setSelectedLootbox] = useState<LootboxWithStocks | null>(null);
 
-  // Ensure lootboxes is always an array
   if (!lootboxes || !Array.isArray(lootboxes)) {
     return <p className="text-white">No lootboxes available.</p>;
   }
 
+  async function buyLootBox(lootBoxId: string) {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/users/userLootBoxes/${lootBoxId}`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Purchase failed");
+
+      setSelectedLootbox(null); 
+    } catch (error: any) {
+      console.error("Error buying lootbox:", error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 p-6 relative">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">Available Lootboxes</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {lootboxes.map((lootbox) => {
-            const quality = getQuality(lootbox.price);
-            return (
-              <div
-                key={lootbox.id}
-                className={`border-2 ${quality.color} rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg hover:scale-105`}
-                onClick={() => setSelectedLootbox(lootbox)}
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold text-white">{lootbox.name}</h2>
-                  <div className="flex items-center">
-                    {quality.icon}
-                    <span className="text-white ml-2">{quality.name}</span>
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <p className="text-gray-300">{lootbox.description}</p>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xl font-bold text-green-400">${lootbox.price.toFixed(2)}</span>
-                  <span className="text-white">{lootbox.stocks?.length || 0} stocks</span>
-                </div>
+    <div className="w-full bg-gray-800 p-6">
+      <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
+      <p className="text-gray-400 mb-6">{subtitle}</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {lootboxes.map((lootbox) => (
+          <div key={lootbox.id} onClick={() => setSelectedLootbox(lootbox)}>
+            <LootboxTile key={lootbox.id} lootbox={lootbox} />
+          </div>
+        ))}
+      </div>
+
+      {/* Lootbox details modal */}
+      {selectedLootbox && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={() => setSelectedLootbox(null)}>
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-2xl w-full shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">{selectedLootbox.name}</h2>
+              <div className="flex items-center bg-gray-700 px-3 py-1 rounded">
+                {getQuality(selectedLootbox.price).icon}
+                <span className={`ml-2 text-${getQuality(selectedLootbox.price).color.replace('border-', '')}`}>
+                  {getQuality(selectedLootbox.price).name}
+                </span>
               </div>
-            );
-          })}
-        </div>
-        
-        {/* Lootbox details modal */}
-        {selectedLootbox && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50" onClick={() => setSelectedLootbox(null)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
-              <h2 className="text-2xl font-bold text-white mb-4">{selectedLootbox.name}</h2>
-              <p className="text-gray-300 mb-6">{selectedLootbox.description}</p>
-              
-              <div className="mb-6">
-                <h3 className="text-xl font-semibold text-white mb-2">Included Stocks</h3>
-                {selectedLootbox.stocks && selectedLootbox.stocks.length > 0 ? (
-                  <div className="grid gap-3">
-                    {selectedLootbox.stocks.map(stock => (
-                      <div key={stock.id} className="bg-gray-700 p-3 rounded flex justify-between items-center">
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-white mb-4">Potential Drops</h3>
+              {selectedLootbox.lootBoxStocks && selectedLootbox.lootBoxStocks.length > 0 ? (
+                <div className="grid gap-3">
+                  {selectedLootbox.lootBoxStocks.map(lootBoxStock => {
+                    const stockQuality = { color: "border-blue-500" }; // Default value
+                    return (
+                      <div
+                        key={lootBoxStock.id}
+                        className={`bg-gray-700 p-3 rounded flex justify-between items-center border-l-4 ${stockQuality.color}`}
+                      >
                         <div>
-                          <p className="text-white font-medium">{stock.name}</p>
-                          <p className="text-gray-400 text-sm">{stock.ticker}</p>
+                          <p className="text-white font-medium">{lootBoxStock.stock.name}</p>
                         </div>
-                        <span className="text-green-400 font-bold">${stock.price.toFixed(2)}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-400">No stocks in this lootbox.</p>
-                )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-gray-400">No stocks in this lootbox.</p>
+              )}
+            </div>
+
+            {error && <p className="text-red-500 text-center">{error}</p>}
+
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-gray-400 text-sm">Price:</span>
+                <span className="text-2xl font-bold text-green-400 ml-2">${selectedLootbox.price}</span>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-green-400">${selectedLootbox.price.toFixed(2)}</span>
+              <div className="flex gap-3">
                 <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium"
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded font-medium"
                   onClick={() => setSelectedLootbox(null)}
+                  disabled={loading}
                 >
                   Close
                 </button>
+                {user && (
+                  <button
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-medium"
+                    onClick={() => buyLootBox(selectedLootbox.id)}
+                    disabled={loading}
+                  >
+                    {loading ? "Buying..." : "Buy Case"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
-} 
+};
+
+export default LootboxListClient;

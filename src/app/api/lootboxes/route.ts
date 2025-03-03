@@ -4,7 +4,6 @@ import prisma from '@/lib/prisma';
 // GET all lootboxes
 export async function GET() {
   try {
-    // Fetch all lootboxes with their stocks
     const lootboxes = await prisma.lootBox.findMany({
       include: {
         lootBoxStocks: {

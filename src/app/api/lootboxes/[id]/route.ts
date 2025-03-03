@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { LootBox, LootboxWithStocks } from '@/lib/prisma_types';
 
 // GET a specific lootbox
 export async function GET(
@@ -9,7 +10,7 @@ export async function GET(
   try {
     const id = params.id;
     
-    const lootbox = await prisma.lootBox.findUnique({
+    const lootbox: LootboxWithStocks | null = await prisma.lootBox.findUnique({
       where: { id },
       include: {
         lootBoxStocks: {
@@ -27,13 +28,7 @@ export async function GET(
       );
     }
 
-    // Transform data for client
-    const transformedLootbox = {
-      ...lootbox,
-      stocks: lootbox.lootBoxStocks.map(relation => relation.stock)
-    };
-
-    return NextResponse.json(transformedLootbox);
+    return NextResponse.json(lootbox);
   } catch (error) {
     console.error(`Error fetching lootbox ${params.id}:`, error);
     return NextResponse.json(
@@ -50,11 +45,10 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const body = await request.json();
-    const { name, description, price, stocks } = body;
+    const body: LootboxWithStocks = await request.json();
+    const { name, price, lootBoxStocks } = body;
 
-    // Check if lootbox exists
-    const existingLootbox = await prisma.lootBox.findUnique({
+    const existingLootbox:LootBox | null = await prisma.lootBox.findUnique({
       where: { id }
     });
 
@@ -65,37 +59,32 @@ export async function PUT(
       );
     }
 
-    // Update in a transaction to handle both lootbox and relations
-    const result = await prisma.$transaction(async (tx) => {
-      // Update lootbox basic info
+    const result: LootboxWithStocks | null = await prisma.$transaction(async (tx) => {
       const updatedLootbox = await tx.lootBox.update({
         where: { id },
         data: {
           name,
-          description,
           price
         }
       });
 
-      // If stocks are provided, update relations
-      if (stocks !== undefined) {
-        // Delete existing relations
-        await tx.lootBoxStocks.deleteMany({
+      if (lootBoxStocks !== undefined) {
+
+        await tx.lootBoxStock.deleteMany({
           where: { lootBoxId: id }
         });
 
-        // Create new relations
-        if (stocks.length > 0) {
-          await tx.lootBoxStocks.createMany({
-            data: stocks.map((stockId: string) => ({
-              lootBoxId: id,
-              stockId
+        if (lootBoxStocks.length > 0) {
+          await tx.lootBoxStock.createMany({
+            data: lootBoxStocks.map((lootBoxStock) => ({
+              lootBoxId: lootBoxStock.lootBoxId,  
+              stockId: lootBoxStock.stockId,     
+              quantity: lootBoxStock.quantity    
             }))
           });
         }
       }
 
-      // Fetch the updated lootbox with relations
       return tx.lootBox.findUnique({
         where: { id },
         include: {
@@ -108,13 +97,7 @@ export async function PUT(
       });
     });
 
-    // Transform for client
-    const transformedLootbox = {
-      ...result,
-      stocks: result?.lootBoxStocks.map(relation => relation.stock) || []
-    };
-
-    return NextResponse.json(transformedLootbox);
+    return NextResponse.json(result);
   } catch (error) {
     console.error(`Error updating lootbox ${params.id}:`, error);
     return NextResponse.json(
@@ -124,7 +107,6 @@ export async function PUT(
   }
 }
 
-// DELETE a lootbox
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -147,7 +129,7 @@ export async function DELETE(
     // Delete in transaction to handle both lootbox and relations
     await prisma.$transaction(async (tx) => {
       // First delete relations
-      await tx.lootBoxStocks.deleteMany({
+      await tx.lootBoxStock.deleteMany({
         where: { lootBoxId: id }
       });
 
