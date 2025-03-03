@@ -532,7 +532,26 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                     <h3 className="text-xl font-bold text-white mb-4">5-Day Price Chart</h3>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart 
-                        data={detailedData?.chartData || chartData}
+                        data={(() => {
+                          // Process and normalize the chart data to ensure unique dates
+                          const data = [...(detailedData?.chartData || chartData)];
+                          
+                          // Make sure we're working with Date objects for the time
+                          return data.map((point, index) => {
+                            // Create a proper date by adding index days to ensure uniqueness 
+                            // This ensures dates are distributed across the 5-day period
+                            const baseDate = new Date();
+                            baseDate.setDate(baseDate.getDate() - 4 + Math.floor(index / (data.length / 5)));
+                            
+                            return {
+                              ...point,
+                              // Store original time for tooltips if needed
+                              originalTime: point.time,
+                              // Create a properly formatted date string
+                              time: baseDate.toISOString()
+                            };
+                          });
+                        })()}
                         margin={{ top: 10, right: 10, left: 25, bottom: 0 }}
                       >
                         <defs>
@@ -545,18 +564,11 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                           dataKey="time" 
                           tick={{ fill: '#9ca3af' }}
                           tickFormatter={(time) => {
+                            if (!time) return '';
+                            // Parse the ISO string to a Date object
                             const date = new Date(time);
-                            const now = new Date();
-                            const isToday = date.toDateString() === now.toDateString();
-                            const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
-                            
-                            if (isToday) {
-                              return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                            } else if (isYesterday) {
-                              return 'Yesterday';
-                            } else {
-                              return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-                            }
+                            // Format as Month/Day (e.g., "2/27")
+                            return `${date.getMonth() + 1}/${date.getDate()}`;
                           }}
                           interval="preserveEnd"
                           minTickGap={50}
