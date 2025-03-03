@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  url      = env("NEXT_PUBLIC_DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -22,7 +22,7 @@ model User {
   banned        Boolean  @default(false)
   banReason     String?
   banExpires    Int? // Unix timestamp for ban expiration
-  balance       Float    @default(25000.0)
+  balance       Float    @default(100000.0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -115,6 +115,8 @@ model Transaction {
   totalCost   Float
   timestamp   DateTime @default(now())
   status      String   @default("COMPLETED")
+  publicNote  String?  // Optional public note
+  privateNote String?  // Optional private note
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

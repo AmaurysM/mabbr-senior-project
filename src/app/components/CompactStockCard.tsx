@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip, AreaChart, Area, XAxis, BarChart, Bar, Legend } from 'recharts';
 
 interface CompactStockCardProps {
@@ -14,6 +14,7 @@ interface CompactStockCardProps {
   averagePrice?: number;
   onBuy: (amount: number, publicNote: string, privateNote: string) => void;
   onSell: (amount: number, publicNote: string, privateNote: string) => void;
+  isLoggedIn?: boolean;
 }
 
 interface DetailedStockData {
@@ -62,30 +63,34 @@ interface DetailedStockData {
   numberOfAnalystOpinions?: number;
 }
 
-const CompactStockCard: React.FC<CompactStockCardProps> = ({
+const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
   symbol,
   name,
-  price,
-  change,
-  changePercent,
-  chartData,
+  price = 0,
+  change = 0,
+  changePercent = 0,
+  chartData = [],
   shares = 0,
   averagePrice = 0,
   onBuy,
-  onSell
+  onSell,
+  isLoggedIn = false
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [detailedData, setDetailedData] = useState<DetailedStockData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedTab, setSelectedTab] = useState('overview');
   const [tradeMode, setTradeMode] = useState(false);
-  const [amount, setAmount] = useState<string>('');
+  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
+  const [amount, setAmount] = useState('');
+  const [isDollarAmount, setIsDollarAmount] = useState(true);
   const [publicNote, setPublicNote] = useState('');
   const [privateNote, setPrivateNote] = useState('');
 
-  // Calculate position metrics
-  const positionValue = shares * price;
-  const profitLoss = shares * (price - averagePrice);
-  const profitLossPercent = averagePrice ? ((price - averagePrice) / averagePrice) * 100 : 0;
+  // Calculate position metrics with null checks
+  const positionValue = (shares || 0) * (price || 0);
+  const profitLoss = (shares || 0) * ((price || 0) - (averagePrice || 0));
+  const profitLossPercent = averagePrice ? (((price || 0) - averagePrice) / averagePrice) * 100 : 0;
 
   // Format large numbers
   const formatNumber = (num: number | undefined) => {
@@ -104,11 +109,14 @@ const CompactStockCard: React.FC<CompactStockCardProps> = ({
 
   // Fetch detailed data when expanded
   useEffect(() => {
-    if (expanded && !detailedData && !loading) {
+    if (expanded && !detailedData && !loading && symbol) {
       const fetchDetailedData = async () => {
         setLoading(true);
         try {
-          const response = await fetch(`/api/stock?symbol=${symbol}&detailed=true`);
+          const response = await fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}&detailed=true`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           const data = await response.json();
           if (data.quoteResponse?.result?.[0]) {
             setDetailedData(data.quoteResponse.result[0]);
@@ -122,18 +130,21 @@ const CompactStockCard: React.FC<CompactStockCardProps> = ({
       
       fetchDetailedData();
     }
-  }, [expanded, detailedData, symbol, loading]);
+  }, [expanded, symbol, detailedData, loading]);
 
-  const handleTrade = async (type: 'buy' | 'sell') => {
+  // Memoize handlers to prevent unnecessary re-renders
+  const handleTrade = useCallback(async (type: 'buy' | 'sell') => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) return;
     
     try {
+      const shareAmount = isDollarAmount ? numAmount / price : numAmount;
       if (type === 'buy') {
-        await onBuy(numAmount, publicNote, privateNote);
+        await onBuy(shareAmount, publicNote, privateNote);
       } else {
-        await onSell(numAmount, publicNote, privateNote);
+        await onSell(shareAmount, publicNote, privateNote);
       }
+      // Only reset form after successful trade
       setAmount('');
       setPublicNote('');
       setPrivateNote('');
@@ -141,31 +152,80 @@ const CompactStockCard: React.FC<CompactStockCardProps> = ({
     } catch (error) {
       console.error('Trade failed:', error);
     }
-  };
+  }, [amount, isDollarAmount, price, publicNote, privateNote, onBuy, onSell]);
 
-  const toggleExpanded = () => {
-    setExpanded(!expanded);
+  const toggleExpanded = useCallback(() => {
+    setExpanded(prev => !prev);
     // Reset trade mode when collapsing
     if (expanded) {
       setTradeMode(false);
     }
-  };
+  }, [expanded]);
 
   // Calculate min and max prices for chart scaling
-  const prices = chartData.map(d => d.price);
-  const minPrice = Math.min(...prices) * 0.9995; // Add small padding
-  const maxPrice = Math.max(...prices) * 1.0005;
+  const prices = (chartData || []).map(d => d?.price || 0);
+  const minPrice = prices.length > 0 ? Math.min(...prices) * 0.9995 : 0; // Add small padding
+  const maxPrice = prices.length > 0 ? Math.max(...prices) * 1.0005 : 0;
 
   // Calculate date ranges for detailed chart data
   const formatChartTime = (time: string) => {
+    if (!time) return '';
     const date = new Date(time);
     return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  // Render the buy/sell section or login prompt
+  const renderTradeSection = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="mt-4 p-3 bg-gray-700/30 rounded-lg text-center">
+          <p className="text-gray-300 mb-2">Login to trade this stock</p>
+          <a 
+            href="/login-signup" 
+            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Login
+          </a>
+        </div>
+      );
+    }
+
+    if (!tradeMode) {
+      return (
+        <div className="flex gap-2 mt-4">
+          <button 
+            onClick={() => {
+              setTradeType('buy');
+              setTradeMode(true);
+            }}
+            className="flex-1 py-2 px-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors"
+          >
+            Buy
+          </button>
+          <button 
+            onClick={() => {
+              setTradeType('sell');
+              setTradeMode(true);
+            }}
+            className="flex-1 py-2 px-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition-colors"
+            disabled={shares <= 0}
+          >
+            Sell
+          </button>
+        </div>
+      );
+    }
+
+    // ... existing trade form ...
+  };
+
   return (
-    <div onClick={toggleExpanded} className={`transition-all duration-300 ease-in-out ${expanded ? 'bg-gray-800/80' : 'bg-gray-800/50 hover:bg-gray-700/60'} rounded-xl border border-white/10 ${expanded ? 'shadow-2xl' : 'shadow-lg'} backdrop-blur-sm w-full`}>
+    <div className={`transition-all duration-300 ease-in-out ${expanded ? 'bg-gray-800/80' : 'bg-gray-800/50 hover:bg-gray-700/60'} rounded-xl border border-white/10 ${expanded ? 'shadow-2xl' : 'shadow-lg'} backdrop-blur-sm w-full`}>
       {/* Compact view - always visible */}
-      <div className="p-4 flex items-center justify-between cursor-pointer w-full">
+      <div 
+        onClick={toggleExpanded} 
+        className="p-4 flex items-center justify-between cursor-pointer w-full"
+      >
         {/* Left section: Symbol, name, price */}
         <div className="flex-none mr-4 w-48">
           <div className="flex items-baseline">
@@ -244,9 +304,33 @@ const CompactStockCard: React.FC<CompactStockCardProps> = ({
       
       {/* Expanded view - only visible when expanded */}
       {expanded && (
-        <div className="px-6 pb-6 pt-2" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 pb-6 pt-2">
           <hr className="border-gray-700 mb-6" />
           
+          {/* Action Buttons - Moved to top */}
+          {!tradeMode && detailedData && (
+            <div className="flex space-x-4 mb-6">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTradeMode(true);
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+              >
+                Trade {symbol}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded(false);
+                }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
+          )}
+
           {/* Loading state */}
           {loading && (
             <div className="text-center py-8">
@@ -254,243 +338,355 @@ const CompactStockCard: React.FC<CompactStockCardProps> = ({
               <p className="mt-4 text-gray-400">Loading detailed data...</p>
             </div>
           )}
-          
-          {detailedData && !tradeMode && (
-            <div className="space-y-8">
-              {/* Company Information & Main Chart */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Company Information */}
-                <div className="lg:col-span-1 p-1">
-                  <h3 className="text-xl font-bold text-white mb-4">Company Information</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="text-gray-400 text-sm">Company Name</h4>
-                      <p className="text-white">{detailedData.longName || name}</p>
+
+          {/* Trading Interface */}
+          {tradeMode ? (
+            <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-xl font-bold text-white mb-4">
+                {tradeType === 'buy' ? 'Buy' : 'Sell'} {symbol}
+              </h3>
+              
+              {/* Trade Type Toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTradeType('buy');
+                    }}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                      tradeType === 'buy' 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-gray-700/30 text-gray-400'
+                    }`}
+                  >
+                    Buy
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTradeType('sell');
+                    }}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                      tradeType === 'sell' 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-gray-700/30 text-gray-400'
+                    }`}
+                  >
+                    Sell
+                  </button>
+                </div>
+                
+                {/* Dollar/Share Toggle */}
+                <div className="flex items-center space-x-2 bg-gray-700/30 p-1 rounded-lg">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDollarAmount(true);
+                    }}
+                    className={`px-3 py-1 rounded-md transition-colors ${
+                      isDollarAmount 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    $
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDollarAmount(false);
+                    }}
+                    className={`px-3 py-1 rounded-md transition-colors ${
+                      !isDollarAmount 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    Shares
+                  </button>
+                </div>
+              </div>
+              
+              {/* Amount Input with Preview */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setAmount(e.target.value);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder={isDollarAmount ? "Enter dollar amount..." : "Enter number of shares..."}
+                    className="flex-1 px-4 py-2 bg-gray-700/30 rounded-lg border border-white/5 
+                             focus:border-blue-500/50 focus:outline-none transition-colors text-white"
+                  />
+                </div>
+                {amount && !isNaN(parseFloat(amount)) && (
+                  <div className="text-sm text-gray-400">
+                    ≈ {isDollarAmount 
+                      ? `${(parseFloat(amount) / price).toFixed(4)} shares`
+                      : `$${(parseFloat(amount) * price).toFixed(2)}`}
+                  </div>
+                )}
+              </div>
+              
+              {/* Notes */}
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={publicNote}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setPublicNote(e.target.value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Public note (visible to everyone)..."
+                  className="w-full px-4 py-2 bg-gray-700/30 rounded-lg border border-white/5 
+                           focus:border-blue-500/50 focus:outline-none transition-colors text-white"
+                />
+                
+                <input
+                  type="text"
+                  value={privateNote}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setPrivateNote(e.target.value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Private note (only you can see this)..."
+                  className="w-full px-4 py-2 bg-gray-700/30 rounded-lg border border-white/5 
+                           focus:border-blue-500/50 focus:outline-none transition-colors text-white"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTrade(tradeType);
+                  }}
+                  className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors duration-200 font-semibold ${
+                    tradeType === 'buy' 
+                      ? 'bg-green-600 hover:bg-green-500' 
+                      : 'bg-red-600 hover:bg-red-500'
+                  }`}
+                >
+                  {tradeType === 'buy' ? 'Buy' : 'Sell'} {symbol}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTradeMode(false);
+                    setAmount('');
+                    setPublicNote('');
+                    setPrivateNote('');
+                  }}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg 
+                           transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Detailed view content */
+            detailedData && (
+              <div className="space-y-8">
+                {/* Company Information & Main Chart */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Company Information */}
+                  <div className="lg:col-span-1 p-1">
+                    <h3 className="text-xl font-bold text-white mb-4">Company Information</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="text-gray-400 text-sm">Company Name</h4>
+                        <p className="text-white">{detailedData.longName || name}</p>
+                      </div>
+                      {detailedData.sector && (
+                        <div>
+                          <h4 className="text-gray-400 text-sm">Sector</h4>
+                          <p className="text-white">{detailedData.sector}</p>
+                        </div>
+                      )}
+                      {detailedData.industry && (
+                        <div>
+                          <h4 className="text-gray-400 text-sm">Industry</h4>
+                          <p className="text-white">{detailedData.industry}</p>
+                        </div>
+                      )}
+                      {detailedData.website && (
+                        <div>
+                          <h4 className="text-gray-400 text-sm">Website</h4>
+                          <a href={detailedData.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline truncate block">{detailedData.website}</a>
+                        </div>
+                      )}
                     </div>
-                    {detailedData.sector && (
-                      <div>
-                        <h4 className="text-gray-400 text-sm">Sector</h4>
-                        <p className="text-white">{detailedData.sector}</p>
-                      </div>
-                    )}
-                    {detailedData.industry && (
-                      <div>
-                        <h4 className="text-gray-400 text-sm">Industry</h4>
-                        <p className="text-white">{detailedData.industry}</p>
-                      </div>
-                    )}
-                    {detailedData.website && (
-                      <div>
-                        <h4 className="text-gray-400 text-sm">Website</h4>
-                        <a href={detailedData.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline truncate block">{detailedData.website}</a>
-                      </div>
-                    )}
+                  </div>
+                  
+                  {/* Main Chart */}
+                  <div className="lg:col-span-2 h-56 pl-3">
+                    <h3 className="text-xl font-bold text-white mb-4">5-Day Price Chart</h3>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart 
+                        data={detailedData?.chartData || chartData}
+                        margin={{ top: 10, right: 10, left: 25, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id={`gradient-${symbol}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis 
+                          dataKey="time" 
+                          tick={{ fill: '#9ca3af' }}
+                          tickFormatter={(time) => {
+                            const date = new Date(time);
+                            const now = new Date();
+                            const isToday = date.toDateString() === now.toDateString();
+                            const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
+                            
+                            if (isToday) {
+                              return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                            } else if (isYesterday) {
+                              return 'Yesterday';
+                            } else {
+                              return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+                            }
+                          }}
+                          interval="preserveEnd"
+                          minTickGap={50}
+                        />
+                        <YAxis 
+                          domain={['auto', 'auto']}
+                          tick={{ fill: '#9ca3af' }}
+                          tickFormatter={(value) => `$${value.toFixed(2)}`}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
+                          labelFormatter={(label) => {
+                            const date = new Date(label);
+                            return date.toLocaleString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            });
+                          }}
+                          contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: 'white' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="price" 
+                          stroke={change >= 0 ? '#4ade80' : '#f87171'} 
+                          fillOpacity={1}
+                          fill={`url(#gradient-${symbol})`}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
                 
-                {/* Main Chart */}
-                <div className="lg:col-span-2 h-56 pl-3">
-                  <h3 className="text-xl font-bold text-white mb-4">5-Day Price Chart</h3>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart 
-                      data={detailedData.chartData || chartData}
-                      margin={{ top: 10, right: 10, left: 25, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id={`gradient-${symbol}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <XAxis 
-                        dataKey="time" 
-                        tick={{ fill: '#9ca3af' }}
-                        tickFormatter={(time) => {
-                          const date = new Date(time);
-                          return date.getMonth() + 1 + '/' + date.getDate();
-                        }}
-                        interval={Math.floor((detailedData.chartData?.length || 0) / 5)}
-                      />
-                      <YAxis 
-                        domain={['auto', 'auto']}
-                        tick={{ fill: '#9ca3af' }}
-                        tickFormatter={(value) => `$${value.toFixed(2)}`}
-                      />
-                      <Tooltip
-                        formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
-                        labelFormatter={(label) => new Date(label).toLocaleString()}
-                        contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: 'white' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="price" 
-                        stroke={change >= 0 ? '#4ade80' : '#f87171'} 
-                        fillOpacity={1}
-                        fill={`url(#gradient-${symbol})`}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              
-              {/* Key Statistics & Valuation Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">Market Cap</h4>
-                  <p className="text-lg text-white">${formatNumber(detailedData.marketCap)}</p>
-                </div>
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">P/E Ratio</h4>
-                  <p className="text-lg text-white">{detailedData.trailingPE?.toFixed(2) || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">Forward P/E</h4>
-                  <p className="text-lg text-white">{detailedData.forwardPE?.toFixed(2) || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">EPS</h4>
-                  <p className="text-lg text-white">${detailedData.earningsPerShare?.toFixed(2) || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">Dividend Yield</h4>
-                  <p className="text-lg text-white">{detailedData.dividendYield ? formatPercent(detailedData.dividendYield) : 'N/A'}</p>
-                </div>
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">52-Week High</h4>
-                  <p className="text-lg text-white">${detailedData.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">52-Week Low</h4>
-                  <p className="text-lg text-white">${detailedData.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-800/70 rounded-lg p-4">
-                  <h4 className="text-gray-400 text-sm mb-2">Volume</h4>
-                  <p className="text-lg text-white">{formatNumber(detailedData.regularMarketVolume)}</p>
-                </div>
-              </div>
-              
-              {/* Analyst Ratings */}
-              {detailedData.recommendationMean && (
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-4">Analyst Ratings</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-800/70 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="text-gray-400 text-sm">Recommendation</h4>
-                        <p className="text-white font-medium">{detailedData.recommendationKey?.toUpperCase() || 'N/A'}</p>
-                      </div>
-                      <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full"
-                          style={{
-                            width: `${(5 - (detailedData.recommendationMean || 3)) / 4 * 100}%`,
-                            background: 'linear-gradient(to right, #4ade80, #fbbf24, #f87171)',
-                          }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between mt-1 text-xs text-gray-400">
-                        <span>Buy</span>
-                        <span>Hold</span>
-                        <span>Sell</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-800/70 rounded-lg p-4">
-                      <h4 className="text-gray-400 text-sm mb-2">Analyst Coverage</h4>
-                      <p className="text-lg text-white">{detailedData.numberOfAnalystOpinions || 'N/A'} analysts</p>
-                    </div>
+                {/* Key Statistics & Valuation Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">Market Cap</h4>
+                    <p className="text-lg text-white">${formatNumber(detailedData.marketCap)}</p>
+                  </div>
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">P/E Ratio</h4>
+                    <p className="text-lg text-white">{detailedData.trailingPE?.toFixed(2) || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">Forward P/E</h4>
+                    <p className="text-lg text-white">{detailedData.forwardPE?.toFixed(2) || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">EPS</h4>
+                    <p className="text-lg text-white">${detailedData.earningsPerShare?.toFixed(2) || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">Dividend Yield</h4>
+                    <p className="text-lg text-white">{detailedData.dividendYield ? formatPercent(detailedData.dividendYield) : 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">52-Week High</h4>
+                    <p className="text-lg text-white">${detailedData.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">52-Week Low</h4>
+                    <p className="text-lg text-white">${detailedData.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-800/70 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-2">Volume</h4>
+                    <p className="text-lg text-white">{formatNumber(detailedData.regularMarketVolume)}</p>
                   </div>
                 </div>
-              )}
-              
-              {/* Company Description */}
-              {detailedData.longBusinessSummary && (
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-4">About {detailedData.shortName || symbol}</h3>
-                  <p className="text-gray-300 leading-relaxed">
-                    {detailedData.longBusinessSummary}
-                  </p>
-                </div>
-              )}
-              
-              {/* Trade Buttons */}
-              <div className="flex space-x-4 mt-6">
-                <button
-                  onClick={() => setTradeMode(true)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-                >
-                  Trade {symbol}
-                </button>
-                <button
-                  onClick={() => setExpanded(false)}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-                >
-                  Close
-                </button>
+                
+                {/* Analyst Ratings */}
+                {detailedData.recommendationMean && (
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-4">Analyst Ratings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-gray-800/70 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="text-gray-400 text-sm">Recommendation</h4>
+                          <p className="text-white font-medium">{detailedData.recommendationKey?.toUpperCase() || 'N/A'}</p>
+                        </div>
+                        <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full"
+                            style={{
+                              width: `${(5 - (detailedData.recommendationMean || 3)) / 4 * 100}%`,
+                              background: 'linear-gradient(to right, #4ade80, #fbbf24, #f87171)',
+                            }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between mt-1 text-xs text-gray-400">
+                          <span>Buy</span>
+                          <span>Hold</span>
+                          <span>Sell</span>
+                        </div>
+                      </div>
+                      <div className="bg-gray-800/70 rounded-lg p-4">
+                        <h4 className="text-gray-400 text-sm mb-2">Analyst Coverage</h4>
+                        <p className="text-lg text-white">{detailedData.numberOfAnalystOpinions || 'N/A'} analysts</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Company Description */}
+                {detailedData.longBusinessSummary && (
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-4">About {detailedData.shortName || symbol}</h3>
+                    <p className="text-gray-300 leading-relaxed">
+                      {detailedData.longBusinessSummary}
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            )
           )}
-          
-          {/* Trading Interface */}
-          {(tradeMode || !detailedData) && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold text-white mb-4">Trade {symbol}</h3>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Amount..."
-                className="w-full px-4 py-2 bg-gray-700/30 rounded-lg border border-white/5 
-                           focus:border-blue-500/50 focus:outline-none transition-colors text-white"
-              />
-              
-              <input
-                type="text"
-                value={publicNote}
-                onChange={(e) => setPublicNote(e.target.value)}
-                placeholder="Public note..."
-                className="w-full px-4 py-2 bg-gray-700/30 rounded-lg border border-white/5 
-                           focus:border-blue-500/50 focus:outline-none transition-colors text-white"
-              />
-              
-              <input
-                type="text"
-                value={privateNote}
-                onChange={(e) => setPrivateNote(e.target.value)}
-                placeholder="Private note (only you can see this)..."
-                className="w-full px-4 py-2 bg-gray-700/30 rounded-lg border border-white/5 
-                           focus:border-blue-500/50 focus:outline-none transition-colors text-white"
-              />
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => handleTrade('buy')}
-                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg 
-                             transition-colors duration-200 font-semibold"
-                >
-                  Buy
-                </button>
-                <button
-                  onClick={() => handleTrade('sell')}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg 
-                             transition-colors duration-200 font-semibold"
-                >
-                  Sell
-                </button>
-              </div>
-              
-              <button
-                onClick={() => tradeMode ? setTradeMode(false) : setExpanded(false)}
-                className="w-full px-4 py-2 mt-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg 
-                           transition-colors duration-200"
-              >
-                {tradeMode && detailedData ? 'Back to Details' : 'Close'}
-              </button>
-            </div>
-          )}
+        </div>
+      )}
+      
+      {/* Render login indicator for compact view if not logged in */}
+      {!isLoggedIn && !expanded && (
+        <div className="mt-1 text-xs text-center bg-blue-600/30 rounded px-2 py-1 text-blue-300">
+          Login to trade
         </div>
       )}
     </div>
   );
-};
+});
+
+CompactStockCard.displayName = 'CompactStockCard';
 
 export default CompactStockCard; 
