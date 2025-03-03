@@ -109,12 +109,13 @@ export async function POST(request: NextRequest) {
     if (!name || price === undefined) {
       return NextResponse.json(
         { error: 'Name and price are required' },
+
         { status: 400 }
       );
     }
-
     const newStock = await prisma.stock.create({
       data: { name, price }
+
     });
 
     return NextResponse.json(newStock, { status: 201 });

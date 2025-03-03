@@ -1,21 +1,23 @@
+/* Avoiding conflicts with spinning animation */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@keyframes spin {
+@keyframes spinner-rotate {
   0% {
-      transform: translateX(0);
+    transform: rotate(0deg);
   }
   100% {
-      transform: translateX(-100%);
+    transform: rotate(360deg);
   }
 }
 
+/* Spinner animation specific to spinner element */
 .spinner {
-  animation: spin 10s linear infinite;
+  animation: spinner-rotate 2s linear infinite;
 }
 
-/* Animate scircles */
+/* Animate circles */
 
 .hero-container {
   position: relative;
@@ -30,6 +32,12 @@
   z-index: 0;
   pointer-events: none; /* Ensures the circles don't interfere with user interactions */
 }
+.slick-slide {
+  transition: transform 0.5s ease-in-out;
+}
+.spinning .slick-track {
+  transition: transform 4s cubic-bezier(0.1, 0.7, 0.2, 1) !important;
+}
 
 .circle {
   position: absolute;
@@ -39,17 +47,6 @@
   animation: float 8s ease-in-out infinite;
   opacity: 0.4;
 }
-
-/*
-.circle {
-  position: absolute;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 20%, rgba(255, 255, 255, 0.3) 80%);
-  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.5), 0 4px 10px rgba(0, 0, 0, 0.1);
-  animation: float 8s ease-in-out infinite;
-  opacity: 0.7;
-}*/
-
 
 .circle.animation-delay-1 {
   width: 100px;
@@ -94,23 +91,6 @@
     transform: translateY(0);
   }
 }
-
-.bg-white {
-  color: var(--foreground);
-}
-input {
-  color: black;
-}
-.bg-white * {
-  color: inherit;
-}
-.text-blue-600 {
-  color: rgb(37, 99, 235) !important; 
-}
-.text-gray-600 {
-  color: rgb(75, 85, 99) !important;
-}
-
 :root {
   --background: 220 50% 98%;
   --foreground: 220 45% 25%;
@@ -166,6 +146,15 @@ input {
   --chart-5: 217 70% 40%;
 }
 
+/* Spinner-specific styling to avoid interference */
+.spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 4px solid #f3f4f6; /* Light gray for the spinner */
+  border-top: 4px solid #4b5563; /* Darker gray for the spinning part */
+  border-radius: 50%;
+  animation: spinner-rotate 2s linear infinite;
+}
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
@@ -192,6 +181,4 @@ input {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(75, 85, 99, 0.5) rgba(31, 32, 45, 0.5);
-
 }
-
