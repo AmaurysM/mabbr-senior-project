@@ -3,7 +3,7 @@ import { LootboxWithStocks } from "@/lib/prisma_types";
 import clsx from "clsx";
 import { Shield, Gem, Star, Leaf, Package } from "lucide-react";
 
-const getRarityStyles = (price: number) => {
+export const getRarityStyles = (price: number) => {
   if (price > 500)
     return {
       name: "Legendary",
