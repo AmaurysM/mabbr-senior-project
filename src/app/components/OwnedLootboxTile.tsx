@@ -1,5 +1,5 @@
 import React from "react";
-import { LootboxWithStocks } from "@/lib/prisma_types";
+import { LootboxWithStocks, UserLootBox } from "@/lib/prisma_types";
 import clsx from "clsx";
 import { Shield, Gem, Star, Leaf, Package } from "lucide-react";
 
@@ -55,8 +55,9 @@ const getRarityStyles = (price: number) => {
   };
 };
 
-const LootboxTile = ({ lootbox }: { lootbox: LootboxWithStocks }) => {
-  const rarity = getRarityStyles(lootbox.price);
+const OwnedLootboxTile = ({  userLootbox }: { userLootbox: UserLootBox }) => {
+  console.log("OwnedLootboxTile", userLootbox);
+    const rarity = getRarityStyles(userLootbox.lootBox.price);
 
   return (
     <div
@@ -66,11 +67,11 @@ const LootboxTile = ({ lootbox }: { lootbox: LootboxWithStocks }) => {
         rarity.bg
       )}
     >
-      {/* For Sale Badge */}
+      {/* Owned Badge */}
       <div className={clsx(
-        "absolute top-2 left-2 text-xs font-bold uppercase bg-black/50 text-white px-2 py-1 rounded bg-yellow-500"
+        "absolute top-2 left-2 text-xs font-bold uppercase bg-black/50 text-white px-2 py-1 rounded bg-green-700"
       )}>
-        For Sale
+        {`Owned ${ userLootbox.quantity > 0 ? userLootbox.quantity : "" }`} 
       </div>
 
       {/* Top handle/lid */}
@@ -89,30 +90,30 @@ const LootboxTile = ({ lootbox }: { lootbox: LootboxWithStocks }) => {
         <div className="flex items-center space-x-2">
           {rarity.icon}
           <span className={clsx("font-bold uppercase text-sm truncate max-w-32", rarity.text)}>
-            {lootbox.name || `${rarity.name} Case`}
+            {userLootbox.lootBox.name || `${rarity.name} Case`}
           </span>
         </div>
         <div className="bg-black/50 rounded px-2 py-1">
           <span className={clsx("text-sm font-bold", rarity.text)}>
-            ${lootbox.price}
+            ${userLootbox.lootBox.price}
           </span>
         </div>
       </div>
       
       {/* Main box content */}
       <div className="p-3">
-        {/* Buy Now button */}
+        {/* Open button */}
         <button
           className={clsx(
             "w-full py-2 mt-3 rounded text-white font-bold text-sm uppercase",
-            rarity.button
+            "bg-green-500 hover:bg-green-600"
           )}
         >
-          Buy Now
+          Open Case
         </button>
       </div>
     </div>
   );
 };
 
-export default LootboxTile;
+export default OwnedLootboxTile;

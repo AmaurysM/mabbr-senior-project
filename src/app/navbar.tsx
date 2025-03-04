@@ -7,6 +7,7 @@ import Image from "next/image";
 import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { authClient } from "@/lib/auth-client";
+import NotificationBell from "./components/NotificationBell";
 
 interface NavItem {
   name: string;
@@ -92,9 +93,9 @@ const Navbar = () => {
             <div className="flex justify-between items-center px-4 py-3">
               {/* Logo Section */}
               <Link href="/" className="flex items-center space-x-2 group">
-              <span className="text-2xl font-extrabold transform transition-transform duration-200 group-hover:scale-105">
-                MABBR APP
-              </span>
+                <span className="text-2xl font-extrabold transform transition-transform duration-200 group-hover:scale-105">
+                  MABBR APP
+                </span>
               </Link>
 
               {/* Desktop Navigation */}
