@@ -90,21 +90,23 @@ function isPublicPath(pathname: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  
+  const isAuth = await isAuthenticated(req);
+
+  if (isAuth && pathname === "/login-signup") {
+    return NextResponse.redirect(new URL("/profile", req.nextUrl.origin));
+  }
+
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
-  
-  const authManager = { isAuthenticated };
-  const isAuth = await authManager.isAuthenticated(req);
-  
-  if (isAuth) {
-    return NextResponse.next();
+
+  if (!isAuth) {
+    const loginUrl = new URL("/login-signup", req.nextUrl.origin);
+    loginUrl.searchParams.set("returnTo", pathname);
+    return NextResponse.redirect(loginUrl);
   }
-  
-  const loginUrl = new URL("/login-signup", req.nextUrl.origin);
-  loginUrl.searchParams.set("returnTo", pathname);
-  return NextResponse.redirect(loginUrl);
+
+  return NextResponse.next();
 }
 
 export const config = {
