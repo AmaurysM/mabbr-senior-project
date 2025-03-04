@@ -8,6 +8,7 @@ import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { authClient } from "@/lib/auth-client";
 import NotificationBell from "./components/NotificationBell";
+import path from "path";
 
 interface NavItem {
   name: string;
@@ -81,8 +82,7 @@ const Navbar = () => {
     }
   };
 
-  // Hide navbar if the current route is "/"
-  if (pathname === "/") {
+  if (pathname === "/" || pathname === "/login-signup") {
     return null;
   }
 
@@ -111,7 +111,7 @@ const Navbar = () => {
                     </Link>
                 ))}
 
-                {user ? (
+                {user && (
                     <div className="relative ml-2">
                       <button
                           onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
@@ -158,13 +158,6 @@ const Navbar = () => {
                           </div>
                       )}
                     </div>
-                ) : (
-                    <Link
-                        href="/login-signup"
-                        className="ml-4 px-6 py-2 text-white font-semibold bg-blue-600 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg"
-                    >
-                      Login
-                    </Link>
                 )}
               </div>
 
@@ -195,7 +188,7 @@ const Navbar = () => {
                           {item.name}
                         </Link>
                     ))}
-                    {user ? (
+                    {user && (
                         <>
                           <Link
                               href="/profile"
@@ -226,14 +219,6 @@ const Navbar = () => {
                             Sign Out
                           </button>
                         </>
-                    ) : (
-                        <Link
-                            href="/login-signup"
-                            className="block px-4 py-2 mt-4 text-center text-white font-semibold bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200"
-                            onClick={() => setMenuOpen(false)}
-                        >
-                          Login
-                        </Link>
                     )}
                   </div>
                 </div>

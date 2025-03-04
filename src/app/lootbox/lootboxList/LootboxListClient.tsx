@@ -2,9 +2,8 @@
 
 import React, { useState } from "react";
 import { useLootboxUpdates } from "@/hooks/useLootboxUpdates";
-import { getQuality } from "../page";
 import { AllLootboxesWithStocks, LootboxWithStocks } from "@/lib/prisma_types";
-import LootboxTile from "@/app/components/LootboxTile";
+import LootboxTile, { getRarityStyles } from "@/app/components/LootboxTile";
 import { authClient } from "@/lib/auth-client";
 
 
@@ -65,9 +64,9 @@ const LootboxListClient = ({ initialLootboxes, title = "Market", subtitle = "Sel
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">{selectedLootbox.name}</h2>
               <div className="flex items-center bg-gray-700 px-3 py-1 rounded">
-                {getQuality(selectedLootbox.price).icon}
-                <span className={`ml-2 text-${getQuality(selectedLootbox.price).color.replace('border-', '')}`}>
-                  {getQuality(selectedLootbox.price).name}
+                {getRarityStyles(selectedLootbox.price).icon}
+                <span className={`ml-2 text-${getRarityStyles(selectedLootbox.price)}`}>
+                  {getRarityStyles(selectedLootbox.price).name}
                 </span>
               </div>
             </div>

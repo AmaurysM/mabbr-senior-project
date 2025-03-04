@@ -5,10 +5,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { lootBoxId: string } }
+  context: { params: { lootBoxId?: string } }
+
 ) {
   try {
-    const { lootBoxId } = params;
+    const { lootBoxId } = await context.params;
     console.log(lootBoxId);
 
     const lootbox = await prisma.userLootBox.findUnique({
@@ -32,7 +33,7 @@ export async function GET(
     console.log(" Lootbox found: ", lootbox);
     return NextResponse.json(lootbox);
   } catch (error) {
-    console.error(`Error fetching lootbox ${params.lootBoxId}:`, error);
+    console.error(`Error fetching lootbox ${context.params.lootBoxId}:`, error);
     return NextResponse.json(
       { error: "Failed to fetch lootbox" },
       { status: 500 }
@@ -42,10 +43,9 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { lootBoxId: string } }
+  context: { params: { lootBoxId: string } }
 ) {
   try {
-    console.log("Received request to buy lootbox:", params.lootBoxId);
 
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -56,7 +56,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { lootBoxId } = params;
+    const { lootBoxId } = context.params;
     console.log("LootBox ID:", lootBoxId);
 
     const user = await prisma.user.findUnique({
@@ -87,7 +87,6 @@ export async function POST(
       );
     }
 
-    // 🔍 Check if user already owns this lootbox
     const existingUserLootBox = await prisma.userLootBox.findUnique({
       where: {
         userId_lootBoxId: {
@@ -104,12 +103,12 @@ export async function POST(
       }),
 
       existingUserLootBox
-        ? // If the lootbox already exists, increment the quantity
+        ? 
           prisma.userLootBox.update({
             where: { id: existingUserLootBox.id },
             data: { quantity: { increment: 1 } },
           })
-        : // Otherwise, create a new entry
+        : 
           prisma.userLootBox.create({
             data: {
               userId: user.id,
@@ -119,7 +118,6 @@ export async function POST(
           }),
     ]);
 
-    console.log("Lootbox purchased successfully");
     return NextResponse.json({ message: "Lootbox purchased successfully" });
   } catch (error) {
     console.error("Error purchasing lootbox:", error);

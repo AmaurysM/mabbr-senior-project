@@ -8,9 +8,9 @@ import { motion } from "framer-motion";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { LootBoxWithStock, UserLootBox } from '@/lib/prisma_types';
-import { getQuality } from '../page';
 import LoadingStateAnimation from '@/app/components/LoadingState';
 import { useRouter } from 'next/navigation';
+import { getRarityStyles } from '@/app/components/LootboxTile';
 
 const Page = ({ params }: { params: Promise<{ id: string }> }) => {
   const router = useRouter(); // Initialize router
@@ -245,7 +245,7 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
               animate={{ scale: 1, opacity: 1 }}
               className="mb-8 text-center"
             >
-              <div className={`inline-block bg-gradient-to-b ${getQuality(selectedStock.stock.price)} 
+              <div className={`inline-block bg-gradient-to-b ${getRarityStyles(selectedStock.stock.price)} 
             p-8 rounded-lg border-2 border-opacity-50 shadow-xl`}>
                 <motion.div
                   initial={{ y: -20 }}
