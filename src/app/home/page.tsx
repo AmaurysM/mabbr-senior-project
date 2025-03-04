@@ -601,13 +601,37 @@ const HomePage = () => {
                     })}
                   </div>
                   <p className="text-xs text-gray-400 mt-2">
-                    {new Date(item.time).toLocaleString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {(() => {
+                      console.log("Original news item time:", item.time);
+
+                      let date;
+
+                      if (typeof item.time === 'string' && /^\d{8}T\d{6}$/.test(item.time)) {
+                        const year = item.time.slice(0, 4);
+                        const month = item.time.slice(4, 6);
+                        const day = item.time.slice(6, 8);
+                        const hour = item.time.slice(9, 11);
+                        const minute = item.time.slice(11, 13);
+                        const second = item.time.slice(13, 15);
+
+                        const formattedTime = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+                        console.log("Formatted time (UTC):", formattedTime);
+
+                        date = new Date(formattedTime);
+                      } else {
+                        date = new Date(item.time);
+                      }
+
+                      return isNaN(date.getTime())
+                          ? "N/A"
+                          : date.toLocaleString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          });
+                    })()}
                   </p>
                 </div>
               ))}
