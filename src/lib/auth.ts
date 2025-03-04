@@ -24,12 +24,12 @@ export const auth = betterAuth({
   }),
 
   session: {
-    expiresIn: 60 * 60 * 24 * 7,
+    expiresIn: 60 * 60 * 24 * 7, 
     updateAge: 60 * 60 * 24 * 7,
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60,
-    },
+      maxAge: 5 * 60, 
+    }
   },
 
   plugins: [openAPI({})],
@@ -58,6 +58,7 @@ export const auth = betterAuth({
     sendOnSignUp: false,
     autoSignInAfterVerification: true,
   },
+  
 } satisfies BetterAuthOptions);
 
 interface SessionData {
@@ -69,19 +70,19 @@ interface SessionData {
   expires?: string;
 }
 
-export async function getSession() {
+export async function getSession(): Promise<SessionData | null> {
   try {
-    const response = await auth.api.getSession({
-      headers: await headers(), // you need to pass the headers object.
+    const response = await fetch('/api/auth/session', {
+      credentials: 'include',
     });
-
-    if (!response) {
+    
+    if (!response.ok) {
       return null;
     }
-
-    return await response;
+    
+    return await response.json();
   } catch (error) {
-    console.error("Failed to fetch session:", error);
+    console.error('Failed to fetch session:', error);
     return null;
   }
 }
@@ -104,13 +105,14 @@ interface CachedAuth {
 let authCache: CachedAuth | null = null;
 const AUTH_CACHE_DURATION = 30 * 1000; // 30 seconds
 
+
 export async function checkAuthWithCache(): Promise<boolean> {
   const now = Date.now();
-
+  
   if (authCache && now - authCache.timestamp < AUTH_CACHE_DURATION) {
     return authCache.isAuthenticated;
   }
-
+  
   const authenticated = await isAuthenticated();
   authCache = { isAuthenticated: authenticated, timestamp: now };
   return authenticated;

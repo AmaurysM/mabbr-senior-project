@@ -1,50 +1,110 @@
-import { betterFetch } from '@better-fetch/fetch';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-import type { auth } from '@/lib/auth';
+const authCache = new Map<string, { isAuthenticated: boolean; timestamp: number }>();
+const CACHE_DURATION = 30_000; // 30 seconds
+
+const SESSION_COOKIES = ["better-auth.session_data", "better-auth.session_token"];
 
 const PUBLIC_PATHS = ["/", "/login-signup"];
 const PUBLIC_PREFIXES = ["/api/auth", "/api", "/_next", "/images", "/public", "/assets", "/static", "/favicon.ico"];
 
+
+function getSessionToken(req: NextRequest): string | null {
+  for (const name of SESSION_COOKIES) {
+    const cookie = req.cookies.get(name);
+    if (cookie?.value) {
+      console.log(`Found cookie: ${name}`);
+      return cookie.value;
+    }
+  }
+  console.log("No matching session cookie found");
+  return null;
+}
+
+
+async function isAuthenticated(req: NextRequest): Promise<boolean> {
+  const sessionToken = getSessionToken(req);
+  
+  if (!sessionToken) {
+    console.log("No session token found, user is not authenticated");
+    return false;
+  }
+  
+  const cacheKey = sessionToken.substring(0, 32);
+  const now = Date.now();
+  const cachedResult = authCache.get(cacheKey);
+  
+  if (cachedResult && now - cachedResult.timestamp < CACHE_DURATION) {
+    return cachedResult.isAuthenticated;
+  }
+  
+  try {
+    const apiUrl = `${req.nextUrl.origin}/api/auth/user`;
+    
+    const authResponse = await fetch(apiUrl, {
+      headers: {
+        cookie: req.headers.get("cookie") || "",
+      },
+    });
+    
+    const isAuthenticated = authResponse.ok;
+    
+    if (isAuthenticated) {
+      console.log("User authenticated via API");
+    } else {
+      console.log("API indicates user is not authenticated, but session cookie exists");
+
+      authCache.set(cacheKey, {
+        isAuthenticated: true,
+        timestamp: now
+      });
+      
+      return true;
+    }
+    
+    authCache.set(cacheKey, {
+      isAuthenticated,
+      timestamp: now
+    });
+    
+    return isAuthenticated;
+  } catch (error) {
+    
+    authCache.set(cacheKey, {
+      isAuthenticated: true,
+      timestamp: now
+    });
+    return true;
+  }
+}
+
 function isPublicPath(pathname: string): boolean {
-  const isPublic = PUBLIC_PATHS.includes(pathname) ||
-    pathname.includes('.') ||
-    PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
+  const isPublic = PUBLIC_PATHS.includes(pathname) || 
+                  pathname.includes('.') ||
+                  PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
+                  
+
   return isPublic;
 }
 
-type Session = typeof auth.$Infer.Session;
-
-export async function middleware(request: NextRequest) {
-
-  const { data: session } = await betterFetch<Session>(
-    '/api/auth/get-session',
-    {
-      baseURL: request.nextUrl.origin,
-      headers: {
-        cookie: request.headers.get('cookie') || '',
-      },
-    },
-  );
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
   
-  const { pathname } = request.nextUrl;
-
-
-  if (session && pathname === "/login-signup") {
-    return NextResponse.redirect(new URL("/profile", request.nextUrl.origin));
-  }
-
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
-
-  if (!session) {
-    const loginUrl = new URL("/login-signup", request.nextUrl.origin);
-    loginUrl.searchParams.set("returnTo", pathname);
-    return NextResponse.redirect(loginUrl);
+  
+  const authManager = { isAuthenticated };
+  const isAuth = await authManager.isAuthenticated(req);
+  
+  if (isAuth) {
+    return NextResponse.next();
   }
-
-  return NextResponse.next();
+  
+  const loginUrl = new URL("/login-signup", req.nextUrl.origin);
+  loginUrl.searchParams.set("returnTo", pathname);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
