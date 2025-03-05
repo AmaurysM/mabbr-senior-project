@@ -54,4 +54,8 @@ export type LootBoxWithStock = Prisma.LootBoxStockGetPayload<{
   };
 }>;
 
+export type UserStocks = Prisma.UserStockGetPayload<{
+  include: { stock: true }
+}>[];
+
 export type LootBox = Prisma.LootBoxGetPayload<object>;
