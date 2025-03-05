@@ -13,12 +13,13 @@ const PortfolioTable = () => {
         const res = await fetch("/api/user/portfolio", {
           credentials: "include",
         });
+
         if (!res.ok) {
           throw new Error("Failed to fetch portfolio");
         }
-        // API now returns an object with both { holdings, chartData } 
-        const data = await res.json();
-        setHoldings(data.holdings);
+
+        const data: UserStocks = await res.json();
+        setHoldings(data);
       } catch (error) {
         console.error("Error loading portfolio:", error);
         setError("Failed to load portfolio.");
@@ -32,11 +33,12 @@ const PortfolioTable = () => {
 
   useEffect(() => {
     const addCostToStock = async () => {
-      if (!holdings || holdings.length === 0) return;
+      if (!holdings) return;
 
       const hasAllPrices = holdings.every(
         (holding) => holding.stock.price !== 0
       );
+      
       if (hasAllPrices) return;
 
       const updatedHoldings = await Promise.all(
@@ -46,9 +48,10 @@ const PortfolioTable = () => {
             if (!res.ok) {
               throw new Error(`Error: ${res.status} ${res.statusText}`);
             }
+
             const stockData = await res.json();
-            holding.stock.price =
-              stockData.quoteResponse.result[0].regularMarketPrice;
+            holding.stock.price = stockData.quoteResponse.result[0].regularMarketPrice;
+
             return holding;
           } catch (error) {
             console.error("Error fetching stock data:", error);
@@ -61,7 +64,7 @@ const PortfolioTable = () => {
     };
 
     addCostToStock();
-  }, [holdings]);
+  }, [holdings]); 
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
