@@ -72,8 +72,8 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
 
       const hasAllPrices = lootBox.lootBox.lootBoxStocks.every(
         (lootboxStock) => lootboxStock.stock.price !== 0
-      );
-
+      ); 
+      
       if (hasAllPrices) return;
 
       const updatedLootBoxStocks = await Promise.all(
@@ -179,7 +179,7 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
         setSelectedStock(winningStock);
   
         try {
-          const response = await fetch(`/api/users/userLootBoxes/${lootBox.id}/redeem/${winningStock.id}`, {
+          const response = await fetch(`/api/users/userLootBoxes/${lootBox.id}/redeem/${winningStock.stockId}`, {
             method: "PATCH", 
             headers: {
               "Content-Type": "application/json",
