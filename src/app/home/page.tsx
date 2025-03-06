@@ -466,7 +466,9 @@ const HomePage = () => {
           <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
             <h3 className="text-lg font-medium text-gray-300 mb-1">Cash</h3>
             <p className="text-2xl font-semibold text-green-400">
-              ${portfolio?.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              ${portfolio?.balance !== undefined && portfolio?.balance !== null 
+                ? portfolio.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+                : '0.00'}
             </p>
             <p className="text-sm text-gray-400 mt-1">Available for trading</p>
           </div>

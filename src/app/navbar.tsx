@@ -8,7 +8,6 @@ import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { authClient } from "@/lib/auth-client";
 import NotificationBell from "./components/NotificationBell";
-import path from "path";
 
 interface NavItem {
   name: string;
@@ -110,9 +109,10 @@ const Navbar = () => {
                       <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-200" />
                     </Link>
                 ))}
-
+                <NotificationBell />
                 {user && (
                     <div className="relative ml-2">
+                      
                       <button
                           onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                           className="relative w-10 h-10 transform hover:scale-105 transition-all duration-200 focus:outline-none"
@@ -137,6 +137,7 @@ const Navbar = () => {
                             </div>
                         )}
                       </button>
+                      
 
                       {/* Profile Dropdown */}
                       {profileDropdownOpen && (
