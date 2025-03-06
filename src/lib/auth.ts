@@ -39,6 +39,14 @@ export const auth = betterAuth({
       clientId: process.env.GITHUB_CLIENT_ID as string,
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
     },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+    discord: {
+      clientId: process.env.DISCORD_CLIENT_ID as string,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET as string,
+    },
   },
 
   emailAndPassword: {
@@ -61,16 +69,16 @@ interface SessionData {
   expires?: string;
 }
 
-export async function getSession(){
+export async function getSession() {
   try {
     const response = await auth.api.getSession({
-      headers: await headers() // you need to pass the headers object.
-    })
+      headers: await headers(), // you need to pass the headers object.
+    });
 
     if (!response) {
       return null;
     }
-    
+
     return await response;
   } catch (error) {
     console.error("Failed to fetch session:", error);
