@@ -61,17 +61,17 @@ interface SessionData {
   expires?: string;
 }
 
-export async function getSession(): Promise<SessionData | null> {
+export async function getSession(){
   try {
-    const response = await fetch("/api/auth/session", {
-      credentials: "include",
-    });
+    const response = await auth.api.getSession({
+      headers: await headers() // you need to pass the headers object.
+    })
 
-    if (!response.ok) {
+    if (!response) {
       return null;
     }
-
-    return await response.json();
+    
+    return await response;
   } catch (error) {
     console.error("Failed to fetch session:", error);
     return null;
