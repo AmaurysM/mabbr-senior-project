@@ -21,6 +21,7 @@ import { GithubIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import LoadingButton from "@/app/components/LoadingButton";
 import { useToast } from "@/app/hooks/use-toast";
+import GitHubLoginButton from "@/app/components/LoginWithGithub";
 
 
 const LoginForm: React.FC = () => {
@@ -102,33 +103,12 @@ const LoginForm: React.FC = () => {
         setPending(false);
     };
 
-    const handleSignInWithGithub = async () => {
-        await authClient.signIn.social(
-            { provider: "github" },
-            {
-                onRequest: () => setPendingGithub(true),
-                onSuccess: async () => {
-                    router.push("/");
-                    router.refresh();
-                },
-                onError: (ctx: ErrorContext) => {
-                    toast({
-                        title: "Something went wrong",
-                        description: ctx.error.message ?? "Something went wrong.",
-                    });
-                },
-            }
-        );
-        setPendingGithub(false);
-    };
-
     return (
         <div className="relative w-full min-h-screen flex overflow-hidden">
             {/* Login Form */}
             <div
-                className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
-                    isLogin ? "translate-x-0 opacity-100 duration-700 right-0" : "translate-x-[100vw] opacity-0 duration-200 right-0"
-                }`}
+                className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin ? "translate-x-0 opacity-100 duration-700 right-0" : "translate-x-[100vw] opacity-0 duration-200 right-0"
+                    }`}
             >
                 <Card className="w-full max-w-md">
                     <CardHeader>
@@ -161,7 +141,7 @@ const LoginForm: React.FC = () => {
                                 <LoadingButton pending={pendingCredentials}>Sign in</LoadingButton>
                             </form>
                         </Form>
-                        
+
                         <div className="mt-4 text-center text-sm">
                             <button onClick={() => setIsLogin(false)} className="text-xs font-semibold text-black hover:text-blue-600 ml-1">
                                 Don't have an account? Sign up
@@ -172,60 +152,64 @@ const LoginForm: React.FC = () => {
             </div>
             {/* Sign Up Form */}
             <div className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin ? '-translate-x-[100vw] opacity-0 duration-200 left-0' : 'translate-x-0 opacity-100 duration-700 left-0'}`}>
-                    <Card className="w-full max-w-md">
-                        <CardHeader>
-                            <CardTitle className="text-3xl font-bold text-center text-gray-800">
-                                Create Account
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...signUpForm}>
-                                <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-6">
-                                    {["name", "email", "password", "confirmPassword"].map((field) => (
-                                        <FormField
-                                            control={signUpForm.control}
-                                            key={field}
-                                            name={field as keyof z.infer<typeof signUpSchema>}
-                                            render={({ field: fieldProps }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {field.charAt(0).toUpperCase() + field.slice(1)}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type={
-                                                                field.includes("password")
-                                                                    ? "password"
-                                                                    : field === "email"
-                                                                        ? "email"
-                                                                        : "text"
-                                                            }
-                                                            placeholder={`Enter your ${field}`}
-                                                            {...fieldProps}
-                                                            name={fieldProps.name as string}
-                                                            autoComplete="off"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    ))}
-                                    <LoadingButton pending={pending}>Sign up</LoadingButton>
-                                </form>
-                            </Form>
-                            <div className="mt-4 text-center text-sm">
-                                <button
-                                    onClick={() => { setIsLogin(true); }}
-                                    className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
-                                >
-                                    Already have an account? Sign in
-                                </button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle className="text-3xl font-bold text-center text-gray-800">
+                            Create Account
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Form {...signUpForm}>
+                            <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-6">
+                                {["name", "email", "password", "confirmPassword"].map((field) => (
+                                    <FormField
+                                        control={signUpForm.control}
+                                        key={field}
+                                        name={field as keyof z.infer<typeof signUpSchema>}
+                                        render={({ field: fieldProps }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {field.charAt(0).toUpperCase() + field.slice(1)}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type={
+                                                            field.includes("password")
+                                                                ? "password"
+                                                                : field === "email"
+                                                                    ? "email"
+                                                                    : "text"
+                                                        }
+                                                        placeholder={`Enter your ${field}`}
+                                                        {...fieldProps}
+                                                        name={fieldProps.name as string}
+                                                        autoComplete="off"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                ))}
+                                <LoadingButton pending={pending}>Sign up</LoadingButton>
+                            </form>
+                        </Form>
+                        <div className="py-4">
+                            <GitHubLoginButton>Login With Github</GitHubLoginButton>
 
-                </div>
+                        </div>
+                        <div className="mt-4 text-center text-sm">
+                            <button
+                                onClick={() => { setIsLogin(true); }}
+                                className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
+                            >
+                                Already have an account? Sign in
+                            </button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+            </div>
         </div>
     );
 };

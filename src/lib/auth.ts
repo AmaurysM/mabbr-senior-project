@@ -5,7 +5,8 @@ import { openAPI } from "better-auth/plugins";
 
 const requiredEnvVars = {
   NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-  NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL: process.env.NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL,
+  NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL:
+    process.env.NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL,
 } as const;
 
 Object.entries(requiredEnvVars).forEach(([key, value]) => {
@@ -18,19 +19,24 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "mongodb",
   }),
-  
+
   session: {
-    expiresIn: 60 * 60 * 24 * 7, 
+    expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24 * 7,
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60, 
-    }
+      maxAge: 5 * 60,
+    },
   },
 
-  plugins: [
-    openAPI({})
-  ],
+  plugins: [openAPI({})],
+
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+  },
 
   emailAndPassword: {
     enabled: true,
@@ -41,7 +47,6 @@ export const auth = betterAuth({
     sendOnSignUp: false,
     autoSignInAfterVerification: true,
   },
-  
 } satisfies BetterAuthOptions);
 
 interface SessionData {
@@ -55,17 +60,17 @@ interface SessionData {
 
 export async function getSession(): Promise<SessionData | null> {
   try {
-    const response = await fetch('/api/auth/session', {
-      credentials: 'include',
+    const response = await fetch("/api/auth/session", {
+      credentials: "include",
     });
-    
+
     if (!response.ok) {
       return null;
     }
-    
+
     return await response.json();
   } catch (error) {
-    console.error('Failed to fetch session:', error);
+    console.error("Failed to fetch session:", error);
     return null;
   }
 }
@@ -88,14 +93,13 @@ interface CachedAuth {
 let authCache: CachedAuth | null = null;
 const AUTH_CACHE_DURATION = 30 * 1000; // 30 seconds
 
-
 export async function checkAuthWithCache(): Promise<boolean> {
   const now = Date.now();
-  
+
   if (authCache && now - authCache.timestamp < AUTH_CACHE_DURATION) {
     return authCache.isAuthenticated;
   }
-  
+
   const authenticated = await isAuthenticated();
   authCache = { isAuthenticated: authenticated, timestamp: now };
   return authenticated;
