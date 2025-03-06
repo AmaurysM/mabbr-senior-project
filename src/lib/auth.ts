@@ -1,7 +1,10 @@
 import prisma from "@/lib/prisma";
+import { authPlugin } from "@/middlewarePlugin";
 import { betterAuth, BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { openAPI } from "better-auth/plugins";
+import { authClient } from "./auth-client";
+import { headers } from "next/headers";
 
 const requiredEnvVars = {
   NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
@@ -58,17 +61,17 @@ interface SessionData {
   expires?: string;
 }
 
-export async function getSession(): Promise<SessionData | null> {
+export async function getSession(){
   try {
-    const response = await fetch("/api/auth/session", {
-      credentials: "include",
-    });
+    const response = await auth.api.getSession({
+      headers: await headers() // you need to pass the headers object.
+    })
 
-    if (!response.ok) {
+    if (!response) {
       return null;
     }
-
-    return await response.json();
+    
+    return await response;
   } catch (error) {
     console.error("Failed to fetch session:", error);
     return null;

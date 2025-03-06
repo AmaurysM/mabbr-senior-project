@@ -17,7 +17,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ErrorContext } from "@better-fetch/fetch";
-import { GithubIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import LoadingButton from "@/app/components/LoadingButton";
 import { useToast } from "@/app/hooks/use-toast";
@@ -31,7 +30,6 @@ const LoginForm: React.FC = () => {
     const [pending, setPending] = useState(false);
     const { toast } = useToast();
     const [pendingCredentials, setPendingCredentials] = useState(false);
-    const [pendingGithub, setPendingGithub] = useState(false);
 
     const signInForm = useForm<z.infer<typeof signInSchema>>({
         resolver: zodResolver(signInSchema),
