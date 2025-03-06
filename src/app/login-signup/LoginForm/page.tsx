@@ -21,8 +21,6 @@ import { authClient } from "@/lib/auth-client";
 import LoadingButton from "@/app/components/LoadingButton";
 import { useToast } from "@/app/hooks/use-toast";
 import GitHubLoginButton from "@/app/components/LoginWithGithub";
-import GoogleLoginButton from "@/app/components/LoginWithGoogle";
-import DiscordLoginButton from "@/app/components/LoginWithDiscord";
 
 
 const LoginForm: React.FC = () => {
@@ -194,20 +192,10 @@ const LoginForm: React.FC = () => {
                                 <LoadingButton pending={pending}>Sign up</LoadingButton>
                             </form>
                         </Form>
-                        
-                        <div className="relative flex items-center w-full max-w-md my-4">
-                            <hr className="w-full border-gray-300" />
-                            <span className="absolute left-1/2 -translate-x-1/2 bg-white px-2 text-gray-500 text-sm">
-                                or continue with
-                            </span>
-                        </div>                  
+                        <div className="py-4">
+                            <GitHubLoginButton>Login With Github</GitHubLoginButton>
 
-                        <div className="py-4 flex justify-center items-center gap-4">
-                            <GitHubLoginButton>Github</GitHubLoginButton>
-                            <GoogleLoginButton>Google</GoogleLoginButton>
-                            <DiscordLoginButton>Discord</DiscordLoginButton>
                         </div>
-
                         <div className="mt-4 text-center text-sm">
                             <button
                                 onClick={() => { setIsLogin(true); }}
