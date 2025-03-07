@@ -15,23 +15,29 @@ function isPublicPath(pathname: string): boolean {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isAuth = await getSession();
+  try {
+    const isAuth = await getSession();
+    console.log("Session check:", isAuth);
 
-  if (isAuth && pathname === "/login-signup") {
-    return NextResponse.redirect(new URL("/profile", req.nextUrl.origin));
-  }
+    if (isAuth && pathname === "/login-signup") {
+      return NextResponse.redirect(new URL("/profile", req.nextUrl.origin));
+    }
 
-  if (isPublicPath(pathname)) {
+    if (isPublicPath(pathname)) {
+      return NextResponse.next();
+    }
+
+    if (!isAuth) {
+      const loginUrl = new URL("/login-signup", req.nextUrl.origin);
+      loginUrl.searchParams.set("returnTo", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
     return NextResponse.next();
+  } catch (error) {
+    console.error("Error during session check:", error);
+    return NextResponse.error();
   }
-
-  if (!isAuth) {
-    const loginUrl = new URL("/login-signup", req.nextUrl.origin);
-    loginUrl.searchParams.set("returnTo", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return NextResponse.next();
 }
 
 export const config = {
