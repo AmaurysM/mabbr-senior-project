@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getSession } from "./lib/auth";
+import { betterFetch } from '@better-fetch/fetch';
+import { type NextRequest, NextResponse } from 'next/server';
+
+import type { auth } from '@/lib/auth';
 
 const PUBLIC_PATHS = ["/", "/login-signup"];
 const PUBLIC_PREFIXES = ["/api/auth", "/api", "/_next", "/images", "/public", "/assets", "/static", "/favicon.ico"];
@@ -12,21 +13,33 @@ function isPublicPath(pathname: string): boolean {
   return isPublic;
 }
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+type Session = typeof auth.$Infer.Session;
 
-  const isAuth = await getSession();
+export async function middleware(request: NextRequest) {
 
-  if (isAuth && pathname === "/login-signup") {
-    return NextResponse.redirect(new URL("/profile", req.nextUrl.origin));
+  const { data: session } = await betterFetch<Session>(
+    '/api/auth/get-session',
+    {
+      baseURL: request.nextUrl.origin,
+      headers: {
+        cookie: request.headers.get('cookie') || '',
+      },
+    },
+  );
+  
+  const { pathname } = request.nextUrl;
+
+
+  if (session && pathname === "/login-signup") {
+    return NextResponse.redirect(new URL("/profile", request.nextUrl.origin));
   }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  if (!isAuth) {
-    const loginUrl = new URL("/login-signup", req.nextUrl.origin);
+  if (!session) {
+    const loginUrl = new URL("/login-signup", request.nextUrl.origin);
     loginUrl.searchParams.set("returnTo", pathname);
     return NextResponse.redirect(loginUrl);
   }
