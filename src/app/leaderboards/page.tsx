@@ -1,155 +1,229 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { UserCircleIcon } from "@heroicons/react/24/solid";
 
-interface Trader {
+interface LeaderboardEntry {
+  id: string;
+  name: string;
+  image?: string;
+  badgeImage?: string;
   rank: number;
-  username: string;
-  totalProfit: number;
-  winRate: number;
-  totalTrades: number;
-  portfolioValue: number;
-  badges: string[];
+  profit: number;
+  percentChange: number;
+  totalValue: number;
+  cashBalance: number;
+  holdingsValue: number;
 }
 
-// Temporary mock data until MongoDB is connected
-const mockTraders: Trader[] = [
-  {
-    rank: 1,
-    username: "Trademaster",
-    totalProfit: 150000,
-    winRate: 78.5,
-    totalTrades: 342,
-    portfolioValue: 450000,
-    badges: ["Verified", "Expert", "1000+ Trades"]
-  },
-  {
-    rank: 2,
-    username: "StockWhisperer",
-    totalProfit: 120000,
-    winRate: 75.2,
-    totalTrades: 289,
-    portfolioValue: 380000,
-    badges: ["Verified", "Rising Star"]
-  },
-  {
-    rank: 3,
-    username: "Amaurys",
-    totalProfit: 100001,
-    winRate: 92.5,
-    totalTrades: 53,
-    portfolioValue: 300000,
-    badges: ["Verified", "Rising Star", "Crypto Maniac"]
-  }
-  // Add more mock traders as needed
-];
+const LeaderboardPage = () => {
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState<string>('all');
 
-const LeaderboardsPage = () => {
-  const [timeFrame, setTimeFrame] = useState<'daily' | 'weekly' | 'monthly' | 'allTime'>('allTime');
-  const [category, setCategory] = useState<'totalProfit' | 'winRate' | 'portfolioValue'>('totalProfit');
-
-  const timeFrameOptions = [
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'allTime', label: 'All Time' }
-  ];
-
-  const categoryOptions = [
-    { value: 'totalProfit', label: 'Total Profit' },
-    { value: 'winRate', label: 'Win Rate' },
-    { value: 'portfolioValue', label: 'Portfolio Value' }
-  ];
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        setLoading(true);
+        // We'll ignore timeframe for now since we only have all-time data
+        const res = await fetch('/api/leaderboard?limit=50');
+        
+        if (!res.ok) {
+          throw new Error('Failed to fetch leaderboard data');
+        }
+        
+        const data = await res.json();
+        setLeaderboard(data.leaderboard);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching leaderboard:', err);
+        setError('Failed to load leaderboard data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLeaderboard();
+  }, [timeframe]);
 
   return (
-    <div className="min-h-screen bg-[#1a1b26] p-6">
+    <div className="px-8 py-6 w-full min-h-screen bg-gradient-to-r from-gray-900 to-gray-800">
       <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">Trading Leaderboards</h1>
-          
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 mb-8">
-            <div className="flex gap-2">
-              {timeFrameOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setTimeFrame(option.value as any)}
-                  className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                    timeFrame === option.value
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        <h1 className="text-4xl font-bold text-white mb-6">Trader Leaderboard</h1>
+        
+        {/* Time Period Selector */}
+        <div className="mb-8 flex flex-wrap gap-3">
+          <button 
+            onClick={() => setTimeframe('all')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              timeframe === 'all' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            All Time
+          </button>
+          <button 
+            onClick={() => setTimeframe('month')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              timeframe === 'month' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+            }`}
+            disabled
+          >
+            This Month
+          </button>
+          <button 
+            onClick={() => setTimeframe('week')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              timeframe === 'week' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+            }`}
+            disabled
+          >
+            This Week
+          </button>
+          <button 
+            onClick={() => setTimeframe('day')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              timeframe === 'day' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+            }`}
+            disabled
+          >
+            Today
+          </button>
         </div>
-
+        
         {/* Leaderboard Table */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Rank</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Trader</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-gray-300">Total Profit</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-gray-300">Win Rate</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-gray-300">Portfolio Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockTraders.map((trader) => (
-                <tr 
-                  key={trader.username}
-                  className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <span className={`
-                      inline-flex items-center justify-center w-8 h-8 rounded-full 
-                      ${trader.rank === 1 ? 'bg-yellow-500/20 text-yellow-300' :
-                        trader.rank === 2 ? 'bg-gray-400/20 text-gray-300' :
-                        trader.rank === 3 ? 'bg-orange-500/20 text-orange-300' :
-                        'bg-gray-700/50 text-gray-400'}
-                      font-bold
-                    `}>
-                      {trader.rank}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="font-semibold text-white">{trader.username}</div>
-                      <div className="flex gap-2 mt-1">
-                        {trader.badges.map((badge, index) => (
-                          <span 
-                            key={index}
-                            className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full"
-                          >
-                            {badge}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-green-400">${trader.totalProfit.toLocaleString()}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-blue-400">{trader.winRate}%</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-white">${trader.portfolioValue.toLocaleString()}</span>
-                  </td>
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 overflow-x-auto">
+          {loading ? (
+            <div className="py-20 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+              <p className="text-gray-400">Loading leaderboard data...</p>
+            </div>
+          ) : error ? (
+            <div className="py-20 text-center">
+              <p className="text-red-400">{error}</p>
+              <button 
+                onClick={() => setTimeframe(timeframe)} 
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Rank</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Trader</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Profit</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">% Change</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Net Worth</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {leaderboard.length > 0 ? (
+                  leaderboard.map((entry) => (
+                    <tr 
+                      key={entry.id}
+                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <span className={`
+                          inline-flex items-center justify-center w-8 h-8 rounded-full 
+                          ${entry.rank === 1 ? 'bg-yellow-500/20 text-yellow-300' :
+                            entry.rank === 2 ? 'bg-gray-400/20 text-gray-300' :
+                            entry.rank === 3 ? 'bg-orange-500/20 text-orange-300' :
+                            'bg-gray-700/50 text-gray-400'}
+                          font-bold text-sm
+                        `}>
+                          {entry.rank}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-600">
+                            {entry.image ? (
+                              <Image 
+                                src={entry.image} 
+                                alt={entry.name} 
+                                width={40} 
+                                height={40} 
+                                className="object-cover"
+                              />
+                            ) : (
+                              <UserCircleIcon className="w-10 h-10 text-gray-400" />
+                            )}
+                            
+                            {entry.badgeImage && (
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-gray-800 bg-gray-700">
+                                <Image 
+                                  src={entry.badgeImage} 
+                                  alt="Badge" 
+                                  width={20} 
+                                  height={20} 
+                                  className="object-cover"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="font-semibold text-white">{entry.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={entry.profit >= 0 ? 'text-green-400' : 'text-red-400'}>
+                          ${entry.profit.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={entry.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}>
+                          {entry.percentChange >= 0 ? '+' : ''}
+                          {entry.percentChange.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-blue-300">
+                        ${entry.totalValue.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                      No traders found for this time period.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+        
+        {/* Info Section */}
+        <div className="mt-8 bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-white/5">
+          <h2 className="text-lg font-semibold text-white mb-2">About the Leaderboard</h2>
+          <p className="text-gray-300 text-sm">
+            Traders are ranked based on their total portfolio value. Everyone starts with $100,000 virtual cash.
+            <br />
+            The leaderboard shows traders who have made at least one trade. Make your first trade to appear on the leaderboard!
+          </p>
         </div>
       </div>
     </div>
   );
 };
 
-export default LeaderboardsPage; 
+export default LeaderboardPage; 

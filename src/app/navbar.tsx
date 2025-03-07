@@ -16,13 +16,12 @@ interface NavItem {
 
 const navigationItems: NavItem[] = [
   { name: "Home", href: "/home" },
+  { name: "Community", href: "/community" },
   { name: "New Users", href: "/users" },
   { name: "Notes", href: "/note" },
   { name: "Bonds", href: "/bond" },
-  { name: "Community", href: "/community" },
   { name: "Trade", href: "/Trade" },
   { name: "Loot Box", href: "/lootbox" },
-  { name: "Leaderboards", href: "/leaderboards" },
   { name: "Portfolio", href: "/portfolio" },
 ];
 

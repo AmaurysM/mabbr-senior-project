@@ -24,6 +24,8 @@ model User {
   banExpires    Int? // Unix timestamp for ban expiration
   balance       Float    @default(100000.0)
   bio           String?  @default("No bio yet.") // Added bio field
+  chatMessages  ChatMessage[]
+  votes         UserVote[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -195,4 +197,47 @@ model AlphaVantageNews {
 
   @@index([tickers])
   @@map("alphavantage_news")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid()) @map("_id")
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("chat_message")
+}
+
+model MarketSentiment {
+  id            String   @id @default(cuid()) @map("_id")
+  bullishCount  Int      @default(0)
+  bearishCount  Int      @default(0)
+  timestamp     DateTime @default(now())
+  mostDiscussed Json     // Array of most discussed stocks
+  topPicks      Json     // Array of stocks voted as top picks
+  marketTrend   Json     // Market trend predictions (sectors, volatility, etc)
+  date          String   @unique // YYYY-MM-DD format to track daily sentiment
+
+  @@index([timestamp])
+  @@map("market_sentiment")
+}
+
+model UserVote {
+  id          String   @id @default(cuid()) @map("_id")
+  userId      String
+  date        String   // YYYY-MM-DD format
+  sentiment   String   // "bullish" or "bearish"
+  topPick     String?  // Stock symbol user picked to perform best
+  marketTrend String?  // User's market trend prediction
+  timestamp   DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("user_vote")
 }
