@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 /**
  * Add a friend
@@ -7,20 +9,12 @@ import prisma from '@/lib/prisma';
  */
 export async function POST(req: NextRequest) {
   try {
-    // Get session token from cookies
-    const sessionToken = req.cookies.get('session')?.value;
-    
-    if (!sessionToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    // Get user from session
-    const session = await prisma.session.findUnique({
-      where: { token: sessionToken },
-      include: { user: true }
+    // Get session using the auth API
+    const session = await auth.api.getSession({
+      headers: await headers(),
     });
     
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -67,18 +61,18 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // Create friendship (automatically accepted in this version)
+    // Create friendship (as pending request)
     const friendship = await prisma.friendship.create({
       data: {
         requesterId: userId,
         recipientId: friendUser.id,
-        status: 'accepted' // Auto-accept for simplicity
+        status: 'pending'  // Changed from 'accepted' to 'pending'
       }
     });
     
     return NextResponse.json({ 
       success: true,
-      message: `You are now friends with ${friendUser.email}`,
+      message: `Friend request sent to ${friendUser.email}`,
       friendship
     });
     

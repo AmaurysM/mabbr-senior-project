@@ -1,5 +1,5 @@
 import "./globals.css";
-import { Toaster } from "./components/ui/sonner";
+import { Toaster } from "react-hot-toast";
 import Navbar from "./navbar";
 
 export default function RootLayout({
@@ -13,8 +13,16 @@ export default function RootLayout({
         <main className="">
           {children}
         </main>
-        {/* Lazy load the Toaster component */}
-        <Toaster />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#1f2937',
+              color: '#fff',
+            },
+          }}
+        />
       </body>
     </html>
   );

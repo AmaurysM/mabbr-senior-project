@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import toast from 'react-hot-toast';
 
 interface FriendRequest {
   id: string;
@@ -14,8 +15,8 @@ interface FriendRequest {
 interface NotificationDropdownProps {
   requests: FriendRequest[];
   loading: boolean;
-  handleAcceptRequest: (requestId: string) => void;
-  handleRejectRequest: (requestId: string) => void;
+  handleAcceptRequest: (requestId: string) => Promise<void>;
+  handleRejectRequest: (requestId: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -149,14 +150,22 @@ const NotificationBell: React.FC = () => {
         body: JSON.stringify({ requestId }),
       });
       
+      const data = await response.json();
+      
       if (response.ok) {
         // Remove the request from the list
         setRequests(prev => prev.filter(req => req.id !== requestId));
+        // Show success message
+        toast.success(data.message || 'Friend request accepted');
+        // Refresh the transactions list by reloading the page
+        window.location.reload();
       } else {
         console.error('Failed to accept friend request');
+        toast.error(data.error || 'Failed to accept friend request');
       }
     } catch (error) {
       console.error('Error accepting friend request:', error);
+      toast.error('Failed to accept friend request');
     }
   };
 
@@ -173,11 +182,14 @@ const NotificationBell: React.FC = () => {
       if (response.ok) {
         // Remove the request from the list
         setRequests(prev => prev.filter(req => req.id !== requestId));
+        toast.success('Friend request rejected');
       } else {
         console.error('Failed to reject friend request');
+        toast.error('Failed to reject friend request');
       }
     } catch (error) {
       console.error('Error rejecting friend request:', error);
+      toast.error('Failed to reject friend request');
     }
   };
 

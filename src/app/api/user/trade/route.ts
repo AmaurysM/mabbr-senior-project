@@ -62,36 +62,109 @@ export async function POST(req: NextRequest) {
         error: `Insufficient funds. Required: $${totalCost.toFixed(2)}, Available: $${user.balance.toFixed(2)}` 
       }, { status: 400 });
     }
-    
-    // Update user balance
-    const newBalance = type === 'BUY' 
-      ? user.balance - totalCost 
-      : user.balance + totalCost;
-    
-    await prisma.user.update({
-      where: { id: userId },
-      data: { balance: newBalance }
-    });
-    
-    // Record the transaction
-    const transaction = await prisma.transaction.create({
-      data: {
-        userId: userId,
-        stockSymbol: symbol,
-        type: type,
-        quantity: parseInt(quantity.toString()),
-        price: parseFloat(price.toString()),
-        totalCost: totalCost,
-        status: 'COMPLETED',
-        publicNote: publicNote || null,
-        privateNote: privateNote || null
+
+    // For SELL orders, check if user has enough shares
+    if (type === 'SELL') {
+      const userStock = await prisma.userStock.findFirst({
+        where: {
+          userId: userId,
+          stock: {
+            name: symbol
+          }
+        }
+      });
+
+      if (!userStock || userStock.quantity < quantity) {
+        return NextResponse.json({ 
+          error: `Insufficient shares. Required: ${quantity}, Available: ${userStock?.quantity || 0}` 
+        }, { status: 400 });
       }
+    }
+    
+    // Execute trade in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Update user balance
+      const newBalance = type === 'BUY' 
+        ? user.balance - totalCost 
+        : user.balance + totalCost;
+      
+      await tx.user.update({
+        where: { id: userId },
+        data: { balance: newBalance }
+      });
+
+      // Get or create stock record
+      let stock = await tx.stock.findFirst({
+        where: { name: symbol }
+      });
+
+      if (!stock) {
+        stock = await tx.stock.create({
+          data: {
+            name: symbol,
+            price: price
+          }
+        });
+      } else {
+        // Update stock price
+        await tx.stock.update({
+          where: { id: stock.id },
+          data: { price: price }
+        });
+      }
+      
+      // Update user's stock position
+      if (type === 'BUY') {
+        await tx.userStock.upsert({
+          where: {
+            userId_stockId: {
+              userId: userId,
+              stockId: stock.id
+            }
+          },
+          update: {
+            quantity: { increment: quantity }
+          },
+          create: {
+            userId: userId,
+            stockId: stock.id,
+            quantity: quantity
+          }
+        });
+      } else {
+        await tx.userStock.update({
+          where: {
+            userId_stockId: {
+              userId: userId,
+              stockId: stock.id
+            }
+          },
+          data: {
+            quantity: { decrement: quantity }
+          }
+        });
+      }
+      
+      // Record the transaction
+      return tx.transaction.create({
+        data: {
+          userId: userId,
+          stockSymbol: symbol,
+          type: type,
+          quantity: parseInt(quantity.toString()),
+          price: parseFloat(price.toString()),
+          totalCost: totalCost,
+          status: 'COMPLETED',
+          publicNote: publicNote || null,
+          privateNote: privateNote || null
+        }
+      });
     });
     
     return NextResponse.json({ 
       success: true,
       message: `Successfully ${type.toLowerCase()}ed ${quantity} shares of ${symbol}`,
-      transaction: transaction
+      transaction: result
     });
     
   } catch (error) {
