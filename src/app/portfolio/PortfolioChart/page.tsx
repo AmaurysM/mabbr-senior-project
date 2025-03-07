@@ -32,6 +32,39 @@ const PortfolioChart: React.FC = () => {
     setIsClient(true);
   }, []);
 
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log('Fetching user transactions...');
+
+    const fetchTransactions = async () => {
+      try {
+        const response = await fetch('/api/user/userTransactions');
+
+        if (!response.ok) {
+          if (response.status === 401) throw new Error('Unauthorized: Please log in.');
+          throw new Error('Failed to fetch transactions.');
+        }
+
+        const data = await response.json();
+        console.log('User Transactions Data:', data);
+
+        setTransactions(data);
+      } catch (err) {
+        console.error('Error fetching user transactions:', err);
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+        console.log('Finished fetching user transactions');
+      }
+    };
+
+    fetchTransactions();
+  }, []); // Runs once on mount
+
+
   if (!isClient) {
     // Return null on the server
     return null;
