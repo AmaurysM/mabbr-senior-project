@@ -2,36 +2,64 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSession } from "./lib/auth";
 
-const PUBLIC_PATHS = ["/", "/login-signup"];
-const PUBLIC_PREFIXES = ["/api/auth", "/api", "/_next", "/images", "/public", "/assets", "/static", "/favicon.ico"];
+const PUBLIC_PATHS = [
+  "/",
+  "/login-signup",
+  "/leaderboards", 
+  "/community"     
+];
+
+const PUBLIC_PREFIXES = [
+  "/api/auth",
+  "/api/leaderboard", 
+  "/api/market-sentiment",
+  "/api",
+  "/_next",
+  "/images",
+  "/public",
+  "/assets",
+  "/static",
+  "/favicon.ico"
+];
 
 function isPublicPath(pathname: string): boolean {
-  const isPublic = PUBLIC_PATHS.includes(pathname) ||
+  return PUBLIC_PATHS.includes(pathname) ||
     pathname.includes('.') ||
     PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
-  return isPublic;
 }
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isAuth = await getSession();
-
-  if (isAuth && pathname === "/login-signup") {
-    return NextResponse.redirect(new URL("/profile", req.nextUrl.origin));
-  }
-
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  if (!isAuth) {
+  try {
+    const isAuth = await getSession();
+
+    if (isAuth && pathname === "/login-signup") {
+      return NextResponse.redirect(new URL("/profile", req.nextUrl.origin));
+    }
+
+    if (!isAuth) {
+      const loginUrl = new URL("/login-signup", req.nextUrl.origin);
+      loginUrl.searchParams.set("returnTo", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Auth error in middleware:', error);
+    
+    if (isPublicPath(pathname)) {
+      return NextResponse.next();
+    }
+
     const loginUrl = new URL("/login-signup", req.nextUrl.origin);
     loginUrl.searchParams.set("returnTo", pathname);
     return NextResponse.redirect(loginUrl);
   }
-
-  return NextResponse.next();
 }
 
 export const config = {

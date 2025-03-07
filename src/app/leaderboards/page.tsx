@@ -27,16 +27,25 @@ const LeaderboardPage = () => {
     const fetchLeaderboard = async () => {
       try {
         setLoading(true);
-        // We'll ignore timeframe for now since we only have all-time data
-        const res = await fetch('/api/leaderboard?limit=50');
+        setError(null);
+        
+        const res = await fetch(`/api/leaderboard?limit=50&timeframe=${timeframe}`, {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         
         if (!res.ok) {
           throw new Error('Failed to fetch leaderboard data');
         }
         
         const data = await res.json();
+        if (!data.leaderboard || !Array.isArray(data.leaderboard)) {
+          throw new Error('Invalid leaderboard data format');
+        }
+        
         setLeaderboard(data.leaderboard);
-        setError(null);
       } catch (err) {
         console.error('Error fetching leaderboard:', err);
         setError('Failed to load leaderboard data. Please try again later.');
@@ -47,6 +56,20 @@ const LeaderboardPage = () => {
     
     fetchLeaderboard();
   }, [timeframe]);
+
+  // Get time period label for empty state message
+  const getTimePeriodLabel = () => {
+    switch (timeframe) {
+      case 'day':
+        return 'today';
+      case 'week':
+        return 'this week';
+      case 'month':
+        return 'this month';
+      default:
+        return '';
+    }
+  };
 
   return (
     <div className="px-8 py-6 w-full min-h-screen bg-gradient-to-r from-gray-900 to-gray-800">
@@ -72,7 +95,6 @@ const LeaderboardPage = () => {
                 ? 'bg-blue-600 text-white' 
                 : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
             }`}
-            disabled
           >
             This Month
           </button>
@@ -83,7 +105,6 @@ const LeaderboardPage = () => {
                 ? 'bg-blue-600 text-white' 
                 : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
             }`}
-            disabled
           >
             This Week
           </button>
@@ -94,7 +115,6 @@ const LeaderboardPage = () => {
                 ? 'bg-blue-600 text-white' 
                 : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
             }`}
-            disabled
           >
             Today
           </button>
@@ -203,7 +223,9 @@ const LeaderboardPage = () => {
                 ) : (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
-                      No traders found for this time period.
+                      {timeframe === 'all' 
+                        ? 'No traders have made any trades yet.'
+                        : `No traders have made trades ${getTimePeriodLabel()}.`}
                     </td>
                   </tr>
                 )}
@@ -218,7 +240,7 @@ const LeaderboardPage = () => {
           <p className="text-gray-300 text-sm">
             Traders are ranked based on their total portfolio value. Everyone starts with $100,000 virtual cash.
             <br />
-            The leaderboard shows traders who have made at least one trade. Make your first trade to appear on the leaderboard!
+            The leaderboard shows traders who have made at least one trade{timeframe !== 'all' ? ` ${getTimePeriodLabel()}` : ''}. Make your first trade to appear on the leaderboard!
           </p>
         </div>
       </div>

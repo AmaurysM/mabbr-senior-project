@@ -1,20 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
 
 export async function GET(req: NextRequest) {
   try {
-    // Authenticate the user (optional - we'll return public data)
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    // Get limit parameter, default to 10
+    // Get query parameters
     const { searchParams } = new URL(req.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50); // Cap at 50
+    const timeframe = searchParams.get('timeframe') || 'all';
 
-    // Fetch all users
+    // Calculate the start date based on timeframe
+    const startDate = new Date();
+    switch (timeframe) {
+      case 'day':
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+      case 'all':
+      default:
+        // No date filtering for all-time
+        startDate.setFullYear(2000);
+        break;
+    }
+
+    // Fetch all users with their transactions within the timeframe
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -28,60 +41,59 @@ export async function GET(req: NextRequest) {
           }
         },
         transactions: {
+          where: {
+            timestamp: {
+              gte: startDate
+            }
+          },
           orderBy: {
             timestamp: 'desc'
-          },
-          take: 1 // Just to check if they have any
+          }
         }
       },
       where: {
-        // Exclude banned users
         banned: false
       }
     });
 
     // Calculate portfolio value and metrics for each user
-    const leaderboardData = users.map(user => {
-      // Calculate holdings value
-      const holdingsValue = user.userStocks.reduce((total, holding) => {
-        return total + (holding.quantity * holding.stock.price);
-      }, 0);
+    const leaderboardData = users
+      .map(user => {
+        // Calculate holdings value
+        const holdingsValue = user.userStocks.reduce((total, holding) => {
+          return total + (holding.quantity * holding.stock.price);
+        }, 0);
 
-      // Calculate total value (cash + holdings)
-      const totalValue = user.balance + holdingsValue;
+        // Calculate total value (cash + holdings)
+        const totalValue = user.balance + holdingsValue;
 
-      // Calculate initial value (everyone starts with $100,000)
-      const initialValue = 100000;
+        // Calculate initial value (everyone starts with $100,000)
+        const initialValue = 100000;
 
-      // Calculate profit/loss
-      const profit = totalValue - initialValue;
-      const percentChange = ((totalValue - initialValue) / initialValue) * 100;
+        // Calculate profit/loss
+        const profit = totalValue - initialValue;
+        const percentChange = ((totalValue - initialValue) / initialValue) * 100;
 
-      // Count total trades
-      const totalTrades = user.transactions.length;
+        // Check if user has trades in the selected timeframe
+        const hasTrades = user.transactions.length > 0;
 
-      return {
-        id: user.id,
-        name: user.name,
-        image: user.image,
-        badgeImage: user.badgeImage,
-        totalValue: totalValue,
-        profit: profit,
-        percentChange: percentChange,
-        cashBalance: user.balance,
-        holdingsValue: holdingsValue,
-        hasTrades: totalTrades > 0
-      };
-    });
-
-    // Sort by total value (descending)
-    const sortedLeaderboard = leaderboardData
+        return {
+          id: user.id,
+          name: user.name,
+          image: user.image,
+          badgeImage: user.badgeImage,
+          totalValue: totalValue,
+          profit: profit,
+          percentChange: percentChange,
+          hasTrades
+        };
+      })
+      .filter(user => user.hasTrades) // Only include users who have made trades in the timeframe
       .sort((a, b) => b.totalValue - a.totalValue)
-      .filter(user => user.hasTrades) // Only include users who have made at least one trade
-      .slice(0, limit); // Apply limit
+      .slice(0, limit);
 
     // Add rank information
-    const rankedLeaderboard = sortedLeaderboard.map((user, index) => ({
+    const rankedLeaderboard = leaderboardData.map((user, index) => ({
       ...user,
       rank: index + 1
     }));
