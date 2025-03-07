@@ -67,3 +67,5 @@ export type UserAchievements = Prisma.UserAchievementGetPayload<{
 }>[];
 
 export type Achievements = Prisma.AchievementGetPayload<object>[];
+
+export type UserTransactions = Prisma.TransactionGetPayload<object>[];
