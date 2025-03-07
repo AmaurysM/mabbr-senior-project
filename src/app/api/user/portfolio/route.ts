@@ -37,14 +37,24 @@ export async function GET(req: NextRequest) {
     }
     
     // Fetch user's stock positions
-    const userStocks: UserStocks = await prisma.userStock.findMany({
+    const userStocks = await prisma.userStock.findMany({
       where: { userId: user.id },
       include: { stock: true }
     });
-    
 
-    
-    return NextResponse.json(userStocks);
+    // Transform the data into the expected format
+    const positions: { [symbol: string]: Position } = {};
+    userStocks.forEach((userStock) => {
+      positions[userStock.stock.name] = {
+        shares: userStock.quantity,
+        averagePrice: userStock.stock.price
+      };
+    });
+
+    return NextResponse.json({
+      balance: user.balance,
+      positions: positions
+    });
     
   } catch (error) {
     console.error('Error fetching portfolio:', error);
