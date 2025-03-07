@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 export async function POST(req: NextRequest) {
   try {
-    // Get session from the API endpoint
-    const sessionRes = await fetch(new URL('/api/auth/get-session', req.url), {
-      headers: {
-        cookie: req.headers.get('cookie') || ''
-      }
+    // Get session using the auth API
+    const session = await auth.api.getSession({
+      headers: await headers(),
     });
     
-    if (!sessionRes.ok) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    const session = await sessionRes.json();
-    
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -45,7 +39,10 @@ export async function POST(req: NextRequest) {
       where: { id: requestId }
     });
     
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      message: 'Friend request rejected successfully'
+    });
     
   } catch (error) {
     console.error('Error rejecting friend request:', error);
