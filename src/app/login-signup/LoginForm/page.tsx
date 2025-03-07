@@ -23,6 +23,8 @@ import { useToast } from "@/app/hooks/use-toast";
 import GitHubLoginButton from "@/app/components/LoginWithGithub";
 import GoogleLoginButton from "@/app/components/LoginWithGoogle";
 import DiscordLoginButton from "@/app/components/LoginWithDiscord";
+import { Toaster } from "@/app/components/ui/sonner" // Adjust the import path accordingly
+
 
 
 const LoginForm: React.FC = () => {
@@ -93,6 +95,7 @@ const LoginForm: React.FC = () => {
                     });
                 },
                 onError: (ctx) => {
+                    console.log("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
                     toast({
                         title: "Something went wrong",
                         description: ctx.error.message ?? "Something went wrong.",
@@ -106,6 +109,7 @@ const LoginForm: React.FC = () => {
     return (
         <div className="relative w-full min-h-screen flex overflow-hidden">
             {/* Login Form */}
+            <Toaster />
             <div
                 className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin ? "translate-x-0 opacity-100 duration-700 right-0" : "translate-x-[100vw] opacity-0 duration-200 right-0"
                     }`}
