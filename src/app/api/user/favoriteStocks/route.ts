@@ -5,13 +5,11 @@ import {headers} from "next/headers";
 
 export async function GET() {
     try {
-        // 1. Authenticate the user
         const session = await auth.api.getSession({headers: await headers() });
         if (!session?.user?.email) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // 2. Find the user in the database
         const user = await prisma.user.findUnique({
             where: { email: session.user.email },
         });
@@ -20,7 +18,6 @@ export async function GET() {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // 3. Return the favorites
         return NextResponse.json({ favorites: user.favoriteStocks || [] }, { status: 200 });
     } catch (error) {
         console.error('Error fetching favorites:', error);

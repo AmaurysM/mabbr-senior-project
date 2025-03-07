@@ -131,12 +131,8 @@ const HomePage = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // ---------------------------
-  // Favorite Stocks Implementation
-  // ---------------------------
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  // Load favorites from localStorage on mount (for guests)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedFavorites = localStorage.getItem('stockFavorites');
@@ -146,7 +142,6 @@ const HomePage = () => {
     }
   }, []);
 
-  // When user is logged in, fetch favorites from the database so they display immediately
   useEffect(() => {
     if (user) {
       const fetchFavorites = async () => {
@@ -166,14 +161,12 @@ const HomePage = () => {
     }
   }, [user]);
 
-  // Save favorites to localStorage when they change (for guests)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('stockFavorites', JSON.stringify(Array.from(favorites)));
     }
   }, [favorites]);
 
-  // Updated toggleFavorite that also updates the database when the user is logged in
   const toggleFavorite = useCallback(
       async (symbol: string) => {
         const isFav = favorites.has(symbol);
@@ -206,16 +199,11 @@ const HomePage = () => {
             setFavorites(new Set(data.favorites));
           } catch (error) {
             console.error('Error updating favorite stocks:', error);
-            // Optionally, revert the optimistic update here
           }
         }
       },
       [user, favorites]
   );
-
-  // ---------------------------
-  // End Favorite Stocks
-  // ---------------------------
 
   // Get symbols to fetch
   const symbolsToFetch = Array.from(
@@ -461,7 +449,6 @@ const HomePage = () => {
 
   if (loading) return <div>Loading...</div>;
 
-  // Derive favorite stocks from SWR data
   const favoriteStocks = swrStocks.filter((stock) => favorites.has(stock.symbol));
 
   return (
