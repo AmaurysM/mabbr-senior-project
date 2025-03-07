@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { UserStocks } from "@/lib/prisma_types";
 
-interface Position {
-  shares: number;
-  averagePrice: number;
-}
-
 // GET /api/user/portfolio - Get the user's portfolio
 export async function GET(req: NextRequest) {
   try {
@@ -37,24 +32,12 @@ export async function GET(req: NextRequest) {
     }
     
     // Fetch user's stock positions
-    const userStocks = await prisma.userStock.findMany({
+    const userStocks: UserStocks = await prisma.userStock.findMany({
       where: { userId: user.id },
       include: { stock: true }
     });
-
-    // Transform the data into the expected format
-    const positions: { [symbol: string]: Position } = {};
-    userStocks.forEach((userStock) => {
-      positions[userStock.stock.name] = {
-        shares: userStock.quantity,
-        averagePrice: userStock.stock.price
-      };
-    });
-
-    return NextResponse.json({
-      balance: user.balance,
-      positions: positions
-    });
+    
+    return NextResponse.json(userStocks);
     
   } catch (error) {
     console.error('Error fetching portfolio:', error);

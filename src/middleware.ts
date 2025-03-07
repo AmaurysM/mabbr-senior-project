@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getSession } from "./lib/auth";
+import { betterFetch } from '@better-fetch/fetch';
+import { type NextRequest, NextResponse } from 'next/server';
+
+import type { auth } from '@/lib/auth';
 
 const PUBLIC_PATHS = [
   "/",
@@ -30,23 +31,32 @@ function isPublicPath(pathname: string): boolean {
     PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
 }
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+type Session = typeof auth.$Infer.Session;
+
+export async function middleware(request: NextRequest) {
+
+  const { data: session } = await betterFetch<Session>(
+    '/api/auth/get-session',
+    {
+      baseURL: request.nextUrl.origin,
+      headers: {
+        cookie: request.headers.get('cookie') || '',
+      },
+    },
+  );
+  
+  const { pathname } = request.nextUrl;
+
+  if (session && pathname === "/login-signup") {
+    return NextResponse.redirect(new URL("/profile", request.nextUrl.origin));
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  let isAuth = false;
-  try {
-    const session = await getSession();
-    isAuth = !!session;
-  } catch (error) {
-    console.error('Auth error in middleware:', error);
-  }
-
-  if (!isAuth) {
-    const loginUrl = new URL("/login-signup", req.nextUrl.origin);
+  if (!session) {
+    const loginUrl = new URL("/login-signup", request.nextUrl.origin);
     loginUrl.searchParams.set("returnTo", pathname);
     return NextResponse.redirect(loginUrl);
   }
