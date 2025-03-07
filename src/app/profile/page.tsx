@@ -8,6 +8,15 @@ import { toast } from '@/app/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Achievement, UserAchievement } from '@prisma/client';
 
+interface Transaction {
+    id: string;
+    type: string;
+    stockSymbol: string;
+    quantity: number;
+    price: number;
+    timestamp: string;
+}
+
 interface EditableFieldProps {
     value: string;
     label: string;
@@ -22,7 +31,6 @@ const EditableField: React.FC<EditableFieldProps> = ({ value, label, onSave, req
     const [error, setError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    // Update newValue when the prop value changes
     useEffect(() => {
         setNewValue(value);
     }, [value]);
@@ -134,16 +142,58 @@ const ProfilePage = () => {
     const [isSavingBio, setIsSavingBio] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
     const [imageError, setImageError] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Achievement stuff
     const [achievements, setAchievements] = useState<Achievement[]>([]);
     const [achievementsLoading, setAchievementsLoading] = useState(true);
-
-
     const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
     const [UserAchievementsLoading, setUserAchievementsLoading] = useState(true);
 
-    const [error, setError] = useState<string | null>(null);
+    // New state for transactions
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    // Helper function to format timestamps to relative time
+    const formatRelativeTime = (dateString: string) => {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.error(`Invalid date received: ${dateString}`);
+            return "Invalid date";
+        }
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+        const seconds = Math.floor(diff / 1000);
+        if (seconds < 60) return `${seconds} seconds ago`;
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} minutes ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+        const weeks = Math.floor(days / 7);
+        if (weeks < 4) return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+        const months = Math.floor(days / 30);
+        if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+        const years = Math.floor(days / 365);
+        return `${years} year${years === 1 ? '' : 's'} ago`;
+    };
+
+    // Fetch recent transactions
+    const fetchTransactions = async () => {
+        try {
+            const res = await fetch('/api/user/transactions');
+            const data = await res.json();
+            if (data.success) {
+                setTransactions(data.transactions);
+            }
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchTransactions();
+    }, []);
 
     useEffect(() => {
         setAchievementsLoading(true);
@@ -159,7 +209,7 @@ const ProfilePage = () => {
                 setAchievementsLoading(false);
             }
         };
-        
+
         fetchAchievements();
     }, []);
 
@@ -167,52 +217,46 @@ const ProfilePage = () => {
         setUserAchievementsLoading(true);
         const fetchUserAchievements = async () => {
             try {
-                const response = await fetch('/api/user/achievements'); 
+                const response = await fetch('/api/user/achievements');
                 if (!response.ok) {
                     if (response.status === 401) throw new Error('Unauthorized: Please log in.');
                     throw new Error('Failed to fetch user achievements.');
                 }
                 const data = await response.json();
-                setUserAchievements(data);                
+                setUserAchievements(data);
             } catch (err) {
                 setError((err as Error).message);
             } finally {
                 setLoading(false);
             }
         };
-        
+
         fetchUserAchievements();
     }, []);
-    
-    //
 
     useEffect(() => {
-        // Fetch user data when component mounts
         const fetchUserData = async () => {
             try {
                 setLoading(true);
                 const { data: session } = await authClient.getSession();
 
                 if (session?.user) {
-                    // Set user data from session initially
                     setName(session.user.name || '');
                     setEmail(session.user.email || '');
                     setUserId(session.user.id || null);
 
-                    // Fetch additional user data from database if needed
                     if (session.user.id) {
                         try {
                             const response = await fetch(`/api/user/${session.user.id}`, {
-                                credentials: 'include' // Important for sending cookies with the request
+                                credentials: 'include'
                             });
                             if (response.ok) {
                                 const userData = await response.json();
-                                // Update with database values which are more up-to-date
                                 if (userData.name) {
                                     setName(userData.name);
                                 }
                                 if (userData.email) {
-                                    setEmail(userData.email); // Prioritize database email over session
+                                    setEmail(userData.email);
                                 }
                                 if (userData.bio) {
                                     setBio(userData.bio);
@@ -242,9 +286,6 @@ const ProfilePage = () => {
         fetchUserData();
     }, []);
 
-
-
-
     const handleImageClick = () => {
         fileInputRef.current?.click();
     };
@@ -252,14 +293,12 @@ const ProfilePage = () => {
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file && userId) {
-            // Create a preview
             const reader = new FileReader();
             reader.onloadend = () => {
                 setProfileImage(reader.result as string);
             };
             reader.readAsDataURL(file);
 
-            // Upload the image
             try {
                 const formData = new FormData();
                 formData.append('image', file);
@@ -267,7 +306,7 @@ const ProfilePage = () => {
                 const response = await fetch(`/api/user/${userId}/image`, {
                     method: 'POST',
                     body: formData,
-                    credentials: 'include' // Important for sending cookies with the request
+                    credentials: 'include'
                 });
 
                 if (!response.ok) {
@@ -297,7 +336,7 @@ const ProfilePage = () => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ name: newName }),
-            credentials: 'include', // Important for sending cookies with the request
+            credentials: 'include',
         });
 
         if (!response.ok) {
@@ -307,13 +346,10 @@ const ProfilePage = () => {
 
         setName(newName);
 
-        // Update the session data to reflect the new name
         try {
             await authClient.updateUser({
                 name: newName,
-            })
-
-            // Force a refresh to update the UI with the new session data
+            });
             router.refresh();
         } catch (error) {
             console.error('Error updating session:', error);
@@ -330,7 +366,7 @@ const ProfilePage = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ email: newEmail }),
-                credentials: 'include', // Important for sending cookies with the request
+                credentials: 'include',
             });
 
             if (!response.ok) {
@@ -338,24 +374,17 @@ const ProfilePage = () => {
                 throw new Error(errorData.error || 'Failed to update email');
             }
 
-            // Update local state
             setEmail(newEmail);
-
-            // Show success message
             toast({
                 title: "Success",
                 description: "Email updated successfully",
             });
 
-            // Update the session data to reflect the new email
             try {
-                // Note: This will likely send a verification email rather than immediately updating the session
                 await authClient.changeEmail({
                     newEmail: newEmail,
                     callbackURL: "/login-signup",
                 });
-
-                // Reload the page to get fresh data
                 window.location.href = '/profile';
             } catch (error) {
                 console.error('Error updating session:', error);
@@ -385,7 +414,7 @@ const ProfilePage = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ bio: newBio }),
-                credentials: 'include', // Important for sending cookies with the request
+                credentials: 'include',
             });
 
             if (!response.ok) {
@@ -411,7 +440,6 @@ const ProfilePage = () => {
         }
     };
 
-    // Show loading state while fetching user data
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
@@ -475,9 +503,8 @@ const ProfilePage = () => {
                                 onSave={updateEmail}
                                 requireConfirmation
                             />
-                            {/* Removed the Balance field from here */}
 
-                            {/* Bio Field with hover effect */}
+                            {/* Bio Field */}
                             <div className="space-y-2 group">
                                 <div className="flex items-center">
                                     <label className="block text-sm font-medium text-gray-400">Bio</label>
@@ -536,7 +563,8 @@ const ProfilePage = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-sm text-gray-400">Total Trades</p>
-                                <p className="text-2xl font-bold text-white">156</p>
+                                {/* Use transactions.length to dynamically show the total trades */}
+                                <p className="text-2xl font-bold text-white">{transactions.length}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-gray-400">Win Rate</p>
@@ -550,14 +578,13 @@ const ProfilePage = () => {
                                 <p className="text-sm text-gray-400">Total Profit</p>
                                 <p className="text-2xl font-bold text-green-400">$5,234</p>
                             </div>
-                            {/* Balance Field (Read-only) now placed under Trading Statistics */}
                             <div>
                                 <p className="text-sm text-gray-400">Balance</p>
                                 <p className="text-2xl font-bold text-white">
                                     ${balance.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })}
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}
                                 </p>
                             </div>
                         </div>
@@ -566,19 +593,34 @@ const ProfilePage = () => {
                     {/* Recent Activity */}
                     <section className="md:col-span-2 bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
                         <h2 className="text-2xl font-bold text-white mb-4">Recent Activity</h2>
-                        <div className="space-y-4">
-                            {[1, 2, 3].map((_, index) => (
-                                <div key={index} className="bg-gray-700/30 rounded-lg p-4 border border-white/5">
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <p className="text-white font-medium">Bought AAPL</p>
-                                            <p className="text-sm text-gray-400">10 shares at $175.23</p>
+                        {transactions.length > 0 ? (
+                            <div className="space-y-4">
+                                {transactions.map((transaction) => (
+                                    <div key={transaction.id} className="bg-gray-700/30 rounded-lg p-4 border border-white/5">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="text-white font-medium">
+                                                    {transaction.type === 'BUY'
+                                                        ? 'Bought'
+                                                        : transaction.type === 'SELL'
+                                                            ? 'Sold'
+                                                            : 'Traded'}{' '}
+                                                    {transaction.stockSymbol}
+                                                </p>
+                                                <p className="text-sm text-gray-400">
+                                                    {transaction.quantity} shares at ${transaction.price.toFixed(2)}
+                                                </p>
+                                            </div>
+                                            <p className="text-sm text-gray-400">
+                                                {formatRelativeTime(transaction.timestamp)}
+                                            </p>
                                         </div>
-                                        <p className="text-sm text-gray-400">2 hours ago</p>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-white">No recent activity</p>
+                        )}
                     </section>
                 </div>
             </div>
