@@ -37,7 +37,19 @@ export async function GET(req: NextRequest) {
       include: { stock: true }
     });
     
-    return NextResponse.json(userStocks);
+    // Format the response to include both balance and positions
+    const positions: { [symbol: string]: { shares: number; averagePrice: number } } = {};
+    userStocks.forEach((userStock) => {
+      positions[userStock.stock.name] = {
+        shares: userStock.quantity,
+        averagePrice: userStock.stock.price
+      };
+    });
+
+    return NextResponse.json({
+      balance: user.balance,
+      positions: positions
+    });
     
   } catch (error) {
     console.error('Error fetching portfolio:', error);
