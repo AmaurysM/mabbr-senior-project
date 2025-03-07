@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
         totalCost: true,
         timestamp: true,
         status: true,
-        publicNote: true,
+        publicNote: true,  // Only include publicNote for friends
         user: {
           select: { 
             email: true, 
