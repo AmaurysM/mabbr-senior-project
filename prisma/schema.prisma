@@ -22,7 +22,7 @@ model User {
   banned        Boolean  @default(false)
   banReason     String?
   banExpires    Int? // Unix timestamp for ban expiration
-  balance       Float    @default(25000.0)
+  balance       Float    @default(100000.0)
   bio           String?  @default("No bio yet.") // Added bio field
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
