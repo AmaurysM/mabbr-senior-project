@@ -4,15 +4,17 @@ import { getSession } from "./lib/auth";
 
 const PUBLIC_PATHS = [
   "/",
+  "/home",
   "/login-signup",
-  "/leaderboards", 
-  "/community"     
+  "/leaderboards",
+  "/community"
 ];
 
 const PUBLIC_PREFIXES = [
   "/api/auth",
-  "/api/leaderboard", 
+  "/api/leaderboard",
   "/api/market-sentiment",
+  "/api/chat",
   "/api",
   "/_next",
   "/images",
@@ -35,31 +37,21 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  let isAuth = false;
   try {
-    const isAuth = await getSession();
-
-    if (isAuth && pathname === "/login-signup") {
-      return NextResponse.redirect(new URL("/profile", req.nextUrl.origin));
-    }
-
-    if (!isAuth) {
-      const loginUrl = new URL("/login-signup", req.nextUrl.origin);
-      loginUrl.searchParams.set("returnTo", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    return NextResponse.next();
+    const session = await getSession();
+    isAuth = !!session;
   } catch (error) {
     console.error('Auth error in middleware:', error);
-    
-    if (isPublicPath(pathname)) {
-      return NextResponse.next();
-    }
+  }
 
+  if (!isAuth) {
     const loginUrl = new URL("/login-signup", req.nextUrl.origin);
     loginUrl.searchParams.set("returnTo", pathname);
     return NextResponse.redirect(loginUrl);
   }
+
+  return NextResponse.next();
 }
 
 export const config = {
