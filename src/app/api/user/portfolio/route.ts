@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       }
     }
     // Return both holdings and chart data.
-    return NextResponse.json({ holdings: userStocks, chartData});
+    return NextResponse.json({ holdings: userStocks, chartData, balance: user.balance});
     
   } catch (error) {
     console.error('Error fetching portfolio:', error);
