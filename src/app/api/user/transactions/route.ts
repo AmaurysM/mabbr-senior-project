@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 /**
  * Fetch transactions for the user and their friends
@@ -7,20 +9,12 @@ import prisma from '@/lib/prisma';
  */
 export async function GET(req: NextRequest) {
   try {
-    // Get session from the API endpoint
-    const sessionRes = await fetch(new URL('/api/auth/get-session', req.url), {
-      headers: {
-        cookie: req.headers.get('cookie') || ''
-      }
+    // Get session using the auth API
+    const session = await auth.api.getSession({
+      headers: await headers(),
     });
     
-    if (!sessionRes.ok) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    const session = await sessionRes.json();
-    
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
