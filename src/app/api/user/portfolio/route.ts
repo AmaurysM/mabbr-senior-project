@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
       include: { stock: true }
     });
     
+    
     // Use the actual balance from the user record instead of a hardcoded value.
     let initialBalance = user.balance; 
     let cumulativeValue = initialBalance;
