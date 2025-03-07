@@ -11,35 +11,36 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid()) @map("_id")
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  badgeImage    String? // New field for the badge image
-  premium       Boolean  @default(false)
-  role          String   @default("user")
-  banned        Boolean  @default(false)
-  banReason     String?
-  banExpires    Int? // Unix timestamp for ban expiration
-  balance       Float    @default(100000.0)
-  bio           String?  @default("No bio yet.") // Added bio field
-  chatMessages  ChatMessage[]
-  votes         UserVote[]
+  id             String        @id @default(cuid()) @map("_id")
+  name           String
+  email          String        @unique
+  emailVerified  Boolean       @default(false)
+  image          String?
+  badgeImage     String? // New field for the badge image
+  premium        Boolean       @default(false)
+  role           String        @default("user")
+  banned         Boolean       @default(false)
+  banReason      String?
+  banExpires     Int? // Unix timestamp for ban expiration
+  balance        Float         @default(100000.0)
+  bio            String?       @default("No bio yet.") // Added bio field
+  chatMessages   ChatMessage[]
+  votes          UserVote[]
+  favoriteStocks String[]      @default([])
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
-  transactions  Transaction[]
-  following     Friendship[]  @relation(name: "FollowerRelation")
-  followers     Friendship[]  @relation(name: "FollowingRelation")
+  sessions     Session[]
+  accounts     Account[]
+  transactions Transaction[]
+  following    Friendship[]  @relation(name: "FollowerRelation")
+  followers    Friendship[]  @relation(name: "FollowingRelation")
 
   userStocks    UserStock[]
   userLootBoxes UserLootBox[]
 
-  achievements    UserAchievement[] // Relation to UserAchievement
+  achievements UserAchievement[] // Relation to UserAchievement
 
   @@map("user")
 }
@@ -63,7 +64,6 @@ model UserStock {
   quantity Int
 
   @@unique([userId, stockId]) // Ensures each user can only have one entry per stock
-
 }
 
 model UserLootBox {
@@ -79,9 +79,9 @@ model UserLootBox {
 }
 
 model Stock {
-  id            String        @id @default(cuid()) @map("_id")
+  id            String         @id @default(cuid()) @map("_id")
   name          String
-  price         Float         @default(0)
+  price         Float          @default(0)
   userStocks    UserStock[]
   lootBoxStocks LootBoxStock[]
 
@@ -126,8 +126,8 @@ model Transaction {
   totalCost   Float
   timestamp   DateTime @default(now())
   status      String   @default("COMPLETED")
-  publicNote  String?  // Optional public note
-  privateNote String?  // Optional private note
+  publicNote  String? // Optional public note
+  privateNote String? // Optional private note
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -190,12 +190,12 @@ model Verification {
 }
 
 model AlphaVantageNews {
-  id         String   @id @default(cuid()) @map("_id")
-  tickers    String   @default("NVDA") // Comma-separated list of tickers
-  data       Json     // Store the full API response as JSON
-  expiresAt  DateTime // When the cache expires
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid()) @map("_id")
+  tickers   String   @default("NVDA") // Comma-separated list of tickers
+  data      Json // Store the full API response as JSON
+  expiresAt DateTime // When the cache expires
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tickers])
   @@map("alphavantage_news")
@@ -218,9 +218,9 @@ model MarketSentiment {
   bullishCount  Int      @default(0)
   bearishCount  Int      @default(0)
   timestamp     DateTime @default(now())
-  mostDiscussed Json     // Array of most discussed stocks
-  topPicks      Json     // Array of stocks voted as top picks
-  marketTrend   Json     // Market trend predictions (sectors, volatility, etc)
+  mostDiscussed Json // Array of most discussed stocks
+  topPicks      Json // Array of stocks voted as top picks
+  marketTrend   Json // Market trend predictions (sectors, volatility, etc)
   date          String   @unique // YYYY-MM-DD format to track daily sentiment
 
   @@index([timestamp])
@@ -230,14 +230,14 @@ model MarketSentiment {
 model UserVote {
   id          String   @id @default(cuid()) @map("_id")
   userId      String
-  date        String   // YYYY-MM-DD format
-  sentiment   String   // "bullish" or "bearish"
-  topPick     String?  // Stock symbol user picked to perform best
-  marketTrend String?  // User's market trend prediction
+  date        String // YYYY-MM-DD format
+  sentiment   String // "bullish" or "bearish"
+  topPick     String? // Stock symbol user picked to perform best
+  marketTrend String? // User's market trend prediction
   timestamp   DateTime @default(now())
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, date])
   @@index([userId])
   @@index([date])
@@ -245,24 +245,24 @@ model UserVote {
 }
 
 model Achievement {
-  id          String   @id @default(cuid()) @map("_id")
+  id          String            @id @default(cuid()) @map("_id")
   name        String
   description String
   image       String?
   users       UserAchievement[]
-  
+
   @@map("achievement")
 }
 
 model UserAchievement {
-  id            String       @id @default(cuid()) @map("_id")
+  id            String   @id @default(cuid()) @map("_id")
   userId        String
   achievementId String
-  earnedAt      DateTime     @default(now())
+  earnedAt      DateTime @default(now())
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  achievement  Achievement  @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, achievementId]) 
+  @@unique([userId, achievementId])
   @@map("user_achievement")
 }
