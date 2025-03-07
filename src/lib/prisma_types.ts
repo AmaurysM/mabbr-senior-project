@@ -59,3 +59,11 @@ export type UserStocks = Prisma.UserStockGetPayload<{
 }>[];
 
 export type LootBox = Prisma.LootBoxGetPayload<object>;
+
+export type UserAchievements = Prisma.UserAchievementGetPayload<{
+  include: {
+    achievement: true
+  }
+}>[];
+
+export type Achievements = Prisma.AchievementGetPayload<object>[];
