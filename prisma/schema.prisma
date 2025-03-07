@@ -39,6 +39,8 @@ model User {
   userStocks    UserStock[]
   userLootBoxes UserLootBox[]
 
+  achievements    UserAchievement[] // Relation to UserAchievement
+
   @@map("user")
 }
 
@@ -240,4 +242,27 @@ model UserVote {
   @@index([userId])
   @@index([date])
   @@map("user_vote")
+}
+
+model Achievement {
+  id          String   @id @default(cuid()) @map("_id")
+  name        String
+  description String
+  image       String?
+  users       UserAchievement[]
+  
+  @@map("achievement")
+}
+
+model UserAchievement {
+  id            String       @id @default(cuid()) @map("_id")
+  userId        String
+  achievementId String
+  earnedAt      DateTime     @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement  Achievement  @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId]) 
+  @@map("user_achievement")
 }

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { authClient } from "@/lib/auth-client";
 import { toast } from '@/app/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { Achievement, UserAchievement } from '@prisma/client';
 
 interface EditableFieldProps {
     value: string;
@@ -134,6 +135,57 @@ const ProfilePage = () => {
     const [userId, setUserId] = useState<string | null>(null);
     const [imageError, setImageError] = useState(false);
 
+    // Achievement stuff
+    const [achievements, setAchievements] = useState<Achievement[]>([]);
+    const [achievementsLoading, setAchievementsLoading] = useState(true);
+
+
+    const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
+    const [UserAchievementsLoading, setUserAchievementsLoading] = useState(true);
+
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setAchievementsLoading(true);
+        const fetchAchievements = async () => {
+            try {
+                const response = await fetch('/api/achievements');
+                if (!response.ok) throw new Error('Failed to fetch achievements');
+                const data = await response.json();
+                setAchievements(data);
+            } catch (err) {
+                setError((err as Error).message);
+            } finally {
+                setAchievementsLoading(false);
+            }
+        };
+        
+        fetchAchievements();
+    }, []);
+
+    useEffect(() => {
+        setUserAchievementsLoading(true);
+        const fetchUserAchievements = async () => {
+            try {
+                const response = await fetch('/api/user/achievements'); 
+                if (!response.ok) {
+                    if (response.status === 401) throw new Error('Unauthorized: Please log in.');
+                    throw new Error('Failed to fetch user achievements.');
+                }
+                const data = await response.json();
+                setUserAchievements(data);                
+            } catch (err) {
+                setError((err as Error).message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        fetchUserAchievements();
+    }, []);
+    
+    //
+
     useEffect(() => {
         // Fetch user data when component mounts
         const fetchUserData = async () => {
@@ -189,6 +241,9 @@ const ProfilePage = () => {
 
         fetchUserData();
     }, []);
+
+
+
 
     const handleImageClick = () => {
         fileInputRef.current?.click();
@@ -285,7 +340,7 @@ const ProfilePage = () => {
 
             // Update local state
             setEmail(newEmail);
-            
+
             // Show success message
             toast({
                 title: "Success",
@@ -299,7 +354,7 @@ const ProfilePage = () => {
                     newEmail: newEmail,
                     callbackURL: "/login-signup",
                 });
-                
+
                 // Reload the page to get fresh data
                 window.location.href = '/profile';
             } catch (error) {
@@ -440,13 +495,13 @@ const ProfilePage = () => {
                                     <p className="text-white whitespace-pre-wrap">{bio}</p>
                                 ) : (
                                     <div className="space-y-2">
-                    <textarea
-                        value={newBio}
-                        onChange={(e) => setNewBio(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700/30 rounded-lg border border-white/5
+                                        <textarea
+                                            value={newBio}
+                                            onChange={(e) => setNewBio(e.target.value)}
+                                            className="w-full px-3 py-2 bg-gray-700/30 rounded-lg border border-white/5
                                focus:border-blue-500/50 focus:outline-none transition-colors text-white"
-                        rows={4}
-                    />
+                                            rows={4}
+                                        />
                                         <div className="flex space-x-2">
                                             <button
                                                 onClick={updateBio}
@@ -499,9 +554,9 @@ const ProfilePage = () => {
                             <div>
                                 <p className="text-sm text-gray-400">Balance</p>
                                 <p className="text-2xl font-bold text-white">
-                                    ${balance.toLocaleString(undefined, { 
-                                        minimumFractionDigits: 2, 
-                                        maximumFractionDigits: 2 
+                                    ${balance.toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
                                     })}
                                 </p>
                             </div>

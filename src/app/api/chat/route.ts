@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
         ...(before ? { timestamp: { lt: new Date(before) } } : {}),
       },
       orderBy: {
-        timestamp: 'desc',
+        timestamp: 'asc',
       },
       take: limit,
       include: {
