@@ -7,6 +7,7 @@ import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
 import CompactStockCard from '../components/CompactStockCard';
 import TransactionCard from '@/app/components/TransactionCard';
 import useSWR from 'swr';
+import { debounce } from 'lodash';
 
 interface Trade {
   id: string;
@@ -132,15 +133,36 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
 
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [searchedSymbols, setSearchedSymbols] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // Load favorites from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedFavorites = localStorage.getItem('stockFavorites');
       if (savedFavorites) {
         setFavorites(new Set(JSON.parse(savedFavorites)));
       }
+      const savedSearched = localStorage.getItem('searchedStocks');
+      if (savedSearched) {
+        setSearchedSymbols(new Set(JSON.parse(savedSearched)));
+      }
     }
   }, []);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stockFavorites', JSON.stringify(Array.from(favorites)));
+    }
+  }, [favorites]);
+
+  // Save searched symbols to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('searchedStocks', JSON.stringify(Array.from(searchedSymbols)));
+    }
+  }, [searchedSymbols]);
 
   useEffect(() => {
     if (user) {
@@ -160,12 +182,6 @@ const HomePage = () => {
       fetchFavorites();
     }
   }, [user]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('stockFavorites', JSON.stringify(Array.from(favorites)));
-    }
-  }, [favorites]);
 
   const toggleFavorite = useCallback(
       async (symbol: string) => {
@@ -206,16 +222,15 @@ const HomePage = () => {
   );
 
   // Get symbols to fetch
-  const symbolsToFetch = Array.from(
-      new Set([
-        ...DEFAULT_STOCKS.map((stock) => stock.symbol),
-        ...(user ? Object.keys(portfolio?.positions || {}) : []),
-      ])
-  );
+  const symbolsToFetch = Array.from(new Set([
+    ...DEFAULT_STOCKS.map(stock => stock.symbol),
+    ...(user ? Object.keys(portfolio?.positions || {}) : []),
+    ...Array.from(searchedSymbols)
+  ]));
 
   // Use SWR for stock data
   const { stocks: swrStocks, filteredStocks, isLoading: isLoadingStocks, isError, mutate: mutateStocks } =
-      useStockData(symbolsToFetch, searchTerm);
+      useStockData(symbolsToFetch, searchQuery);
 
   useEffect(() => {
     setMounted(true);
@@ -375,57 +390,42 @@ const HomePage = () => {
   );
 
   // Debounced search function
-  const searchStock = async (symbol: string) => {
-    try {
-      setIsSearching(true);
-      setSearchError('');
-      const response = await fetch(`/api/stock?symbol=${symbol}`);
-      const data = await response.json();
-      if (data.error) {
-        setSearchError(`No stock found for "${symbol}"`);
-        return null;
+  const debouncedSearch = useCallback(
+    debounce(async (query: string) => {
+      if (!query) {
+        setIsSearching(false);
+        return;
       }
-      return {
-        symbol: symbol.toUpperCase(),
-        name: data.quoteResponse.result[0].shortName || symbol,
-        description: data.quoteResponse.result[0].longName || '',
-        price: data.quoteResponse.result[0].regularMarketPrice,
-        change: data.quoteResponse.result[0].regularMarketChange,
-        changePercent: data.quoteResponse.result[0].regularMarketChangePercent,
-        chartData: Array(24)
-            .fill(0)
-            .map((_, i) => ({
-              time: i.toString(),
-              price: data.quoteResponse.result[0].regularMarketPrice + Math.random() * 10 - 5,
-            })),
-      };
-    } catch (error) {
-      console.error('Error searching stock:', error);
-      setSearchError('Failed to fetch stock data');
-      return null;
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
-  // Handle debounced search
-  useEffect(() => {
-    const handleSearch = async () => {
-      if (!searchTerm.trim()) return;
-      const term = searchTerm.toUpperCase().trim();
-      if (/^[A-Z]{1,5}$/.test(term) && !swrStocks.some((s) => s.symbol === term)) {
-        const newStock = await searchStock(term);
-        if (newStock) {
-          mutateStocks(
-              (prev) => ({ stocks: [...(prev?.stocks || []), newStock] }),
-              false
-          );
+      const symbol = query.toUpperCase().trim();
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.error) {
+            // Add the searched symbol to our tracked symbols
+            setSearchedSymbols(prev => {
+              const newSymbols = new Set(prev);
+              newSymbols.add(symbol);
+              return newSymbols;
+            });
+          }
         }
+      } catch (error) {
+        console.error('Error searching stocks:', error);
       }
-    };
-    const timeoutId = setTimeout(handleSearch, 500);
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, swrStocks, mutateStocks]);
+      setIsSearching(false);
+    }, 300),
+    []
+  );
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    debouncedSearch(query);
+  };
 
   const handleAddFriend = async () => {
     if (!user || !friendEmail) return;
@@ -631,8 +631,8 @@ const HomePage = () => {
               <div className="relative">
                 <input
                     type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
                     placeholder="Search for a stock"
                     className="w-full px-5 py-2 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
                 />
@@ -690,7 +690,7 @@ const HomePage = () => {
               ) : filteredStocks.length === 0 && !searchError ? (
                   <div className="text-center p-6">
                     <p className="text-gray-400">
-                      {searchTerm ? `No stocks found matching "${searchTerm}"` : 'Enter a stock symbol to search'}
+                      {searchQuery ? `No stocks found matching "${searchQuery}"` : 'Enter a stock symbol to search'}
                     </p>
                   </div>
               ) : (
