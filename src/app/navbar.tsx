@@ -148,6 +148,13 @@ const Navbar = () => {
                             >
                               Your Profile
                             </Link>
+                            <Link
+                                href="/achievements"
+                                className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                                onClick={() => setProfileDropdownOpen(false)}
+                            >
+                              Achievements
+                            </Link>
                             <hr className="my-1 border-gray-200" />
                             <button
                                 onClick={handleSignOut}

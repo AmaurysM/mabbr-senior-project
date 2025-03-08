@@ -1,23 +1,39 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { Achievements } from '@/lib/prisma_types';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-
-    const request:Achievements = await prisma.achievement.findMany({});
-    
-    if (!request) {
-      return NextResponse.json({ error: 'Friend request not found' }, { status: 404 });
-    }
-    console.log("User Achievements [/api/achievements/route.ts]:", request);
-
-    return NextResponse.json( request ?? []);
-    
+    const achievements = await prisma.achievement.findMany({
+      include: {
+        users: true, // Include users who earned the achievement
+      },
+    });
+    return NextResponse.json(achievements);
   } catch (error) {
-    console.error('Error accepting friend request:', error);
-    return NextResponse.json({
-      error: 'Failed to accept friend request'
-    }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to fetch achievements' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
-} 
+}
+
+export async function POST(request: Request) {
+  const { userId, achievementId } = await request.json();
+
+  try {
+    const userAchievement = await prisma.userAchievement.create({
+      data: {
+        userId,
+        achievementId,
+      },
+    });
+    return NextResponse.json(userAchievement);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to add user to achievement' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
