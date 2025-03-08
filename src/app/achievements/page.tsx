@@ -1,6 +1,5 @@
 'use client'
 import React, { useEffect, useState } from 'react';
-import AchievementCard from '../components/AchievementCardProps';
 import { Achievement } from './AchievementInterface';
 import './Achievements.css';
 
@@ -28,50 +27,46 @@ const Achievements: React.FC = () => {
     fetchAchievements();
   }, []);
 
-  const addUserToAchievement = async (userId: string, achievementId: string) => {
-    try {
-      const response = await fetch('/api/achievements', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, achievementId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add user to achievement');
-      }
-
-      const newUserAchievement = await response.json();
-      console.log('User added to achievement:', newUserAchievement);
-      // Optionally, update the local state to reflect the new user achievement
-      setAchievementsData((prev) =>
-        prev.map((achievement) =>
-          achievement.id === achievementId
-            ? { ...achievement, users: [...(achievement.users || []), newUserAchievement] } // Ensure users is treated as an array
-            : achievement
-        )
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
     <div className="achievements-page">
       <h1>Achievements</h1>
-      <div className="achievements-list">
-        {achievementsData.map((achievement) => (
-          <AchievementCard key={achievement.id} achievement={achievement} />
-        ))}
-      </div>
-      {/* Example button to add a user to an achievement */}
-      <button onClick={() => addUserToAchievement('user-id-example', 'achievement-id-example')}>
-        Add User to Achievement
-      </button>
+      <table className="achievements-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Image</th>
+            <th>Users Earned</th>
+          </tr>
+        </thead>
+        <tbody>
+          {achievementsData.map((achievement) => (
+            <tr key={achievement.id}>
+              <td>{achievement.name}</td>
+              <td>{achievement.description}</td>
+              <td>
+                {achievement.image ? (
+                  <img src={achievement.image} alt={achievement.name} className="achievement-image" />
+                ) : (
+                  'No Image'
+                )}
+              </td>
+              <td>
+                {achievement.users && achievement.users.length > 0 ? (
+                  achievement.users.map((user) => (
+                    <div key={user.userId}>{user.userId}</div>
+                  ))
+                ) : (
+                  'No Users'
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
