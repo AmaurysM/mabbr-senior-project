@@ -456,7 +456,72 @@ const HomePage = () => {
         {/* Header and Account Info */}
         <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
           <h2 className="text-2xl font-bold text-white mb-3">Paper Trading Account</h2>
-          {/* ...Account details omitted for brevity... */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
+              <h3 className="text-lg font-medium text-gray-300 mb-1">Cash</h3>
+              <p className="text-2xl font-semibold text-green-400">
+                ${portfolio.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-sm text-gray-400 mt-1">Available for trading</p>
+            </div>
+            <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
+              <h3 className="text-lg font-medium text-gray-300 mb-1">Holdings</h3>
+              {(() => {
+                const holdingsValue = Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
+                  const stock = swrStocks.find(s => s.symbol === symbol);
+                  const value = stock ? position.shares * stock.price : 0;
+                  return total + value;
+                }, 0);
+                
+                const color = holdingsValue > 0 ? 'text-blue-400' : 'text-gray-400';
+                
+                return (
+                  <>
+                    <p className={`text-2xl font-semibold ${color}`}>
+                      ${holdingsValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {holdingsValue > 0 ? 'Current market value' : 'No stocks yet'}
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+            <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
+              <h3 className="text-lg font-medium text-gray-300 mb-1">Net Worth</h3>
+              {(() => {
+                const holdingsValue = Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
+                  const stock = swrStocks.find(s => s.symbol === symbol);
+                  const value = stock ? position.shares * stock.price : 0;
+                  return total + value;
+                }, 0);
+                
+                const netWorth = portfolio.balance + holdingsValue;
+                const initialBalance = 100000;
+                const percentChange = ((netWorth - initialBalance) / initialBalance) * 100;
+                
+                let color = 'text-gray-400';
+                if (percentChange > 0) color = 'text-green-400';
+                if (percentChange < 0) color = 'text-red-400';
+                
+                return (
+                  <>
+                    <p className={`text-2xl font-semibold ${color}`}>
+                      ${netWorth.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </p>
+                    <p className={`text-sm ${color} mt-1 flex items-center`}>
+                      {percentChange !== 0 && (
+                        <span className="mr-1">
+                          {percentChange > 0 ? '↑' : '↓'}
+                        </span>
+                      )}
+                      {Math.abs(percentChange).toFixed(2)}% {percentChange > 0 ? 'gain' : percentChange < 0 ? 'loss' : ''}
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
           {!user && (
               <div className="mt-4 flex items-center justify-center bg-gray-700/20 rounded-lg p-3 border border-white/5">
                 <p className="text-gray-400 mr-3">
