@@ -1,0 +1,28 @@
+.achievements-page {
+    padding: 20px;
+  }
+  
+  .achievements-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  .achievement-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 15px;
+    width: 200px;
+    text-align: center;
+  }
+  
+  .achievement-card.unlocked {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+  }
+  
+  .achievement-card.locked {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+  }
+  
