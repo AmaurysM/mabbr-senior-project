@@ -1,15 +1,17 @@
 import prisma from "@/lib/prisma";
+import { authPlugin } from "@/middlewarePlugin";
 import { betterAuth, BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { openAPI } from "better-auth/plugins";
+import { authClient } from "./auth-client";
+import { headers } from "next/headers";
 
-// Define environment variable type checking
 const requiredEnvVars = {
   NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-  NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL: process.env.NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL,
+  NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL:
+    process.env.NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL,
 } as const;
 
-// Validate environment variables
 Object.entries(requiredEnvVars).forEach(([key, value]) => {
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -17,26 +19,35 @@ Object.entries(requiredEnvVars).forEach(([key, value]) => {
 });
 
 export const auth = betterAuth({
-  
   database: prismaAdapter(prisma, {
     provider: "mongodb",
-    // Add error handling for database connection
   }),
-  
+
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
-    // BUG: Prob a bug with updateAge method. It throws an error - Argument `where` of type SessionWhereUniqueInput needs at least one of `id` arguments. 
-    // As a workaround, set updateAge to a large value for now.
-    updateAge: 60 * 60 * 24 * 7, // 7 days (every 7 days the session expiration is updated)
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24 * 7,
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60 // Cache duration in seconds
-    }
+      maxAge: 5 * 60,
+    },
   },
 
-  plugins: [
-    openAPI({})
-  ],
+  plugins: [openAPI({})],
+
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+    discord: {
+      clientId: process.env.DISCORD_CLIENT_ID as string,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET as string,
+    },
+  },
 
   emailAndPassword: {
     enabled: true,
@@ -46,38 +57,61 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: false,
     autoSignInAfterVerification: true,
-    // Uncomment and implement email verification when ready
-    // sendVerificationEmail: async ({ user, token }) => {
-    //   try {
-    //     const verificationUrl = new URL('/api/auth/verify-email', requiredEnvVars.NEXT_PUBLIC_BETTER_AUTH_URL);
-    //     verificationUrl.searchParams.set('token', token);
-    //     verificationUrl.searchParams.set('callbackURL', requiredEnvVars.NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL);
-    //
-    //     await sendEmail({
-    //       to: user.email,
-    //       subject: "Verify your email address",
-    //       text: `Click the link to verify your email: ${verificationUrl.toString()}`,
-    //     });
-    //   } catch (error) {
-    //     console.error('Failed to send verification email:', error);
-    //     throw new Error('Failed to send verification email');
-    //   }
-    // },
   },
-  
-
 } satisfies BetterAuthOptions);
 
-// Type inference for session
-export type Session = typeof auth.$Infer.Session;
+interface SessionData {
+  user?: {
+    id: string;
+    email: string;
+    [key: string]: any;
+  };
+  expires?: string;
+}
 
-// Helper to ensure auth is properly initialized
-export const getAuthStatus = async () => {
+export async function getSession() {
   try {
-    const status = await auth;
-    return status;
+    const response = await auth.api.getSession({
+      headers: await headers(), // you need to pass the headers object.
+    });
+
+    if (!response) {
+      return null;
+    }
+
+    return await response;
   } catch (error) {
-    console.error('Failed to check auth status:', error);
+    console.error("Failed to fetch session:", error);
     return null;
   }
-};
+}
+
+export async function isAuthenticated(): Promise<boolean> {
+  const session = await getSession();
+  return !!session?.user;
+}
+
+export async function getCurrentUser() {
+  const session = await getSession();
+  return session?.user || null;
+}
+
+interface CachedAuth {
+  isAuthenticated: boolean;
+  timestamp: number;
+}
+
+let authCache: CachedAuth | null = null;
+const AUTH_CACHE_DURATION = 30 * 1000; // 30 seconds
+
+export async function checkAuthWithCache(): Promise<boolean> {
+  const now = Date.now();
+
+  if (authCache && now - authCache.timestamp < AUTH_CACHE_DURATION) {
+    return authCache.isAuthenticated;
+  }
+
+  const authenticated = await isAuthenticated();
+  authCache = { isAuthenticated: authenticated, timestamp: now };
+  return authenticated;
+}

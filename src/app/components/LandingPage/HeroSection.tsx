@@ -7,17 +7,6 @@ import dynamic from 'next/dynamic';
 const Bubble = dynamic(() => import('../Bubble'));
 
 const HeroSection = () => {
-  useEffect(() => {
-    const preloadLoginPage = () => {
-      const linkTag = document.createElement('link');
-      linkTag.rel = 'preload';
-      linkTag.as = 'fetch';
-      linkTag.href = '/login-signup';
-      linkTag.crossOrigin = 'anonymous';
-      document.head.appendChild(linkTag);
-    };
-    preloadLoginPage();
-  }, []);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700">

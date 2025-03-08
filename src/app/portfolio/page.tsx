@@ -30,7 +30,7 @@ const UserPortfolio: React.FC = () => {
           {/* Risk Assessment Section */}
           <section className="bg-gray-800 rounded-xl shadow-lg p-6">
             <h2 className="text-3xl font-bold text-white mb-4">
-              Risk Assessment
+             Risk Assessment
             </h2>
             <Risk />
           </section>

@@ -1,5 +1,5 @@
 import prismaClientSingleton from "@/lib/prisma";
-import { Prisma, PrismaClient, Stock } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 type DatabaseOperation<T> = Promise<T>;
 type DbResult<T> = Promise<[T | null, Error | null]>;
@@ -23,7 +23,7 @@ export const db = {
     findById: (id: string) =>
       db.execute((client) =>
         client.user.findUnique({
-          where: { id }, // Convert ID properly
+          where: { id },
         })
       ),
 
@@ -41,6 +41,7 @@ export const db = {
         email: string;
         premium: boolean;
         balance: number;
+        badgeImage: string; // Added support for badgeImage update
       }>
     ) =>
       db.execute((client) =>
@@ -62,6 +63,7 @@ export const db = {
           });
         })
       ),
+
     sendRequest: (requesterId: string, recipientId: string) =>
       db.execute((client) =>
         client.friendship.create({
@@ -141,7 +143,6 @@ export const db = {
       ),
   },
 
-
   transactions: {
     create: (data: {
       userId: string;
@@ -163,6 +164,12 @@ export const db = {
   },
 
   lootBoxes: {
+    findall: () =>
+      db.execute((client) =>
+        client.lootBox.findMany({
+          
+        })
+      ),
     /**
      * Find all loot boxes a user has purchased.
      */
@@ -181,22 +188,28 @@ export const db = {
       db.execute((client) =>
         client.lootBox.findUnique({
           where: { id: lootBoxId },
-          include: { stocks: true }, // Include stocks inside loot box
+          include: { stocks: true },
         })
       ),
 
     /**
-     * Create a new loot box with given stocks.
+     * Create a new loot box with the given name, price, and stocks.
      */
-    create: (stockSymbols: { symbol: string; quantity: number }[]) =>
+    create: (data: {
+      name: string;
+      price: number;
+      stocks: { symbol: string; quantity: number }[];
+    }) =>
       db.execute((client) =>
         client.$transaction(async (tx: Prisma.TransactionClient) => {
-          // Create the loot box
-          const lootBox = await tx.lootBox.create({ data: {} });
+          // Create the loot box with a name and price
+          const lootBox = await tx.lootBox.create({
+            data: { name: data.name, price: data.price },
+          });
 
           // Add stocks to the loot box
           const stocks = await Promise.all(
-            stockSymbols.map((stock) =>
+            data.stocks.map((stock) =>
               tx.lootBoxStock.create({
                 data: {
                   lootBoxId: lootBox.id,
@@ -280,7 +293,7 @@ export const db = {
                   userId: userLootBox.userId,
                   symbol: stock.symbol,
                   quantity: stock.quantity,
-                  avgPrice: 0, // Set actual price if necessary
+                  avgPrice: 0, // Adjust avgPrice as needed
                 },
               })
             )
@@ -291,7 +304,7 @@ export const db = {
             where: { userLootBoxId },
           });
     
-          // Delete the user's loot box
+          // Delete the user's loot box record
           return tx.userLootBox.delete({
             where: { id: userLootBoxId },
           });
