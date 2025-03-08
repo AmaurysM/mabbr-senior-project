@@ -7,6 +7,7 @@ import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
 import CompactStockCard from '../components/CompactStockCard';
 import TransactionCard from '@/app/components/TransactionCard';
 import useSWR from 'swr';
+import { debounce } from 'lodash';
 
 interface Trade {
   id: string;
@@ -132,15 +133,36 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
 
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [searchedSymbols, setSearchedSymbols] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // Load favorites from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedFavorites = localStorage.getItem('stockFavorites');
       if (savedFavorites) {
         setFavorites(new Set(JSON.parse(savedFavorites)));
       }
+      const savedSearched = localStorage.getItem('searchedStocks');
+      if (savedSearched) {
+        setSearchedSymbols(new Set(JSON.parse(savedSearched)));
+      }
     }
   }, []);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stockFavorites', JSON.stringify(Array.from(favorites)));
+    }
+  }, [favorites]);
+
+  // Save searched symbols to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('searchedStocks', JSON.stringify(Array.from(searchedSymbols)));
+    }
+  }, [searchedSymbols]);
 
   useEffect(() => {
     if (user) {
@@ -160,12 +182,6 @@ const HomePage = () => {
       fetchFavorites();
     }
   }, [user]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('stockFavorites', JSON.stringify(Array.from(favorites)));
-    }
-  }, [favorites]);
 
   const toggleFavorite = useCallback(
       async (symbol: string) => {
@@ -206,16 +222,15 @@ const HomePage = () => {
   );
 
   // Get symbols to fetch
-  const symbolsToFetch = Array.from(
-      new Set([
-        ...DEFAULT_STOCKS.map((stock) => stock.symbol),
-        ...(user ? Object.keys(portfolio?.positions || {}) : []),
-      ])
-  );
+  const symbolsToFetch = Array.from(new Set([
+    ...DEFAULT_STOCKS.map(stock => stock.symbol),
+    ...(user ? Object.keys(portfolio?.positions || {}) : []),
+    ...Array.from(searchedSymbols)
+  ]));
 
   // Use SWR for stock data
   const { stocks: swrStocks, filteredStocks, isLoading: isLoadingStocks, isError, mutate: mutateStocks } =
-      useStockData(symbolsToFetch, searchTerm);
+      useStockData(symbolsToFetch, searchQuery);
 
   useEffect(() => {
     setMounted(true);
@@ -375,57 +390,49 @@ const HomePage = () => {
   );
 
   // Debounced search function
-  const searchStock = async (symbol: string) => {
-    try {
-      setIsSearching(true);
-      setSearchError('');
-      const response = await fetch(`/api/stock?symbol=${symbol}`);
-      const data = await response.json();
-      if (data.error) {
-        setSearchError(`No stock found for "${symbol}"`);
-        return null;
+  const debouncedSearch = useCallback(
+    debounce(async (query: string) => {
+      if (!query) {
+        setIsSearching(false);
+        return;
       }
-      return {
-        symbol: symbol.toUpperCase(),
-        name: data.quoteResponse.result[0].shortName || symbol,
-        description: data.quoteResponse.result[0].longName || '',
-        price: data.quoteResponse.result[0].regularMarketPrice,
-        change: data.quoteResponse.result[0].regularMarketChange,
-        changePercent: data.quoteResponse.result[0].regularMarketChangePercent,
-        chartData: Array(24)
-            .fill(0)
-            .map((_, i) => ({
-              time: i.toString(),
-              price: data.quoteResponse.result[0].regularMarketPrice + Math.random() * 10 - 5,
-            })),
-      };
-    } catch (error) {
-      console.error('Error searching stock:', error);
-      setSearchError('Failed to fetch stock data');
-      return null;
-    } finally {
+
+      const symbol = query.toUpperCase().trim();
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.error) {
+            // Add the searched symbol to our tracked symbols
+            setSearchedSymbols(prev => {
+              const newSymbols = new Set(prev);
+              newSymbols.add(symbol);
+              return newSymbols;
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error searching stocks:', error);
+      }
       setIsSearching(false);
+    }, 300),
+    []
+  );
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    // If search is cleared, reset searchedSymbols
+    if (!query.trim()) {
+      setSearchedSymbols(new Set());
+      localStorage.removeItem('searchedStocks');
+    } else {
+      debouncedSearch(query);
     }
   };
-
-  // Handle debounced search
-  useEffect(() => {
-    const handleSearch = async () => {
-      if (!searchTerm.trim()) return;
-      const term = searchTerm.toUpperCase().trim();
-      if (/^[A-Z]{1,5}$/.test(term) && !swrStocks.some((s) => s.symbol === term)) {
-        const newStock = await searchStock(term);
-        if (newStock) {
-          mutateStocks(
-              (prev) => ({ stocks: [...(prev?.stocks || []), newStock] }),
-              false
-          );
-        }
-      }
-    };
-    const timeoutId = setTimeout(handleSearch, 500);
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, swrStocks, mutateStocks]);
 
   const handleAddFriend = async () => {
     if (!user || !friendEmail) return;
@@ -456,7 +463,72 @@ const HomePage = () => {
         {/* Header and Account Info */}
         <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
           <h2 className="text-2xl font-bold text-white mb-3">Paper Trading Account</h2>
-          {/* ...Account details omitted for brevity... */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
+              <h3 className="text-lg font-medium text-gray-300 mb-1">Cash</h3>
+              <p className="text-2xl font-semibold text-green-400">
+                ${portfolio.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-sm text-gray-400 mt-1">Available for trading</p>
+            </div>
+            <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
+              <h3 className="text-lg font-medium text-gray-300 mb-1">Holdings</h3>
+              {(() => {
+                const holdingsValue = Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
+                  const stock = swrStocks.find(s => s.symbol === symbol);
+                  const value = stock ? position.shares * stock.price : 0;
+                  return total + value;
+                }, 0);
+                
+                const color = holdingsValue > 0 ? 'text-blue-400' : 'text-gray-400';
+                
+                return (
+                  <>
+                    <p className={`text-2xl font-semibold ${color}`}>
+                      ${holdingsValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {holdingsValue > 0 ? 'Current market value' : 'No stocks yet'}
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+            <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
+              <h3 className="text-lg font-medium text-gray-300 mb-1">Net Worth</h3>
+              {(() => {
+                const holdingsValue = Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
+                  const stock = swrStocks.find(s => s.symbol === symbol);
+                  const value = stock ? position.shares * stock.price : 0;
+                  return total + value;
+                }, 0);
+                
+                const netWorth = portfolio.balance + holdingsValue;
+                const initialBalance = 100000;
+                const percentChange = ((netWorth - initialBalance) / initialBalance) * 100;
+                
+                let color = 'text-gray-400';
+                if (percentChange > 0) color = 'text-green-400';
+                if (percentChange < 0) color = 'text-red-400';
+                
+                return (
+                  <>
+                    <p className={`text-2xl font-semibold ${color}`}>
+                      ${netWorth.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </p>
+                    <p className={`text-sm ${color} mt-1 flex items-center`}>
+                      {percentChange !== 0 && (
+                        <span className="mr-1">
+                          {percentChange > 0 ? '↑' : '↓'}
+                        </span>
+                      )}
+                      {Math.abs(percentChange).toFixed(2)}% {percentChange > 0 ? 'gain' : percentChange < 0 ? 'loss' : ''}
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
           {!user && (
               <div className="mt-4 flex items-center justify-center bg-gray-700/20 rounded-lg p-3 border border-white/5">
                 <p className="text-gray-400 mr-3">
@@ -566,8 +638,8 @@ const HomePage = () => {
               <div className="relative">
                 <input
                     type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
                     placeholder="Search for a stock"
                     className="w-full px-5 py-2 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
                 />
@@ -625,7 +697,7 @@ const HomePage = () => {
               ) : filteredStocks.length === 0 && !searchError ? (
                   <div className="text-center p-6">
                     <p className="text-gray-400">
-                      {searchTerm ? `No stocks found matching "${searchTerm}"` : 'Enter a stock symbol to search'}
+                      {searchQuery ? `No stocks found matching "${searchQuery}"` : 'Enter a stock symbol to search'}
                     </p>
                   </div>
               ) : (
