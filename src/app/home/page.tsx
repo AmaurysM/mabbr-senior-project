@@ -245,7 +245,10 @@ const HomePage = () => {
           return;
         }
         const data = await res.json();
-        if (data.user) {
+
+        if (!data){
+          ;
+        }else if (data.user) {
           setUser(data.user);
         }
         setLoading(false);
