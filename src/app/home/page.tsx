@@ -424,7 +424,14 @@ const HomePage = () => {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    debouncedSearch(query);
+    
+    // If search is cleared, reset searchedSymbols
+    if (!query.trim()) {
+      setSearchedSymbols(new Set());
+      localStorage.removeItem('searchedStocks');
+    } else {
+      debouncedSearch(query);
+    }
   };
 
   const handleAddFriend = async () => {
