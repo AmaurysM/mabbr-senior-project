@@ -103,7 +103,7 @@ const NotificationBell: React.FC = () => {
       if (data.success) {
         setRequests(data.requests || []);
       } else {
-        console.error('Failed to fetch friend requests');
+        // console.error('Failed to fetch friend requests');
         setRequests([]);
       }
     } catch (error) {
