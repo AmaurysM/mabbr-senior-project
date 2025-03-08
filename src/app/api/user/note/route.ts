@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -18,7 +18,7 @@ export async function GET() {
 
     const request: UserTransactions = await prisma.transaction.findMany({
       where: { userId },
-      orderBy: { timestamp: "asc" },
+      orderBy: { timestamp: "desc" },
     });
 
     return NextResponse.json(request ?? []);

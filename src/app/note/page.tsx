@@ -132,14 +132,14 @@ const StockNotes = () => {
       <div className="w-1/4 min-w-64 border-r overflow-y-auto">
         <div className="p-4 border-b sticky top-0 bg-white z-10 shadow-sm">
           <h1 className="text-xl font-bold">Stock Notes</h1>
-          <p className="text-sm text-gray-500">{transactions.length} transactions with notes</p>
+          <p className="text-sm text-gray-500">{transactions.length} Notes</p>
         </div>
 
         <StockNotesList
           transactions={transactions}
           selectedTransactionId={selectedTransactionId}
           setSelectedTransactionId={setSelectedTransactionId}
-          getNotePreview={(t) => (t.publicNote || t.privateNote || "").slice(0, 60) + "..."}
+          getNotePreview={(t) => (t.publicNote || t.privateNote || "")}
         />
       </div>
 
