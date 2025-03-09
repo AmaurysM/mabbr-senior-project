@@ -84,3 +84,5 @@ export type Achievements = Prisma.AchievementGetPayload<object>[];
 export type UserTransactions = Prisma.TransactionGetPayload<object>[];
 export type UserTransaction = Prisma.TransactionGetPayload<object>;
 
+export type AlphaVantageNews = Prisma.AlphaVantageNewsGetPayload<object>;
+
