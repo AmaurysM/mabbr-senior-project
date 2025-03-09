@@ -23,7 +23,7 @@ import { useToast } from "@/app/hooks/use-toast";
 import GitHubLoginButton from "@/app/components/LoginWithGithub";
 import GoogleLoginButton from "@/app/components/LoginWithGoogle";
 import DiscordLoginButton from "@/app/components/LoginWithDiscord";
-import { Toaster } from "@/app/components/ui/sonner" // Adjust the import path accordingly
+import { Toaster } from "@/app/components/ui/sonner" 
 
 
 
