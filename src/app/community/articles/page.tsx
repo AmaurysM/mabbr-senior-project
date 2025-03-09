@@ -1,16 +1,10 @@
 'use client';
 
 import LoadingStateAnimation from '@/app/components/LoadingState';
+import { NewsItem, Ticker } from '@/lib/prisma_types';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 
-interface NewsItem {
-  title: string;
-  url: string;
-  summary: string;
-  tickers: Array<{ ticker: string; sentiment_score: number; ticker_sentiment_score?: number }>;
-  time: string;
-}
 
 const Articles = () => {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
@@ -24,12 +18,6 @@ const Articles = () => {
 
   const handleViewArticle = (article: NewsItem) => {
     const url = new URL(article.url); 
-    const path = url.pathname.replace(/^\/+/, ''); 
-  
-    const pathSegments = path.split('/');
-    const articleIdentifier = pathSegments[pathSegments.length - 2]; 
-    console.log(url)
-
     router.push(`/community/articles/${url}`)
   };
 
@@ -75,7 +63,7 @@ const Articles = () => {
         }
         setNewsItems((prev) => [...prev, ...data.news]);
         setHasMore(data.hasMore);
-      } catch (err) {
+      } catch {
         setNewsError('Failed to fetch news. Please try again later.');
       } finally {
         setIsLoadingNews(false);
@@ -148,7 +136,7 @@ const Articles = () => {
                 <p className="text-sm text-gray-300 mt-2 mb-4 line-clamp-3">{item.summary}</p>
 
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {item.tickers?.map((ticker: any, i: number) => {
+                  {item.tickers?.map((ticker: Ticker, i: number) => {
                     const sentiment = ticker.ticker_sentiment_score || 0;
                     let bgColor = 'bg-gray-700/40';
                     let textColor = 'text-gray-300';
@@ -202,7 +190,7 @@ const Articles = () => {
 
       {!isLoadingNews && !hasMore && newsItems.length > 0 && (
         <div className="text-center py-8 text-gray-400 border-t border-gray-700/30 mt-8">
-          You've reached the end of the news feed
+          You&apos;ve reached the end of the news feed
         </div>
       )}
 

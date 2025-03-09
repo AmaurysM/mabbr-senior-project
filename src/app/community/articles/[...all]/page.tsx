@@ -3,38 +3,46 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/app/util/dateFormatter";
 import LoadingStateAnimation from "@/app/components/LoadingState";
+import { NewsItem } from "@/lib/prisma_types";
+import { ExternalLink } from "lucide-react";
+import useSWR, { mutate } from "swr"; // Import useSWR and mutate
+import { authClient } from "@/lib/auth-client";
+import Image from 'next/image';
 
-interface NewsItem {
-  title: string;
-  url: string;
-  summary: string;
-  tickers: Array<{
-    ticker: string;
-    sentiment_score: number;
-    ticker_sentiment_score?: number;
-  }>;
-  time: string;
+interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    image?: string;
+  };
 }
+
+// SWR fetcher function
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
   // Unwrap the params promise
   const { all } = React.use(params);
   const [article, setArticle] = useState<NewsItem | null>(null);
   const [comment, setComment] = useState("");
-  const [comments, setComments] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
   const router = useRouter();
+  const { data: session } = authClient.useSession()
 
   // Convert the catch-all segments into a slug string
   const slug = Array.isArray(all) ? all.join("/") : all;
 
+  // Fetch article
   useEffect(() => {
     console.log("Fetching article for slug:", slug);
     if (slug) {
       fetch(`/api/news/specificNews/${slug}`)
         .then((res) => res.json())
         .then((data) => {
-          // Assuming the API returns { news: NewsItem[] }
           if (data.news && data.news.length > 0) {
             setArticle(data.news[0]);
           } else {
@@ -47,6 +55,53 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
     }
   }, [slug]);
 
+  const { data: commentsData, error: commentsError } = useSWR(
+    article?.url ? `/api/news/comments?newsUrl=${encodeURIComponent(article.url)}` : null,
+    fetcher,
+    {
+      refreshInterval: 10000, // Refresh every 10 seconds
+      revalidateOnFocus: true, // Refresh when tab gets focus
+      dedupingInterval: 2000, // Deduplicate requests within 2 seconds
+    }
+  );
+
+  const comments: Comment[] = commentsData?.comments || [];
+
+  const submitComment = async () => {
+    if (!comment.trim() || !article?.url || !session) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/news/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: comment,
+          newsUrl: article.url,
+        }),
+      });
+
+      const newComment = await response.json();
+
+      if (response.ok) {
+        setComment("");
+
+        mutate(`/api/news/comments?newsUrl=${encodeURIComponent(article.url)}`);
+      } else {
+        console.error("Error posting comment:", newComment.error);
+        alert("Failed to post comment. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting comment:", error);
+      alert("An error occurred while posting your comment.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleGoBack = () => {
     router.back();
   };
@@ -54,6 +109,17 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
   const truncateText = (text: string, maxLength: number = 150) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    return formatDate(dateString);
   };
 
   if (!article) {
@@ -76,7 +142,17 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
           </svg>
           <span className="ml-1 ">Back</span>
         </button>
-        <h1 className="text-3xl text-white flex-1">{article.title}</h1>
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-white hover:text-blue-400 transition-colors inline-flex items-center"
+        >
+          <span className="inline-flex items-center text-3xl">
+            {article.title}
+            <ExternalLink className="w-5 h-5 ml-1 opacity-75" />
+          </span>
+        </a>
       </div>
 
       <div className="mb-4">
@@ -102,10 +178,10 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
               <span
                 key={idx}
                 className={`px-2 py-1 rounded-md text-sm  ${ticker.sentiment_score > 0
-                    ? 'bg-green-900 text-green-300'
-                    : ticker.sentiment_score < 0
-                      ? 'bg-red-900 text-red-300'
-                      : 'bg-gray-700 text-gray-300'
+                  ? 'bg-green-900 text-green-300'
+                  : ticker.sentiment_score < 0
+                    ? 'bg-red-900 text-red-300'
+                    : 'bg-gray-700 text-gray-300'
                   }`}
               >
                 {ticker.ticker}
@@ -122,42 +198,69 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
 
       {/* Comments Section */}
       <div className="mt-6 border-t border-gray-700 pt-4">
-        <h3 className="text-lg font-semibold text-gray-300 mb-3">Comments</h3>
+        <h3 className="text-lg font-semibold text-gray-300 mb-3">
+          Comments {comments.length > 0 && `(${comments.length})`}
+        </h3>
 
         <div className="mb-4">
           <textarea
             className="w-full mt-2 p-3 border border-gray-600 bg-gray-800 text-white resize-none focus:border-blue-500 focus:outline-none"
-            placeholder="Join the discussion..."
+            placeholder={session ? "Join the discussion..." : "Sign in to comment"}
             rows={3}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
+            disabled={!session || isSubmitting}
           />
           <div className="flex justify-end mt-2">
-            <button
-              onClick={() => {
-                if (comment.trim()) {
-                  setComments([...comments, comment]);
-                  setComment("");
-                }
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-              disabled={!comment.trim()}
-            >
-              Post Comment
-            </button>
+            {!session ? (
+              <button
+                onClick={() => router.push('/auth/signin')}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white transition-colors"
+              >
+                Sign in to Comment
+              </button>
+            ) : (
+              <button
+                onClick={submitComment}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:bg-blue-800 disabled:opacity-50"
+                disabled={!comment.trim() || isSubmitting}
+              >
+                {isSubmitting ? "Posting..." : "Post Comment"}
+              </button>
+            )}
           </div>
         </div>
 
         <div className="mt-4 space-y-4">
-          {comments.length > 0 ? (
-            comments.map((c, index) => (
-              <div key={index} className="border-t border-gray-700 pt-3">
+          {commentsError ? (
+            <p className="text-red-500">Error loading comments. Please refresh the page.</p>
+          ) : !commentsData ? (
+            <div className="flex justify-center py-4">
+              <LoadingStateAnimation />
+            </div>
+          ) : comments.length > 0 ? (
+            comments.map((c) => (
+              <div key={c.id} className="border-t border-gray-700 pt-3">
                 <div className="flex items-center text-sm text-gray-400 mb-1">
-                  <span className="font-medium">User</span>
+                  <div className="flex items-center">
+                    {c.user.image && (
+                      <Image
+                        src={c.user.image}
+                        alt={c.user.name || 'User Avatar'}
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded-full mr-2"
+                        onError={(e) => {
+                          e.currentTarget.src = '/path/to/fallback-image.jpg'; // Fallback image
+                        }}
+                      />
+                    )}
+                    <span className="font-medium">{c.user.name}</span>
+                  </div>
                   <span className="mx-2">•</span>
-                  <span>Just now</span>
+                  <span>{formatRelativeTime(c.createdAt)}</span>
                 </div>
-                <p className="text-gray-300">{c}</p>
+                <p className="text-gray-300">{c.content}</p>
               </div>
             ))
           ) : (

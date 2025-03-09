@@ -52,14 +52,13 @@ export type FriendRequests = Prisma.FriendshipGetPayload<{
   include: {
     requester: {
       select: {
-        id: true,
-        name: true,
-        email: true
-      }
-    }
-  }
+        id: true;
+        name: true;
+        email: true;
+      };
+    };
+  };
 }>[];
-
 
 export type LootBoxWithStock = Prisma.LootBoxStockGetPayload<{
   include: {
@@ -68,15 +67,15 @@ export type LootBoxWithStock = Prisma.LootBoxStockGetPayload<{
 }>;
 
 export type UserStocks = Prisma.UserStockGetPayload<{
-  include: { stock: true }
+  include: { stock: true };
 }>[];
 
 export type LootBox = Prisma.LootBoxGetPayload<object>;
 
 export type UserAchievements = Prisma.UserAchievementGetPayload<{
   include: {
-    achievement: true
-  }
+    achievement: true;
+  };
 }>[];
 
 export type Achievements = Prisma.AchievementGetPayload<object>[];
@@ -86,3 +85,29 @@ export type UserTransaction = Prisma.TransactionGetPayload<object>;
 
 export type AlphaVantageNews = Prisma.AlphaVantageNewsGetPayload<object>;
 
+export interface NewsItem {
+  title: string;
+  url: string;
+  summary: string;
+  tickers: Ticker[];
+  time: string;
+}
+
+export interface Ticker {
+  ticker: string;
+  sentiment_score: number;
+  ticker_sentiment_score?: number;
+}
+
+export type UserPostReposts = Prisma.UserPostRepostGetPayload<{
+  include: {
+    post: {
+      include: {
+        children: true;
+        likes: true;
+      };
+    };
+  };
+}>[];
+
+export type Post = Prisma.PostGetPayload<object>;
