@@ -7,15 +7,23 @@ import LoadingStateAnimation from '../components/LoadingState';
 import { FaBell, FaHashtag, FaUser, FaUsers } from 'react-icons/fa';
 import { IoIosDocument } from 'react-icons/io';
 import GlobalFeed from './globalFeed/page';
-
-
-
+import Notifications from './notifications/page';
 
 const CommunityPage = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const [activeComponent, setActiveComponent] = useState('globalFeed');
+  // Load active component from localStorage or default to 'globalFeed'
+  const [activeComponent, setActiveComponent] = useState(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('activeComponent') || 'globalFeed' : 'globalFeed';
+  });
+
+  // Save active component to localStorage on change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeComponent', activeComponent);
+    }
+  }, [activeComponent]);
 
   // Check authentication and fetch initial data
   useEffect(() => {
@@ -44,9 +52,6 @@ const CommunityPage = () => {
 
     init();
   }, []);
-
-  // Add effect to run on component mount to check if a new day has started
-  
 
   if (loading) return <div className="flex justify-center items-center h-screen"><LoadingStateAnimation /></div>;
 
@@ -118,41 +123,10 @@ const CommunityPage = () => {
       <div className="flex-grow">
           {/* Conditional rendering based on active component */}
           {activeComponent === 'globalFeed' && <GlobalFeed user={user}/>}
+          {activeComponent === 'notifications' && <Notifications user={user}/>}
       </div>
-
-      {/* Add custom scrollbar styles */}
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };
 
 export default CommunityPage;
-
-
