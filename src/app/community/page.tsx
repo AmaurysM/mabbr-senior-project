@@ -121,7 +121,7 @@ const CommunityPage = () => {
       <div className="flex-grow">
           {/* Conditional rendering based on active component */}
           {activeComponent === 'globalFeed' && <GlobalFeed user={user}/>}
-          {activeComponent === 'notifications' && <Notifications user={user}/>}
+          {activeComponent === 'notifications' && <Notifications/>}
           {activeComponent === 'articles' && <Articles/>}
 
       </div>

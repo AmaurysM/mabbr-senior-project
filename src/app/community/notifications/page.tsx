@@ -5,7 +5,7 @@ import { Bell } from "lucide-react";
 import LoadingStateAnimation from "@/app/components/LoadingState";
 import { FriendRequests } from "@/lib/prisma_types";
 
-const Notifications = ({ user }) => {
+const Notifications = () => {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<FriendRequests>([]);
 

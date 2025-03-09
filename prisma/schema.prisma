@@ -16,34 +16,42 @@ model User {
   email          String        @unique
   emailVerified  Boolean       @default(false)
   image          String?
-  badgeImage     String? // New field for the badge image
+  badgeImage     String?
   premium        Boolean       @default(false)
   role           String        @default("user")
   banned         Boolean       @default(false)
   banReason      String?
-  banExpires     Int? // Unix timestamp for ban expiration
+  banExpires     Int?
   balance        Float         @default(100000.0)
-  bio            String?       @default("No bio yet.") // Added bio field
+  bio            String?       @default("No bio yet.") 
+
   chatMessages   ChatMessage[]
   votes          UserVote[]
   favoriteStocks String[]      @default([])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  sessions     Session[]
-  accounts     Account[]
-  transactions Transaction[]
-  following    Friendship[]  @relation(name: "FollowerRelation")
-  followers    Friendship[]  @relation(name: "FollowingRelation")
+  sessions       Session[]
+  accounts       Account[]
+  transactions   Transaction[]
+  following      Friendship[]  @relation(name: "FollowerRelation")
+  followers      Friendship[]  @relation(name: "FollowingRelation")
 
-  userStocks    UserStock[]
-  userLootBoxes UserLootBox[]
+  userStocks     UserStock[]
+  userLootBoxes  UserLootBox[]
+  achievements   UserAchievement[]
 
-  achievements UserAchievement[] // Relation to UserAchievement
+  posts          Post[]        @relation("UserPosts") 
+  reposts        UserPostRepost[] 
 
+  likes          UserLike[]    
+  NewsComment NewsComment[]
+  
   @@map("user")
 }
+
+
 
 model LootBox {
   id            String         @id @default(cuid()) @map("_id")
@@ -218,10 +226,10 @@ model MarketSentiment {
   bullishCount  Int      @default(0)
   bearishCount  Int      @default(0)
   timestamp     DateTime @default(now())
-  mostDiscussed Json // Array of most discussed stocks
-  topPicks      Json // Array of stocks voted as top picks
-  marketTrend   Json // Market trend predictions (sectors, volatility, etc)
-  date          String   @unique // YYYY-MM-DD format to track daily sentiment
+  mostDiscussed Json 
+  topPicks      Json 
+  marketTrend   Json 
+  date          String   @unique 
 
   @@index([timestamp])
   @@map("market_sentiment")
@@ -230,10 +238,10 @@ model MarketSentiment {
 model UserVote {
   id          String   @id @default(cuid()) @map("_id")
   userId      String
-  date        String // YYYY-MM-DD format
-  sentiment   String // "bullish" or "bearish"
-  topPick     String? // Stock symbol user picked to perform best
-  marketTrend String? // User's market trend prediction
+  date        String 
+  sentiment   String 
+  topPick     String? 
+  marketTrend String? 
   timestamp   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -265,4 +273,70 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@map("user_achievement")
+}
+
+model Post {
+  id        String   @id @default(cuid()) @map("_id")
+  content   String?  
+  imageUrl  String?  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User     @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
+
+  likes     UserLike[]
+
+  parentId  String?  
+  parent    Post?    @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Post[]   @relation("CommentThread")
+
+  repostId  String?  
+  repost    Post?    @relation("RepostRelation", fields: [repostId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reposts   Post[]   @relation("RepostRelation")
+
+  repostedBy UserPostRepost[]  
+
+  @@map("post")
+}
+
+
+model UserPostRepost {
+  id      String   @id @default(cuid()) @map("_id") // Use a single primary key
+  userId  String
+  postId  String
+
+  user    User     @relation(fields: [userId], references: [id])
+  post    Post     @relation(fields: [postId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId]) 
+  @@map("user_post_repost")
+}
+
+
+
+
+model UserLike {
+  id      String @id @default(cuid()) @map("_id")
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId  String
+  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model NewsComment {
+  id        String   @id @default(cuid()) @map("_id")
+  content   String
+  newsUrl   String   // URL of the news article
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([newsUrl])
+  @@map("news_comment")
 }
