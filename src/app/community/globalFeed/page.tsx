@@ -41,7 +41,7 @@ interface LeaderboardEntry {
   totalValue: number;
 }
 
-const GlobalFeed = ({user}) => {
+const GlobalFeed = ({ user }) => {
   const { toast } = useToast();
 
   const router = useRouter();
@@ -438,7 +438,7 @@ const GlobalFeed = ({user}) => {
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+    <div className="flex flex-col gap-6">
       {/* Daily Market Vote Panel */}
       {user && showVotePanel && (
         <div className="mb-6 bg-blue-900/30 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-blue-500/20 animate-fadeIn">
@@ -536,161 +536,77 @@ const GlobalFeed = ({user}) => {
           </form>
         </div>
       )}
+
       {/* Left Column - Global Chat */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col ">
-        <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
 
-        {/* Chat Messages */}
-        <div className="flex-grow overflow-y-auto mb-4 pr-2 custom-scrollbar">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start gap-3 ${message.user.id === (user?.id || 'guest')
-                  ? 'bg-blue-600/20 rounded-xl p-3'
-                  : 'bg-gray-700/30 rounded-xl p-3'
-                  }`}
-              >
-                <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
-                  {message.user.image ? (
-                    <Image
-                      src={message.user.image}
-                      alt={message.user.name}
-                      width={40}
-                      height={40}
-                      className="object-cover"
-                    />
-                  ) : (
-                    <UserCircleIcon className="w-10 h-10 text-gray-400" />
-                  )}
-                </div>
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col ">
+          <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
 
-                <div className="flex-grow">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold text-white">{message.user.name}</span>
-                    <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
+          {/* Chat Messages */}
+          <div className="flex-grow overflow-y-auto mb-4 pr-2 custom-scrollbar">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex items-start gap-3 ${message.user.id === (user?.id || 'guest')
+                    ? 'bg-blue-600/20 rounded-xl p-3'
+                    : 'bg-gray-700/30 rounded-xl p-3'
+                    }`}
+                >
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
+                    {message.user.image ? (
+                      <Image
+                        src={message.user.image}
+                        alt={message.user.name}
+                        width={40}
+                        height={40}
+                        className="object-cover"
+                      />
+                    ) : (
+                      <UserCircleIcon className="w-10 h-10 text-gray-400" />
+                    )}
                   </div>
-                  <p className="text-gray-200">{message.content}</p>
+
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-white">{message.user.name}</span>
+                      <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
+                    </div>
+                    <p className="text-gray-200">{message.content}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-        </div>
-
-        {/* Message Input */}
-        {user ? (
-          <form onSubmit={handleSendMessage} className="mt-auto">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Share your market insights..."
-                className="flex-grow px-4 py-3 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="px-6 py-3 bg-blue-600 rounded-xl text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Send
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="mt-auto bg-gray-700/20 rounded-xl p-4 border border-white/5 text-center">
-            <p className="text-gray-300 mb-3">Login to join the conversation</p>
-            <button
-              onClick={() => router.push('/login-signup')}
-              className="px-6 py-2 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
-            >
-              Login
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Right Column - Leaderboards & Friends */}
-      <div className="flex flex-col gap-6">
-        {/* Global Leaderboard */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
-          <h2 className="text-xl font-bold text-white mb-4">Global Leaderboard</h2>
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Rank</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Trader</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Profit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboard.length > 0 ? (
-                  leaderboard.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <span className={`
-                            inline-flex items-center justify-center w-6 h-6 rounded-full 
-                            ${entry.rank === 1 ? 'bg-yellow-500/20 text-yellow-300' :
-                            entry.rank === 2 ? 'bg-gray-400/20 text-gray-300' :
-                              entry.rank === 3 ? 'bg-orange-500/20 text-orange-300' :
-                                'bg-gray-700/50 text-gray-400'}
-                            font-bold text-xs
-                          `}>
-                          {entry.rank}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-white">{entry.name}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={entry.profit >= 0 ? 'text-green-400' : 'text-red-400'}>
-                          ${entry.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr className="border-b border-white/5">
-                    <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                      Loading leaderboard data...
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-
-            <div className="mt-3 text-center">
-              <button
-                onClick={() => router.push('/leaderboards')}
-                className="text-blue-400 hover:text-blue-300 text-sm"
-              >
-                View Full Leaderboard →
-              </button>
+              ))}
+              <div ref={chatEndRef} />
             </div>
           </div>
-        </div>
 
-        {/* Friends Stats */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
-          <h2 className="text-xl font-bold text-white mb-4">Friends Activity</h2>
-
+          {/* Message Input */}
           {user ? (
-            <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
-              <p className="text-gray-300 mb-3">No friends added yet</p>
-              <p className="text-gray-400 text-sm mb-4">Add friends to see their trading activity</p>
-            </div>
+            <form onSubmit={handleSendMessage} className="mt-auto">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Share your market insights..."
+                  className="flex-grow px-4 py-3 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim()}
+                  className="px-6 py-3 bg-blue-600 rounded-xl text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Send
+                </button>
+              </div>
+            </form>
           ) : (
-            <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
-              <p className="text-gray-300 mb-3">Login to see friends activity</p>
+            <div className="mt-auto bg-gray-700/20 rounded-xl p-4 border border-white/5 text-center">
+              <p className="text-gray-300 mb-3">Login to join the conversation</p>
               <button
                 onClick={() => router.push('/login-signup')}
-                className="px-4 py-2 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
+                className="px-6 py-2 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
               >
                 Login
               </button>
@@ -698,89 +614,177 @@ const GlobalFeed = ({user}) => {
           )}
         </div>
 
-        {/* Market Sentiment */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-white">Market Sentiment</h2>
-            {user && hasVoted && (
-              <button
-                onClick={() => setShowVotePanel(true)}
-                className="text-sm text-blue-400 hover:text-blue-300"
-              >
-                View Vote
-              </button>
+        {/* Right Column - Leaderboards & Friends */}
+        <div className="flex flex-col gap-6">
+          {/* Global Leaderboard */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+            <h2 className="text-xl font-bold text-white mb-4">Global Leaderboard</h2>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Rank</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Trader</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.length > 0 ? (
+                    leaderboard.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <span className={`
+                            inline-flex items-center justify-center w-6 h-6 rounded-full 
+                            ${entry.rank === 1 ? 'bg-yellow-500/20 text-yellow-300' :
+                              entry.rank === 2 ? 'bg-gray-400/20 text-gray-300' :
+                                entry.rank === 3 ? 'bg-orange-500/20 text-orange-300' :
+                                  'bg-gray-700/50 text-gray-400'}
+                            font-bold text-xs
+                          `}>
+                            {entry.rank}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-white">{entry.name}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={entry.profit >= 0 ? 'text-green-400' : 'text-red-400'}>
+                            ${entry.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="border-b border-white/5">
+                      <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                        Loading leaderboard data...
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              <div className="mt-3 text-center">
+                <button
+                  onClick={() => router.push('/leaderboards')}
+                  className="text-blue-400 hover:text-blue-300 text-sm"
+                >
+                  View Full Leaderboard →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Friends Stats */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+            <h2 className="text-xl font-bold text-white mb-4">Friends Activity</h2>
+
+            {user ? (
+              <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
+                <p className="text-gray-300 mb-3">No friends added yet</p>
+                <p className="text-gray-400 text-sm mb-4">Add friends to see their trading activity</p>
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
+                <p className="text-gray-300 mb-3">Login to see friends activity</p>
+                <button
+                  onClick={() => router.push('/login-signup')}
+                  className="px-4 py-2 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Login
+                </button>
+              </div>
             )}
           </div>
 
-          <div className="space-y-4">
-            <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300">Bulls vs Bears</span>
-                {sentiment && (
-                  <span className="text-green-400">
-                    {Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}% Bullish
-                  </span>
-                )}
-              </div>
-              {sentiment && (
-                <div className="w-full bg-gray-600/50 rounded-full h-2.5">
-                  <div
-                    className="bg-green-500 h-2.5 rounded-full"
-                    style={{
-                      width: `${Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}%`
-                    }}
-                  />
-                </div>
+          {/* Market Sentiment */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Market Sentiment</h2>
+              {user && hasVoted && (
+                <button
+                  onClick={() => setShowVotePanel(true)}
+                  className="text-sm text-blue-400 hover:text-blue-300"
+                >
+                  View Vote
+                </button>
               )}
             </div>
 
-            <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300">Most Likely to Outperform</span>
-                {sentiment?.topPicks[0] && (
-                  <span className="text-blue-400">{sentiment.topPicks[0].symbol}</span>
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-300">Bulls vs Bears</span>
+                  {sentiment && (
+                    <span className="text-green-400">
+                      {Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}% Bullish
+                    </span>
+                  )}
+                </div>
+                {sentiment && (
+                  <div className="w-full bg-gray-600/50 rounded-full h-2.5">
+                    <div
+                      className="bg-green-500 h-2.5 rounded-full"
+                      style={{
+                        width: `${Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}%`
+                      }}
+                    />
+                  </div>
                 )}
               </div>
-              <div className="flex gap-2 mt-1 flex-wrap">
-                {sentiment?.topPicks.map(stock => (
-                  <span
-                    key={stock.symbol}
-                    className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full"
-                  >
-                    {stock.symbol}
-                  </span>
-                ))}
-                {(!sentiment?.topPicks || sentiment.topPicks.length === 0) && (
-                  <span className="text-xs text-gray-400">No top picks yet - be the first to vote!</span>
-                )}
-              </div>
-            </div>
 
-            <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300">Top Index Prediction</span>
-                {sentiment?.marketTrend[0] && (
-                  <span className="text-yellow-400">{sentiment.marketTrend[0].trend}</span>
-                )}
+              <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-300">Most Likely to Outperform</span>
+                  {sentiment?.topPicks[0] && (
+                    <span className="text-blue-400">{sentiment.topPicks[0].symbol}</span>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  {sentiment?.topPicks.map(stock => (
+                    <span
+                      key={stock.symbol}
+                      className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full"
+                    >
+                      {stock.symbol}
+                    </span>
+                  ))}
+                  {(!sentiment?.topPicks || sentiment.topPicks.length === 0) && (
+                    <span className="text-xs text-gray-400">No top picks yet - be the first to vote!</span>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2 mt-1 flex-wrap">
-                {sentiment?.marketTrend.map(trend => (
-                  <span
-                    key={trend.trend}
-                    className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full"
-                  >
-                    {trend.trend}
-                  </span>
-                ))}
-                {(!sentiment?.marketTrend || sentiment.marketTrend.length === 0) && (
-                  <span className="text-xs text-gray-400">No index predictions yet - be the first to vote!</span>
-                )}
+
+              <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-300">Top Index Prediction</span>
+                  {sentiment?.marketTrend[0] && (
+                    <span className="text-yellow-400">{sentiment.marketTrend[0].trend}</span>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  {sentiment?.marketTrend.map(trend => (
+                    <span
+                      key={trend.trend}
+                      className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full"
+                    >
+                      {trend.trend}
+                    </span>
+                  ))}
+                  {(!sentiment?.marketTrend || sentiment.marketTrend.length === 0) && (
+                    <span className="text-xs text-gray-400">No index predictions yet - be the first to vote!</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
+        <Toaster />
       </div>
-      <Toaster/>
     </div>
   )
 }

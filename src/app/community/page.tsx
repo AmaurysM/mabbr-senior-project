@@ -8,24 +8,22 @@ import { FaBell, FaHashtag, FaUser, FaUsers } from 'react-icons/fa';
 import { IoIosDocument } from 'react-icons/io';
 import GlobalFeed from './globalFeed/page';
 import Notifications from './notifications/page';
+import Articles from './articles/page';
 
 const CommunityPage = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load active component from localStorage or default to 'globalFeed'
   const [activeComponent, setActiveComponent] = useState(() => {
     return typeof window !== 'undefined' ? localStorage.getItem('activeComponent') || 'globalFeed' : 'globalFeed';
   });
 
-  // Save active component to localStorage on change
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('activeComponent', activeComponent);
     }
   }, [activeComponent]);
 
-  // Check authentication and fetch initial data
   useEffect(() => {
     const init = async () => {
       try {
@@ -124,6 +122,8 @@ const CommunityPage = () => {
           {/* Conditional rendering based on active component */}
           {activeComponent === 'globalFeed' && <GlobalFeed user={user}/>}
           {activeComponent === 'notifications' && <Notifications user={user}/>}
+          {activeComponent === 'articles' && <Articles/>}
+
       </div>
     </div>
   );
