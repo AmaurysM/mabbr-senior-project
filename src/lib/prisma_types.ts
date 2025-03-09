@@ -48,6 +48,19 @@ export type UserLootBox = Prisma.UserLootBoxGetPayload<{
   };
 }>;
 
+export type FriendRequests = Prisma.FriendshipGetPayload<{
+  include: {
+    requester: {
+      select: {
+        id: true,
+        name: true,
+        email: true
+      }
+    }
+  }
+}>[];
+
+
 export type LootBoxWithStock = Prisma.LootBoxStockGetPayload<{
   include: {
     stock: true;
