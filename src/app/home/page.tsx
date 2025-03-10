@@ -7,6 +7,7 @@ import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
 import CompactStockCard from '../components/CompactStockCard';
 import TransactionCard from '@/app/components/TransactionCard';
 import useSWR from 'swr';
+// @ts-ignore
 import { debounce } from 'lodash';
 
 interface Trade {
@@ -263,7 +264,12 @@ const HomePage = () => {
   // Function to fetch user's transactions
   const fetchTransactions = async () => {
     try {
-      const res = await fetch('/api/user/transactions');
+      const res = await fetch('/api/user/transactions', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setTransactions(data.transactions);
@@ -272,6 +278,32 @@ const HomePage = () => {
       console.error('Error fetching transactions:', error);
     }
   };
+
+  // Set up polling for transactions and listen for friend request acceptance
+  useEffect(() => {
+    if (user) {
+      // Initial fetch
+      fetchTransactions();
+      
+      // Set up polling every 30 seconds
+      const intervalId = setInterval(() => {
+        fetchTransactions();
+      }, 30000);
+      
+      // Set up custom event listener for friend request acceptance
+      const handleFriendAccepted = () => {
+        console.log('Friend request accepted, refreshing transactions');
+        fetchTransactions();
+      };
+      
+      window.addEventListener('friendRequestAccepted', handleFriendAccepted);
+      
+      return () => {
+        clearInterval(intervalId);
+        window.removeEventListener('friendRequestAccepted', handleFriendAccepted);
+      };
+    }
+  }, [user]);
 
   // Function to fetch user's portfolio
   useEffect(() => {
@@ -301,14 +333,6 @@ const HomePage = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [user]);
-
-  // Poll transactions if logged in
-  useEffect(() => {
-    if (!user) return;
-    fetchTransactions();
-    const intervalId = setInterval(fetchTransactions, 30000);
-    return () => clearInterval(intervalId);
   }, [user]);
 
   useEffect(() => {
