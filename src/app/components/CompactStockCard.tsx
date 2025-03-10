@@ -261,15 +261,6 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
 
           {/* Middle section: Extended info and position info if owned */}
           <div className="flex-1 flex items-center justify-start">
-            {shares > 0 && (
-                <div className="mr-8">
-                  <div className="text-white font-semibold">{shares.toFixed(2)} shares</div>
-                  <div className={`text-sm ${profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)} ({profitLossPercent.toFixed(2)}%)
-                  </div>
-                </div>
-            )}
-
             <div className="hidden md:grid grid-cols-3 gap-8 flex-1">
               <div>
                 <div className="text-xs text-gray-400">Volume</div>
@@ -501,9 +492,44 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
               ) : (
                   detailedData && (
                       <div className="space-y-8">
+                        {/* Position Information - Only shown if user owns shares */}
+                        {shares > 0 && (
+                          <div className="mb-6">
+                            <div className="flex items-center mb-3">
+                              <div className="w-1 h-5 bg-blue-500 rounded-full mr-2"></div>
+                              <h4 className="text-xl font-bold text-white">Your Position</h4>
+                            </div>
+                            <div className="bg-blue-900/10 backdrop-blur-sm border border-blue-500/20 rounded-lg p-4 w-full">
+                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                                <div className="text-center">
+                                  <h4 className="text-gray-400 text-sm">Shares Owned</h4>
+                                  <p className="text-white font-semibold">{shares.toFixed(2)} shares</p>
+                                </div>
+                                <div className="text-center">
+                                  <h4 className="text-gray-400 text-sm">Average Price</h4>
+                                  <p className="text-white">${averagePrice.toFixed(2)}</p>
+                                </div>
+                                <div className="text-center">
+                                  <h4 className="text-gray-400 text-sm">Position Value</h4>
+                                  <p className="text-white">${positionValue.toFixed(2)}</p>
+                                </div>
+                                <div className="text-center">
+                                  <h4 className="text-gray-400 text-sm">Profit/Loss</h4>
+                                  <p className={`font-semibold ${profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)} ({profitLossPercent.toFixed(2)}%)
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                           <div className="lg:col-span-1 p-1">
-                            <h3 className="text-xl font-bold text-white mb-4">Company Information</h3>
+                            <div className="flex items-center mb-4">
+                              <div className="w-1 h-5 bg-blue-500 rounded-full mr-2"></div>
+                              <h3 className="text-xl font-bold text-white">Company Information</h3>
+                            </div>
                             <div className="space-y-3">
                               <div>
                                 <h4 className="text-gray-400 text-sm">Company Name</h4>
@@ -616,7 +642,10 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
 
                         {detailedData.recommendationMean && (
                             <div>
-                              <h3 className="text-xl font-bold text-white mb-4">Analyst Ratings</h3>
+                              <div className="flex items-center mb-4">
+                                <div className="w-1 h-5 bg-blue-500 rounded-full mr-2"></div>
+                                <h3 className="text-xl font-bold text-white">Analyst Ratings</h3>
+                              </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-gray-800/70 rounded-lg p-4">
                                   <div className="flex justify-between items-center mb-2">
@@ -648,7 +677,10 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
 
                         {detailedData.longBusinessSummary && (
                             <div>
-                              <h3 className="text-xl font-bold text-white mb-4">About {detailedData.shortName || symbol}</h3>
+                              <div className="flex items-center mb-4">
+                                <div className="w-1 h-5 bg-blue-500 rounded-full mr-2"></div>
+                                <h3 className="text-xl font-bold text-white">About {detailedData.shortName || symbol}</h3>
+                              </div>
                               <p className="text-gray-300 leading-relaxed">
                                 {detailedData.longBusinessSummary}
                               </p>
