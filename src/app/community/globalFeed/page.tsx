@@ -8,6 +8,7 @@ import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { Toaster } from "@/app/components/ui/sonner"
 import { useToast } from "@/app/hooks/use-toast";
 import LoadingStateAnimation from '@/app/components/LoadingState';
+import TransactionCard from '@/app/components/TransactionCard';
 
 interface Message {
   id: string;
@@ -138,6 +139,8 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [sentiment, setSentiment] = useState<MarketSentiment | null>(null);
+  const [friendTransactions, setFriendTransactions] = useState<any[]>([]);
+  const [loadingFriendActivity, setLoadingFriendActivity] = useState(true);
 
   const [hasVoted, setHasVoted] = useState<boolean>(false);
   const [showVotePanel, setShowVotePanel] = useState<boolean>(false);
@@ -522,6 +525,35 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
     return <p className="text-gray-200">{formattedContent}</p>;
   };
 
+  // Add a new function to fetch friend transactions
+  const fetchFriendTransactions = async () => {
+    if (!user) {
+      setLoadingFriendActivity(false);
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/user/transactions', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        // Filter only friend transactions (where isCurrentUser is false)
+        const friendActivity = data.transactions.filter((tx: any) => tx.isCurrentUser === false);
+        setFriendTransactions(friendActivity);
+      }
+      
+      setLoadingFriendActivity(false);
+    } catch (error) {
+      console.error('Error fetching friend transactions:', error);
+      setLoadingFriendActivity(false);
+    }
+  };
+
   // Check authentication and fetch initial data
   useEffect(() => {
     const init = async () => {
@@ -569,7 +601,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
   // Scroll to bottom of chat only when messages change
   useEffect(() => {
     if (messages.length > 0) {
-      // Use a timeout to prevent continuous scrolling
       const timer = setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
@@ -579,11 +610,22 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
 
   // Add this new useEffect after the existing one around line 578
   useEffect(() => {
-    // Ensure initial scroll to bottom when the component first loads with messages
     if (!loading && messages.length > 0) {
       chatEndRef.current?.scrollIntoView();
     }
   }, [loading, messages.length]);
+
+  useEffect(() => {
+    fetchFriendTransactions();
+
+    if (user) {
+      const intervalId = setInterval(() => {
+        fetchFriendTransactions();
+      }, 30000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [user]);
 
   // Update the handleSendMessage function to handle case-insensitive symbols
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -947,15 +989,27 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
             </div>
           </div>
 
-          {/* Friends Stats */}
+          {/* Friends Activity */}
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
             <h2 className="text-xl font-bold text-white mb-4">Friends Activity</h2>
 
             {user ? (
-              <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
-                <p className="text-gray-300 mb-3">No friends added yet</p>
-                <p className="text-gray-400 text-sm mb-4">Add friends to see their trading activity</p>
-              </div>
+              loadingFriendActivity ? (
+                <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
+                  <p className="text-gray-300">Loading friend activity...</p>
+                </div>
+              ) : friendTransactions.length > 0 ? (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {friendTransactions.map((transaction) => (
+                    <TransactionCard key={transaction.id} transaction={transaction} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
+                  <p className="text-gray-300 mb-3">No friends added yet</p>
+                  <p className="text-gray-400 text-sm mb-4">Add friends to see their trading activity</p>
+                </div>
+              )
             ) : (
               <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
                 <p className="text-gray-300 mb-3">Login to see friends activity</p>
