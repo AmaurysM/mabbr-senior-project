@@ -113,10 +113,17 @@ export async function GET(req: NextRequest) {
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
     
-    return NextResponse.json({ 
+    // Set cache control headers in the response
+    const response = NextResponse.json({ 
       success: true, 
       transactions: allTransactions 
     });
+    
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
     
   } catch (error) {
     console.error('Error fetching transactions:', error);
