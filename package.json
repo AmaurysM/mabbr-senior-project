@@ -7,7 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed achievements": "ts-node --project tsconfig.seed.json src/seed/achievements.ts"
+    "seedAchievements": "ts-node --project tsconfig.seed.json src/seed/achievements.ts",
+    "seedUsers": "ts-node --project tsconfig.seed.json src/seed/users.ts",
+    "seedStocks": "ts-node --project tsconfig.seed.json src/seed/stocks.ts",
+    "seedLootboxes": "ts-node --project tsconfig.seed.json src/seed/lootboxes.ts",
+    "seedGlobalComments": "ts-node --project tsconfig.seed.json src/seed/globalFeedComments.ts",
+    "seedTransactions": "ts-node --project tsconfig.seed.json src/seed/transactions.ts",
+    "seedAll": "npm run seedAchievements && npm run seedUsers && npm run seedStocks && npm run seedLootboxes && npm run seedGlobalComments && npm run seedTransactions"
   },
   "dependencies": {
     "@arcjet/next": "^1.0.0-beta.3",
@@ -64,6 +70,7 @@
     "postcss": "^8",
     "prisma": "^6.4.1",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   }
 }

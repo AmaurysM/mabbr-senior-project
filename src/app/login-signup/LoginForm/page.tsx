@@ -95,7 +95,6 @@ const LoginForm: React.FC = () => {
                     });
                 },
                 onError: (ctx) => {
-                    console.log("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
                     toast({
                         title: "Something went wrong",
                         description: ctx.error.message ?? "Something went wrong.",

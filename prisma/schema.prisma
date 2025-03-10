@@ -88,7 +88,7 @@ model UserLootBox {
 
 model Stock {
   id            String         @id @default(cuid()) @map("_id")
-  name          String
+  name          String         @unique
   price         Float          @default(0)
   userStocks    UserStock[]
   lootBoxStocks LootBoxStock[]
@@ -314,8 +314,6 @@ model UserPostRepost {
   @@unique([userId, postId]) 
   @@map("user_post_repost")
 }
-
-
 
 
 model UserLike {
