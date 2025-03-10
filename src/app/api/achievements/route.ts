@@ -23,6 +23,22 @@ export async function POST(request: Request) {
   const { userId, achievementId } = await request.json();
 
   try {
+    const existingUserAchievement = await prisma.userAchievement.findUnique({
+      where: {
+        userId_achievementId: {
+          userId,
+          achievementId,
+        },
+      },
+    });
+
+    if (existingUserAchievement) {
+      return NextResponse.json(
+        { message: 'User already has this achievement' },
+        { status: 400 }
+      );
+    }
+
     const userAchievement = await prisma.userAchievement.create({
       data: {
         userId,
