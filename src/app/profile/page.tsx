@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { PencilIcon, CheckIcon, XMarkIcon, CameraIcon } from '@heroicons/react/24/solid';
+import { FunnelIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import { authClient } from "@/lib/auth-client";
 import { toast } from '@/app/hooks/use-toast';
@@ -150,8 +151,14 @@ const ProfilePage = () => {
     const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
     const [UserAchievementsLoading, setUserAchievementsLoading] = useState(true);
 
-    // New state for transactions
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactionFilter, setTransactionFilter] = useState<string>('ALL');
+    const [showFilterDropdown, setShowFilterDropdown] = useState<boolean>(false);
+    const filterDropdownRef = useRef<HTMLDivElement>(null);
+
+    const [portfolioValue, setPortfolioValue] = useState<number>(0);
+    const [stockPositions, setStockPositions] = useState<Record<string, { shares: number; averagePrice: number }>>({});
+    const [portfolioLoading, setPortfolioLoading] = useState<boolean>(true);
 
     // Helper function to format timestamps to relative time
     const formatRelativeTime = (dateString: string) => {
@@ -191,8 +198,93 @@ const ProfilePage = () => {
         }
     };
 
+    // Fetch portfolio data
+    const fetchPortfolioData = async () => {
+        try {
+            setPortfolioLoading(true);
+            const response = await fetch('/api/user/portfolio');
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Calculate total portfolio value of stocks only (excluding balance)
+                let totalStockValue = 0;
+                
+                // Add value of all stock positions
+                Object.entries(data.positions).forEach(([symbol, position]: [string, any]) => {
+                    totalStockValue += position.shares * position.averagePrice;
+                });
+                
+                setPortfolioValue(totalStockValue);
+                setStockPositions(data.positions);
+            }
+        } catch (error) {
+            console.error('Error fetching portfolio data:', error);
+        } finally {
+            setPortfolioLoading(false);
+        }
+    };
+
+    // Calculate profit based on transactions
+    const calculateProfit = () => {
+        let buyTotal = 0;
+        let sellTotal = 0;
+        
+        transactions.forEach(transaction => {
+            if (transaction.type === 'BUY') {
+                buyTotal += transaction.price * transaction.quantity;
+            } else if (transaction.type === 'SELL') {
+                sellTotal += transaction.price * transaction.quantity;
+            }
+        });
+        
+        return sellTotal - buyTotal;
+    };
+
+    const calculateWinRate = () => {
+        const stockTransactions: Record<string, Transaction[]> = {};
+
+        const tradingTransactions = transactions.filter(t => t.type === 'BUY' || t.type === 'SELL');
+        
+        if (tradingTransactions.length === 0) return 0;
+
+        tradingTransactions.forEach(transaction => {
+            if (!stockTransactions[transaction.stockSymbol]) {
+                stockTransactions[transaction.stockSymbol] = [];
+            }
+            stockTransactions[transaction.stockSymbol].push(transaction);
+        });
+        
+        let winningTrades = 0;
+        let totalCompletedTrades = 0;
+
+        Object.values(stockTransactions).forEach(stockTxs => {
+            const buys = stockTxs.filter(t => t.type === 'BUY');
+            const sells = stockTxs.filter(t => t.type === 'SELL');
+
+            if (buys.length === 0 || sells.length === 0) return;
+
+            const totalBuyAmount = buys.reduce((sum, t) => sum + (t.price * t.quantity), 0);
+            const totalBuyQuantity = buys.reduce((sum, t) => sum + t.quantity, 0);
+            const avgBuyPrice = totalBuyAmount / totalBuyQuantity;
+            
+            const totalSellAmount = sells.reduce((sum, t) => sum + (t.price * t.quantity), 0);
+            const totalSellQuantity = sells.reduce((sum, t) => sum + t.quantity, 0);
+            const avgSellPrice = totalSellAmount / totalSellQuantity;
+
+            totalCompletedTrades++;
+
+            if (avgSellPrice > avgBuyPrice) {
+                winningTrades++;
+            }
+        });
+        
+        // Calculate win rate percentage
+        return totalCompletedTrades > 0 ? (winningTrades / totalCompletedTrades) * 100 : 0;
+    };
+
     useEffect(() => {
         fetchTransactions();
+        fetchPortfolioData();
     }, []);
 
     useEffect(() => {
@@ -440,6 +532,26 @@ const ProfilePage = () => {
         }
     };
 
+    // Filter transactions based on selected filter
+    const filteredTransactions = transactions.filter(transaction => {
+        if (transactionFilter === 'ALL') return true;
+        return transaction.type === transactionFilter;
+    });
+
+    // Handle click outside to close the filter dropdown
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+                setShowFilterDropdown(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [filterDropdownRef]);
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
@@ -568,58 +680,188 @@ const ProfilePage = () => {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-400">Win Rate</p>
-                                <p className="text-2xl font-bold text-green-400">68%</p>
+                                {portfolioLoading ? (
+                                    <div className="h-8 w-20 bg-gray-700/50 animate-pulse rounded"></div>
+                                ) : (
+                                    <p className={`text-2xl font-bold ${calculateWinRate() > 50 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {calculateWinRate().toFixed(0)}%
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-sm text-gray-400">Portfolio Value</p>
-                                <p className="text-2xl font-bold text-white">$24,156</p>
+                                {portfolioLoading ? (
+                                    <div className="h-8 w-24 bg-gray-700/50 animate-pulse rounded"></div>
+                                ) : (
+                                    <p className="text-2xl font-bold text-white">
+                                        ${portfolioValue.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-sm text-gray-400">Total Profit</p>
-                                <p className="text-2xl font-bold text-green-400">$5,234</p>
+                                {portfolioLoading ? (
+                                    <div className="h-8 w-20 bg-gray-700/50 animate-pulse rounded"></div>
+                                ) : (
+                                    <p className={`text-2xl font-bold ${calculateProfit() >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        ${Math.abs(calculateProfit()).toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
+                                        {calculateProfit() < 0 ? ' Loss' : ''}
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-sm text-gray-400">Balance</p>
-                                <p className="text-2xl font-bold text-white">
-                                    ${balance.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                })}
-                                </p>
+                                {loading ? (
+                                    <div className="h-8 w-24 bg-gray-700/50 animate-pulse rounded"></div>
+                                ) : (
+                                    <p className="text-2xl font-bold text-white">
+                                        ${balance.toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </section>
 
                     {/* Recent Activity */}
                     <section className="md:col-span-2 bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                        <h2 className="text-2xl font-bold text-white mb-4">Recent Activity</h2>
-                        {transactions.length > 0 ? (
-                            <div className="space-y-4">
-                                {transactions.map((transaction) => (
-                                    <div key={transaction.id} className="bg-gray-700/30 rounded-lg p-4 border border-white/5">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="text-white font-medium">
-                                                    {transaction.type === 'BUY'
-                                                        ? 'Bought'
-                                                        : transaction.type === 'SELL'
-                                                            ? 'Sold'
-                                                            : 'Traded'}{' '}
-                                                    {transaction.stockSymbol}
-                                                </p>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold text-white">Recent Activity</h2>
+                            <div className="flex items-center gap-2">
+                                <div className="text-sm text-gray-400">
+                                    {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+                                </div>
+                                <div className="relative" ref={filterDropdownRef}>
+                                    <button 
+                                        onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                        className="p-1.5 text-gray-400 hover:text-white bg-gray-700/30 rounded border border-white/5 flex items-center gap-1"
+                                    >
+                                        <FunnelIcon className="h-4 w-4" />
+                                        <span className="text-xs">
+                                            {transactionFilter === 'ALL' ? 'All' : 
+                                             transactionFilter === 'BUY' ? 'Buys' :
+                                             transactionFilter === 'SELL' ? 'Sells' :
+                                             transactionFilter === 'LOOTBOX' ? 'Purchases' :
+                                             transactionFilter === 'LOOTBOX_REDEEM' ? 'Redeems' : 'All'}
+                                        </span>
+                                    </button>
+                                    {showFilterDropdown && (
+                                        <div className="absolute right-0 mt-1 w-36 bg-gray-800 border border-white/10 rounded-md shadow-lg z-10">
+                                            <ul className="py-1">
+                                                <li 
+                                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'ALL' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
+                                                    onClick={() => {
+                                                        setTransactionFilter('ALL');
+                                                        setShowFilterDropdown(false);
+                                                    }}
+                                                >
+                                                    All Transactions
+                                                </li>
+                                                <li 
+                                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'BUY' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
+                                                    onClick={() => {
+                                                        setTransactionFilter('BUY');
+                                                        setShowFilterDropdown(false);
+                                                    }}
+                                                >
+                                                    Stock Buys
+                                                </li>
+                                                <li 
+                                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'SELL' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
+                                                    onClick={() => {
+                                                        setTransactionFilter('SELL');
+                                                        setShowFilterDropdown(false);
+                                                    }}
+                                                >
+                                                    Stock Sells
+                                                </li>
+                                                <li 
+                                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'LOOTBOX' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
+                                                    onClick={() => {
+                                                        setTransactionFilter('LOOTBOX');
+                                                        setShowFilterDropdown(false);
+                                                    }}
+                                                >
+                                                    Lootbox Purchases
+                                                </li>
+                                                <li 
+                                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'LOOTBOX_REDEEM' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
+                                                    onClick={() => {
+                                                        setTransactionFilter('LOOTBOX_REDEEM');
+                                                        setShowFilterDropdown(false);
+                                                    }}
+                                                >
+                                                    Lootbox Redeems
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        {filteredTransactions.length > 0 ? (
+                            <div className="h-96 overflow-y-auto pr-2 custom-scrollbar">
+                                <div className="space-y-4">
+                                    {filteredTransactions.map((transaction) => (
+                                        <div key={transaction.id} className="bg-gray-700/30 rounded-lg p-4 border border-white/5">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-white font-medium">
+                                                        {transaction.type === 'BUY'
+                                                            ? 'Bought'
+                                                            : transaction.type === 'SELL'
+                                                                ? 'Sold'
+                                                            : transaction.type === 'LOOTBOX'
+                                                                ? 'Purchased'
+                                                                : transaction.type === 'LOOTBOX_REDEEM'
+                                                                    ? 'Redeemed'
+                                                                    : 'Traded'}{' '}
+                                                        {transaction.type === 'LOOTBOX' 
+                                                            ? 'Lootbox'
+                                                            : transaction.type === 'LOOTBOX_REDEEM'
+                                                                ? `${transaction.stockSymbol} from Lootbox`
+                                                                : transaction.stockSymbol}
+                                                    </p>
+                                                    <p className="text-sm text-gray-400">
+                                                        {transaction.type === 'LOOTBOX'
+                                                            ? `Cost: $${transaction.price.toFixed(2)}`
+                                                            : transaction.type === 'LOOTBOX_REDEEM'
+                                                                ? `Value: $${transaction.price.toFixed(2)}`
+                                                                : `${transaction.quantity} shares at $${transaction.price.toFixed(2)}`}
+                                                    </p>
+                                                </div>
                                                 <p className="text-sm text-gray-400">
-                                                    {transaction.quantity} shares at ${transaction.price.toFixed(2)}
+                                                    {formatRelativeTime(transaction.timestamp)}
                                                 </p>
                                             </div>
-                                            <p className="text-sm text-gray-400">
-                                                {formatRelativeTime(transaction.timestamp)}
-                                            </p>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         ) : (
-                            <p className="text-white">No recent activity</p>
+                            <div className="h-96 flex items-center justify-center text-gray-400 bg-gray-800/30 rounded-lg border border-white/5">
+                                <p>
+                                    {transactions.length === 0 
+                                        ? "No recent activity" 
+                                        : transactionFilter === 'BUY'
+                                            ? "No stock purchases found"
+                                            : transactionFilter === 'SELL'
+                                                ? "No stock sales found"
+                                                : transactionFilter === 'LOOTBOX'
+                                                    ? "No lootbox purchases found"
+                                                    : transactionFilter === 'LOOTBOX_REDEEM'
+                                                        ? "No lootbox redemptions found"
+                                                        : "No matching transactions found"}
+                                </p>
+                            </div>
                         )}
                     </section>
                 </div>

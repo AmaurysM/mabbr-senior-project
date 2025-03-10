@@ -9,6 +9,7 @@ import { IoIosDocument } from 'react-icons/io';
 import GlobalFeed from './globalFeed/page';
 import Notifications from './notifications/page';
 import Articles from './articles/page';
+import MyPage from './myPage/page';
 
 enum Tab {
   globalFeed = "globalFeed",
@@ -97,6 +98,7 @@ const CommunityPage = () => {
         {activeComponent === Tab.globalFeed && <GlobalFeed user={user} />}
         {activeComponent === Tab.notifications && <Notifications />}
         {activeComponent === Tab.articles && <Articles />}
+        {activeComponent === Tab.myPage && <MyPage user={user} />}
       </div>
     </div>
   );

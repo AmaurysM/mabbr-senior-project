@@ -577,6 +577,14 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
     }
   }, [messages.length]);
 
+  // Add this new useEffect after the existing one around line 578
+  useEffect(() => {
+    // Ensure initial scroll to bottom when the component first loads with messages
+    if (!loading && messages.length > 0) {
+      chatEndRef.current?.scrollIntoView();
+    }
+  }, [loading, messages.length]);
+
   // Update the handleSendMessage function to handle case-insensitive symbols
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -796,73 +804,77 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
       {/* Left Column - Global Chat */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col ">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col">
           <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
 
-          {/* Chat Messages */}
-          <div className="flex-grow overflow-y-auto mb-4 pr-2 custom-scrollbar">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex items-start gap-3 ${message.user.id === (user?.id || 'guest')
-                    ? 'bg-blue-600/20 rounded-xl p-3'
-                    : 'bg-gray-700/30 rounded-xl p-3'
-                    }`}
-                >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
-                    {message.user.image ? (
-                      <Image
-                        src={message.user.image}
-                        alt={message.user.name}
-                        width={40}
-                        height={40}
-                        className="object-cover"
-                      />
-                    ) : (
-                      <UserCircleIcon className="w-10 h-10 text-gray-400" />
-                    )}
-                  </div>
-
-                  <div className="flex-grow">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-semibold text-white">{message.user.name}</span>
-                      <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
-                    </div>
-                    {formatMessageContent(message.content)}
-                  </div>
-                </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-          </div>
-
-          {/* Message Input */}
-          {user ? (
-            <form onSubmit={handleSendMessage} className="mt-auto">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Share your market insights... (Use # to send a stock. Ex. #NVDA)"
-                  className="flex-grow px-4 py-3 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
-                />
-                <button
-                  type="submit"
-                  disabled={!newMessage.trim()}
-                  className="px-6 py-3 bg-blue-600 rounded-xl text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Send
-                </button>
+          {/* Fixed height scrollable container for messages */}
+          <div className="mb-4 h-[500px] overflow-y-auto pr-2 custom-scrollbar bg-gray-700/20 rounded-xl p-4 border border-white/5">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <p className="text-gray-400">No messages yet. Be the first to send one!</p>
               </div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex items-start gap-3 ${message.user.id === (user?.id || 'guest')
+                      ? 'bg-blue-600/20 rounded-xl p-3'
+                      : 'bg-gray-700/30 rounded-xl p-3'
+                      }`}
+                  >
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
+                      {message.user.image ? (
+                        <Image
+                          src={message.user.image}
+                          alt={message.user.name}
+                          width={40}
+                          height={40}
+                          className="object-cover"
+                        />
+                      ) : (
+                        <UserCircleIcon className="w-10 h-10 text-gray-400" />
+                      )}
+                    </div>
+
+                    <div className="flex-grow">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-semibold text-white">{message.user.name}</span>
+                        <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
+                      </div>
+                      {formatMessageContent(message.content)}
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+            )}
+          </div>
+          
+          {/* Message input and send button */}
+          {user ? (
+            <form onSubmit={handleSendMessage} className="flex space-x-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Share your market insights... (Use # to send a stock. Ex. #NVDA)"
+                className="flex-grow px-4 py-3 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
+              />
+              <button
+                type="submit"
+                disabled={!newMessage.trim()}
+                className="px-6 py-3 bg-blue-600 rounded-xl text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Send
+              </button>
             </form>
           ) : (
-            <div className="mt-auto bg-gray-700/20 rounded-xl p-4 border border-white/5 text-center">
-              <p className="text-gray-300 mb-3">Login to join the conversation</p>
-              <button
-                onClick={() => router.push('/login-signup')}
-                className="px-6 py-2 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
+            <div className="bg-gray-700/30 rounded-lg p-3 text-center">
+              <p className="text-gray-400">Please log in to send messages</p>
+              <button 
+                onClick={() => router.push('/login-signup')} 
+                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Login
               </button>
