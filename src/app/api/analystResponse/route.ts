@@ -1,4 +1,3 @@
-import { timeStamp } from 'console';
 import { NextResponse } from 'next/server';
 import yahooFinance from 'yahoo-finance2';
 
@@ -13,25 +12,29 @@ export async function GET(request: Request) {
     const queryOptions = {
       lang: 'en-US',
       reportsCount: 1,
-      modulesList: ['financialData']
+      modules: ['financialData'] // Corrected `modulesList` -> `modules`
     };
 
     const result = await yahooFinance.quote(symbol, queryOptions, {
       validateResult: false
     });
 
+    if (!result) {
+      return NextResponse.json({ error: 'No data found for the given symbol' }, { status: 404 });
+    }
+
     const transformedData = {
       analystResponse: {
         result: [{
-          averageAnalystRating: result.averageAnalystRating ?? 'N/A',
-          recommendationMean: result.financialData?.recommendationMean ?? null,
-          recommendationKey: result.financialData?.recommendationKey ?? null,
-          numberOfAnalystOpinions: result.financialData?.numberOfAnalystOpinions ?? 0,
+          averageAnalystRating: result?.averageAnalystRating ?? 'N/A',
+          recommendationMean: result?.financialData?.recommendationMean ?? null,
+          recommendationKey: result?.financialData?.recommendationKey ?? null,
+          numberOfAnalystOpinions: result?.financialData?.numberOfAnalystOpinions ?? 0,
           timestamp: Date.now(),
         }]
       }
     };
-
+    console.log(transformedData.analystResponse)
     return NextResponse.json(transformedData);
   } catch (error) {
     console.error('Yahoo Finance Analyst API Error:', error);

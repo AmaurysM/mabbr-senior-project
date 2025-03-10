@@ -522,7 +522,7 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
       }
     }
     
-    return <p className="text-gray-200">{formattedContent}</p>;
+    return <div className="text-gray-200">{formattedContent}</div>;
   };
 
   // Add a new function to fetch friend transactions
@@ -846,11 +846,11 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
       {/* Left Column - Global Chat */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 ">
           <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
 
           {/* Fixed height scrollable container for messages */}
-          <div className="mb-4 h-[500px] overflow-y-auto pr-2 custom-scrollbar bg-gray-700/20 rounded-xl p-4 border border-white/5">
+          <div className="mb-4 h-[650px] overflow-y-auto pr-2 custom-scrollbar bg-gray-700/20 rounded-xl p-4 border border-white/5">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <p className="text-gray-400">No messages yet. Be the first to send one!</p>
@@ -987,40 +987,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* Friends Activity */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4">Friends Activity</h2>
-
-            {user ? (
-              loadingFriendActivity ? (
-                <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
-                  <p className="text-gray-300">Loading friend activity...</p>
-                </div>
-              ) : friendTransactions.length > 0 ? (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {friendTransactions.map((transaction) => (
-                    <TransactionCard key={transaction.id} transaction={transaction} />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
-                  <p className="text-gray-300 mb-3">No friends added yet</p>
-                  <p className="text-gray-400 text-sm mb-4">Add friends to see their trading activity</p>
-                </div>
-              )
-            ) : (
-              <div className="text-center py-6 bg-gray-700/20 rounded-xl border border-white/5">
-                <p className="text-gray-300 mb-3">Login to see friends activity</p>
-                <button
-                  onClick={() => router.push('/login-signup')}
-                  className="px-4 py-2 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Login
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Market Sentiment */}
