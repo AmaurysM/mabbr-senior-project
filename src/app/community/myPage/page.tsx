@@ -69,20 +69,25 @@ const MyPage: React.FC<MyPageProps> = ({ user }) => {
       setFriendError('Failed to add friend. Please try again later.');
     }
   };
-  
+
+  // Set up polling for transactions
   useEffect(() => {
     if (user) {
       fetchTransactions();
-      
+
       const intervalId = setInterval(() => {
         fetchTransactions();
       }, 30000);
-      
+
       return () => clearInterval(intervalId);
     } else {
       setLoading(false);
     }
   }, [user]);
+
+  // Filter transactions to separate user and friend activities
+  const userTransactions = transactions.filter(tx => tx.isCurrentUser === true);
+  const friendTransactions = transactions.filter(tx => tx.isCurrentUser === false);
 
   if (!user) {
     return (
@@ -122,18 +127,36 @@ const MyPage: React.FC<MyPageProps> = ({ user }) => {
           </div>
         </div>
         
+        {/* My Activity Section */}
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10 mb-6">
+          <h3 className="text-lg font-bold text-white mb-4">My Activity</h3>
+          {loading ? (
+            <div className="text-gray-400 text-center py-4">Loading your transactions...</div>
+          ) : userTransactions.length === 0 ? (
+            <div className="text-gray-400 text-center py-4">
+              You haven't made any trades yet. Start trading to see your activity here.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {userTransactions.map((transaction) => (
+                <TransactionCard key={transaction.id} transaction={transaction} />
+              ))}
+            </div>
+          )}
+        </div>
+        
         {/* Friend Activity Section */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
           <h3 className="text-lg font-bold text-white mb-4">Friend Activity</h3>
           {loading ? (
-            <div className="text-gray-400 text-center py-4">Loading transactions...</div>
-          ) : transactions.length === 0 ? (
+            <div className="text-gray-400 text-center py-4">Loading friend activity...</div>
+          ) : friendTransactions.length === 0 ? (
             <div className="text-gray-400 text-center py-4">
-              No trading activity yet. Make a trade or add friends to see their activity here.
+              No friend activity yet. Add friends to see their trading activity here.
             </div>
           ) : (
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-              {transactions.map((transaction) => (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {friendTransactions.map((transaction) => (
                 <TransactionCard key={transaction.id} transaction={transaction} />
               ))}
             </div>
