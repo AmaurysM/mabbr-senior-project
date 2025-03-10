@@ -9,8 +9,6 @@ import { Toaster } from "@/app/components/ui/sonner"
 import { useToast } from "@/app/hooks/use-toast";
 import LoadingStateAnimation from '@/app/components/LoadingState';
 
-
-
 interface Message {
   id: string;
   content: string;
@@ -41,7 +39,26 @@ interface LeaderboardEntry {
   totalValue: number;
 }
 
-const GlobalFeed = ({ user }) => {
+// Add a new interface for stock data
+interface StockSymbolData {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  isPositive: boolean;
+}
+
+// Add a cache for stock data to prevent flashing
+const stockDataCache: Record<string, StockSymbolData> = {};
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  image?: string;
+}
+
+const GlobalFeed = ({ user }: { user: User | null }) => {
   const { toast } = useToast();
 
   const router = useRouter();
@@ -66,6 +83,48 @@ const GlobalFeed = ({ user }) => {
       const res = await fetch('/api/chat');
       if (!res.ok) throw new Error('Failed to fetch messages');
       const data = await res.json();
+      
+      // Extract all stock symbols from messages
+      const allMessages = data.messages || [];
+      const stockSymbols = new Set<string>();
+      
+      allMessages.forEach((message: Message) => {
+        // Use case-insensitive regex and convert to uppercase
+        const matches = message.content.match(/#([A-Za-z]{1,5})\b/g);
+        if (matches) {
+          matches.forEach(match => {
+            const symbol = match.substring(1).toUpperCase(); // Remove the # prefix and convert to uppercase
+            stockSymbols.add(symbol);
+          });
+        }
+      });
+      
+      // Fetch stock data for symbols not in cache
+      const symbolsToFetch = Array.from(stockSymbols).filter(symbol => !stockDataCache[symbol]);
+      
+      if (symbolsToFetch.length > 0) {
+        // Fetch in batches of 5 to avoid overloading the API
+        const batchSize = 5;
+        for (let i = 0; i < symbolsToFetch.length; i += batchSize) {
+          const batch = symbolsToFetch.slice(i, i + batchSize);
+          const res = await fetch(`/api/stocks?symbols=${batch.join(',')}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.stocks) {
+              data.stocks.forEach((stock: any) => {
+                stockDataCache[stock.symbol] = {
+                  symbol: stock.symbol,
+                  price: stock.price,
+                  change: stock.change,
+                  changePercent: stock.changePercent,
+                  isPositive: stock.change >= 0
+                };
+              });
+            }
+          }
+        }
+      }
+      
       setMessages(data.messages);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -274,6 +333,111 @@ const GlobalFeed = ({ user }) => {
     }
   };
 
+  // Add a function to fetch stock data for a symbol
+  const fetchStockData = async (symbol: string): Promise<StockSymbolData | null> => {
+    try {
+      // Check cache first to prevent flashing during polling
+      if (stockDataCache[symbol]) {
+        return stockDataCache[symbol];
+      }
+      
+      const res = await fetch(`/api/stocks?symbols=${symbol}`);
+      if (!res.ok) throw new Error('Failed to fetch stock data');
+      
+      const data = await res.json();
+      if (!data.stocks || data.stocks.length === 0) return null;
+      
+      const stockData = data.stocks[0];
+      const result = {
+        symbol: stockData.symbol,
+        price: stockData.price,
+        change: stockData.change,
+        changePercent: stockData.changePercent,
+        isPositive: stockData.change >= 0
+      };
+      
+      // Update cache
+      stockDataCache[symbol] = result;
+      return result;
+    } catch (error) {
+      console.error('Error fetching stock data:', error);
+      return null;
+    }
+  };
+
+  // Update the formatMessageContent function to handle case-insensitive symbols
+  const formatMessageContent = (content: string) => {
+    // Case-insensitive regex to match stock symbols with # prefix
+    const stockRegex = /#([A-Za-z]{1,5})\b/g;
+    
+    // Split the content by stock symbols
+    const parts = content.split(stockRegex);
+    
+    if (parts.length <= 1) {
+      return <p className="text-gray-200">{content}</p>;
+    }
+    
+    // Render the message with formatted stock symbols
+    const formattedContent: React.ReactNode[] = [];
+    let i = 0;
+    
+    while (i < parts.length) {
+      // Add text part
+      if (parts[i]) {
+        formattedContent.push(<span key={`text-${i}`}>{parts[i]}</span>);
+      }
+      
+      // Add stock symbol if available
+      if (i + 1 < parts.length) {
+        const symbol = parts[i + 1]?.toUpperCase(); // Convert to uppercase for consistency
+        if (symbol) {
+          // Get stock data from cache or use a placeholder
+          const stockData = stockDataCache[symbol] || { 
+            symbol, 
+            isPositive: true, 
+            price: 0, 
+            change: 0, 
+            changePercent: 0 
+          };
+          
+          formattedContent.push(
+            <span 
+              key={`stock-${i}`}
+              className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${
+                stockData.isPositive 
+                  ? 'bg-green-900/20 text-green-300 border border-green-700/30' 
+                  : 'bg-red-900/20 text-red-300 border border-red-700/30'
+              }`}
+            >
+              {symbol}
+              <span className="ml-1 font-mono">
+                {stockData.isPositive ? '↑' : '↓'}
+              </span>
+            </span>
+          );
+          
+          // Fetch stock data if not in cache
+          if (!stockDataCache[symbol]) {
+            // Use IIFE to capture the current symbol
+            (async (sym) => {
+              const data = await fetchStockData(sym);
+              if (data) {
+                // Update the cache
+                stockDataCache[sym] = data;
+                // Force a re-render
+                setMessages([...messages]);
+              }
+            })(symbol);
+          }
+        }
+        i += 2; // Skip the symbol part
+      } else {
+        i++;
+      }
+    }
+    
+    return <p className="text-gray-200">{formattedContent}</p>;
+  };
 
   // Check authentication and fetch initial data
   useEffect(() => {
@@ -319,7 +483,6 @@ const GlobalFeed = ({ user }) => {
     }
   }, [user]);
 
-
   // Scroll to bottom of chat only when messages change
   useEffect(() => {
     if (messages.length > 0) {
@@ -331,12 +494,24 @@ const GlobalFeed = ({ user }) => {
     }
   }, [messages.length]);
 
+  // Update the handleSendMessage function to handle case-insensitive symbols
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newMessage.trim() || !user) return;
 
     try {
+      // Pre-fetch stock data for any symbols in the message
+      const stockSymbols = newMessage.match(/#([A-Za-z]{1,5})\b/g);
+      if (stockSymbols) {
+        for (const symbolWithHash of stockSymbols) {
+          const symbol = symbolWithHash.substring(1).toUpperCase(); // Remove the # prefix and convert to uppercase
+          if (!stockDataCache[symbol]) {
+            await fetchStockData(symbol);
+          }
+        }
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -354,9 +529,9 @@ const GlobalFeed = ({ user }) => {
       setNewMessage('');
 
       // If message contains a stock symbol, update sentiment
-      const stockSymbolMatch = newMessage.match(/\$([A-Z]{1,5})/);
+      const stockSymbolMatch = newMessage.match(/\$([A-Za-z]{1,5})/);
       if (stockSymbolMatch) {
-        const symbol = stockSymbolMatch[1];
+        const symbol = stockSymbolMatch[1].toUpperCase(); // Convert to uppercase
         // Determine sentiment based on message content
         const sentiment = newMessage.toLowerCase().includes('buy') || newMessage.toLowerCase().includes('bullish')
           ? 'bullish'
@@ -416,7 +591,6 @@ const GlobalFeed = ({ user }) => {
     }
   }, [user]); // Run when user changes
 
-
   const formatTimestamp = (date: string | Date) => {
     const now = new Date();
     // Convert to Date object if it's a string
@@ -435,7 +609,6 @@ const GlobalFeed = ({ user }) => {
   };
 
   if (loading) return <div className="flex justify-center items-center h-screen"><LoadingStateAnimation /></div>;
-
 
   return (
     <div className="flex flex-col gap-6">
@@ -573,7 +746,7 @@ const GlobalFeed = ({ user }) => {
                       <span className="font-semibold text-white">{message.user.name}</span>
                       <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
                     </div>
-                    <p className="text-gray-200">{message.content}</p>
+                    {formatMessageContent(message.content)}
                   </div>
                 </div>
               ))}
