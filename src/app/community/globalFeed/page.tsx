@@ -58,10 +58,47 @@ interface User {
   image?: string;
 }
 
-// Update the StockTooltip component to use existing data
+// Update the StockTooltip component to include company name
 const StockTooltip = ({ symbol }: { symbol: string }) => {
   // Use the data we already have in the cache
   const stockData = stockDataCache[symbol];
+  
+  // Map of stock symbols to company names
+  const companyNames: Record<string, string> = {
+    'AAPL': 'Apple Inc.',
+    'MSFT': 'Microsoft Corporation',
+    'GOOG': 'Alphabet Inc.',
+    'GOOGL': 'Alphabet Inc.',
+    'AMZN': 'Amazon.com, Inc.',
+    'META': 'Meta Platforms, Inc.',
+    'TSLA': 'Tesla, Inc.',
+    'NVDA': 'NVIDIA Corporation',
+    'AMD': 'Advanced Micro Devices, Inc.',
+    'INTC': 'Intel Corporation',
+    'IBM': 'International Business Machines',
+    'NFLX': 'Netflix, Inc.',
+    'DIS': 'The Walt Disney Company',
+    'CSCO': 'Cisco Systems, Inc.',
+    'ADBE': 'Adobe Inc.',
+    'ORCL': 'Oracle Corporation',
+    'CRM': 'Salesforce, Inc.',
+    'PYPL': 'PayPal Holdings, Inc.',
+    'QCOM': 'Qualcomm Incorporated',
+    'AVGO': 'Broadcom Inc.',
+    'TXN': 'Texas Instruments Incorporated',
+    'ASML': 'ASML Holding N.V.',
+    'SONY': 'Sony Group Corporation',
+    'SHOP': 'Shopify Inc.',
+    'SPOT': 'Spotify Technology S.A.',
+    'UBER': 'Uber Technologies, Inc.',
+    'LYFT': 'Lyft, Inc.',
+    'SNAP': 'Snap Inc.',
+    'PINS': 'Pinterest, Inc.',
+    'ZM': 'Zoom Video Communications, Inc.'
+  };
+  
+  // Get company name or use a default
+  const companyName = companyNames[symbol] || 'Corporation';
   
   if (!stockData) {
     return (
@@ -76,6 +113,7 @@ const StockTooltip = ({ symbol }: { symbol: string }) => {
       <div className="flex justify-between items-start">
         <div>
           <h3 className="text-white font-bold">{symbol}</h3>
+          <p className="text-gray-400 text-xs truncate max-w-[120px]">{companyName}</p>
         </div>
         <div className={`text-sm font-semibold ${stockData.isPositive ? 'text-green-400' : 'text-red-400'}`}>
           ${stockData.price.toFixed(2)}
@@ -807,7 +845,7 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Share your market insights..."
+                  placeholder="Share your market insights... (Use # to send a stock. Ex. #NVDA)"
                   className="flex-grow px-4 py-3 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
                 />
                 <button
