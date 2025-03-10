@@ -58,6 +58,39 @@ interface User {
   image?: string;
 }
 
+// Update the StockTooltip component to use existing data
+const StockTooltip = ({ symbol }: { symbol: string }) => {
+  // Use the data we already have in the cache
+  const stockData = stockDataCache[symbol];
+  
+  if (!stockData) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
+        <p className="text-gray-400 text-center">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="text-white font-bold">{symbol}</h3>
+        </div>
+        <div className={`text-sm font-semibold ${stockData.isPositive ? 'text-green-400' : 'text-red-400'}`}>
+          ${stockData.price.toFixed(2)}
+        </div>
+      </div>
+      
+      <div className="flex justify-between items-center">
+        <div className={`text-xs ${stockData.isPositive ? 'text-green-400' : 'text-red-400'}`}>
+          {stockData.isPositive ? '+' : ''}{stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const GlobalFeed = ({ user }: { user: User | null }) => {
   const { toast } = useToast();
 
@@ -365,7 +398,7 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
     }
   };
 
-  // Update the formatMessageContent function to handle case-insensitive symbols
+  // Update the formatMessageContent function to fix tooltip positioning
   const formatMessageContent = (content: string) => {
     // Case-insensitive regex to match stock symbols with # prefix
     const stockRegex = /#([A-Za-z]{1,5})\b/g;
@@ -401,19 +434,31 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
           };
           
           formattedContent.push(
-            <span 
-              key={`stock-${i}`}
-              className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${
-                stockData.isPositive 
-                  ? 'bg-green-900/20 text-green-300 border border-green-700/30' 
-                  : 'bg-red-900/20 text-red-300 border border-red-700/30'
-              }`}
-            >
-              {symbol}
-              <span className="ml-1 font-mono">
-                {stockData.isPositive ? '↑' : '↓'}
+            <div key={`stock-${i}`} className="inline-block relative group">
+              <span 
+                className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${
+                  stockData.isPositive 
+                    ? 'bg-green-900/20 text-green-300 border border-green-700/30' 
+                    : 'bg-red-900/20 text-red-300 border border-red-700/30'
+                } cursor-pointer`}
+              >
+                {symbol}
+                <span className="ml-1 font-mono">
+                  {stockData.isPositive ? '↑' : '↓'}
+                </span>
               </span>
-            </span>
+              
+              {/* Tooltip with fixed position above the symbol */}
+              <div className="absolute opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[9999]"
+                   style={{
+                     bottom: '100%',
+                     left: '50%',
+                     transform: 'translateX(-50%)',
+                     marginBottom: '5px'
+                   }}>
+                <StockTooltip symbol={symbol} />
+              </div>
+            </div>
           );
           
           // Fetch stock data if not in cache
