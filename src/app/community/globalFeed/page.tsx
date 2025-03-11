@@ -2,13 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { Toaster } from "@/app/components/ui/sonner"
 import { useToast } from "@/app/hooks/use-toast";
 import LoadingStateAnimation from '@/app/components/LoadingState';
-import TransactionCard from '@/app/components/TransactionCard';
+import CommentCard from '@/app/components/CommentCard';
 
 interface Message {
   id: string;
@@ -20,6 +18,7 @@ interface Message {
     image?: string;
   };
 }
+
 interface MarketSentiment {
   bullishCount: number;
   bearishCount: number;
@@ -59,76 +58,6 @@ interface User {
   image?: string;
 }
 
-// Update the StockTooltip component to include company name
-const StockTooltip = ({ symbol }: { symbol: string }) => {
-  // Use the data we already have in the cache
-  const stockData = stockDataCache[symbol];
-  
-  // Map of stock symbols to company names
-  const companyNames: Record<string, string> = {
-    'AAPL': 'Apple Inc.',
-    'MSFT': 'Microsoft Corporation',
-    'GOOG': 'Alphabet Inc.',
-    'GOOGL': 'Alphabet Inc.',
-    'AMZN': 'Amazon.com, Inc.',
-    'META': 'Meta Platforms, Inc.',
-    'TSLA': 'Tesla, Inc.',
-    'NVDA': 'NVIDIA Corporation',
-    'AMD': 'Advanced Micro Devices, Inc.',
-    'INTC': 'Intel Corporation',
-    'IBM': 'International Business Machines',
-    'NFLX': 'Netflix, Inc.',
-    'DIS': 'The Walt Disney Company',
-    'CSCO': 'Cisco Systems, Inc.',
-    'ADBE': 'Adobe Inc.',
-    'ORCL': 'Oracle Corporation',
-    'CRM': 'Salesforce, Inc.',
-    'PYPL': 'PayPal Holdings, Inc.',
-    'QCOM': 'Qualcomm Incorporated',
-    'AVGO': 'Broadcom Inc.',
-    'TXN': 'Texas Instruments Incorporated',
-    'ASML': 'ASML Holding N.V.',
-    'SONY': 'Sony Group Corporation',
-    'SHOP': 'Shopify Inc.',
-    'SPOT': 'Spotify Technology S.A.',
-    'UBER': 'Uber Technologies, Inc.',
-    'LYFT': 'Lyft, Inc.',
-    'SNAP': 'Snap Inc.',
-    'PINS': 'Pinterest, Inc.',
-    'ZM': 'Zoom Video Communications, Inc.'
-  };
-  
-  // Get company name or use a default
-  const companyName = companyNames[symbol] || 'Corporation';
-  
-  if (!stockData) {
-    return (
-      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
-        <p className="text-gray-400 text-center">Loading...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-white font-bold">{symbol}</h3>
-          <p className="text-gray-400 text-xs truncate max-w-[120px]">{companyName}</p>
-        </div>
-        <div className={`text-sm font-semibold ${stockData.isPositive ? 'text-green-400' : 'text-red-400'}`}>
-          ${stockData.price.toFixed(2)}
-        </div>
-      </div>
-      
-      <div className="flex justify-between items-center">
-        <div className={`text-xs ${stockData.isPositive ? 'text-green-400' : 'text-red-400'}`}>
-          {stockData.isPositive ? '+' : ''}{stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const GlobalFeed = ({ user }: { user: User | null }) => {
   const { toast } = useToast();
@@ -139,8 +68,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [sentiment, setSentiment] = useState<MarketSentiment | null>(null);
-  const [friendTransactions, setFriendTransactions] = useState<any[]>([]);
-  const [loadingFriendActivity, setLoadingFriendActivity] = useState(true);
 
   const [hasVoted, setHasVoted] = useState<boolean>(false);
   const [showVotePanel, setShowVotePanel] = useState<boolean>(false);
@@ -157,11 +84,11 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
       const res = await fetch('/api/chat');
       if (!res.ok) throw new Error('Failed to fetch messages');
       const data = await res.json();
-      
+
       // Extract all stock symbols from messages
       const allMessages = data.messages || [];
       const stockSymbols = new Set<string>();
-      
+
       allMessages.forEach((message: Message) => {
         // Use case-insensitive regex and convert to uppercase
         const matches = message.content.match(/#([A-Za-z]{1,5})\b/g);
@@ -172,10 +99,10 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
           });
         }
       });
-      
+
       // Fetch stock data for symbols not in cache
       const symbolsToFetch = Array.from(stockSymbols).filter(symbol => !stockDataCache[symbol]);
-      
+
       if (symbolsToFetch.length > 0) {
         // Fetch in batches of 5 to avoid overloading the API
         const batchSize = 5;
@@ -198,7 +125,7 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
           }
         }
       }
-      
+
       setMessages(data.messages);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -414,13 +341,13 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
       if (stockDataCache[symbol]) {
         return stockDataCache[symbol];
       }
-      
+
       const res = await fetch(`/api/stocks?symbols=${symbol}`);
       if (!res.ok) throw new Error('Failed to fetch stock data');
-      
+
       const data = await res.json();
       if (!data.stocks || data.stocks.length === 0) return null;
-      
+
       const stockData = data.stocks[0];
       const result = {
         symbol: stockData.symbol,
@@ -429,7 +356,7 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
         changePercent: stockData.changePercent,
         isPositive: stockData.change >= 0
       };
-      
+
       // Update cache
       stockDataCache[symbol] = result;
       return result;
@@ -439,120 +366,7 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
     }
   };
 
-  // Update the formatMessageContent function to fix tooltip positioning
-  const formatMessageContent = (content: string) => {
-    // Case-insensitive regex to match stock symbols with # prefix
-    const stockRegex = /#([A-Za-z]{1,5})\b/g;
-    
-    // Split the content by stock symbols
-    const parts = content.split(stockRegex);
-    
-    if (parts.length <= 1) {
-      return <p className="text-gray-200">{content}</p>;
-    }
-    
-    // Render the message with formatted stock symbols
-    const formattedContent: React.ReactNode[] = [];
-    let i = 0;
-    
-    while (i < parts.length) {
-      // Add text part
-      if (parts[i]) {
-        formattedContent.push(<span key={`text-${i}`}>{parts[i]}</span>);
-      }
-      
-      // Add stock symbol if available
-      if (i + 1 < parts.length) {
-        const symbol = parts[i + 1]?.toUpperCase(); // Convert to uppercase for consistency
-        if (symbol) {
-          // Get stock data from cache or use a placeholder
-          const stockData = stockDataCache[symbol] || { 
-            symbol, 
-            isPositive: true, 
-            price: 0, 
-            change: 0, 
-            changePercent: 0 
-          };
-          
-          formattedContent.push(
-            <div key={`stock-${i}`} className="inline-block relative group">
-              <span 
-                className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${
-                  stockData.isPositive 
-                    ? 'bg-green-900/20 text-green-300 border border-green-700/30' 
-                    : 'bg-red-900/20 text-red-300 border border-red-700/30'
-                } cursor-pointer`}
-              >
-                {symbol}
-                <span className="ml-1 font-mono">
-                  {stockData.isPositive ? '↑' : '↓'}
-                </span>
-              </span>
-              
-              {/* Tooltip with fixed position above the symbol */}
-              <div className="absolute opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[9999]"
-                   style={{
-                     bottom: '100%',
-                     left: '50%',
-                     transform: 'translateX(-50%)',
-                     marginBottom: '5px'
-                   }}>
-                <StockTooltip symbol={symbol} />
-              </div>
-            </div>
-          );
-          
-          // Fetch stock data if not in cache
-          if (!stockDataCache[symbol]) {
-            // Use IIFE to capture the current symbol
-            (async (sym) => {
-              const data = await fetchStockData(sym);
-              if (data) {
-                // Update the cache
-                stockDataCache[sym] = data;
-                // Force a re-render
-                setMessages([...messages]);
-              }
-            })(symbol);
-          }
-        }
-        i += 2; // Skip the symbol part
-      } else {
-        i++;
-      }
-    }
-    
-    return <div className="text-gray-200">{formattedContent}</div>;
-  };
 
-  // Add a new function to fetch friend transactions
-  const fetchFriendTransactions = async () => {
-    if (!user) {
-      setLoadingFriendActivity(false);
-      return;
-    }
-    
-    try {
-      const res = await fetch('/api/user/transactions', {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        // Filter only friend transactions (where isCurrentUser is false)
-        const friendActivity = data.transactions.filter((tx: any) => tx.isCurrentUser === false);
-        setFriendTransactions(friendActivity);
-      }
-      
-      setLoadingFriendActivity(false);
-    } catch (error) {
-      console.error('Error fetching friend transactions:', error);
-      setLoadingFriendActivity(false);
-    }
-  };
 
   // Check authentication and fetch initial data
   useEffect(() => {
@@ -608,24 +422,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
     }
   }, [messages.length]);
 
-  // Add this new useEffect after the existing one around line 578
-  useEffect(() => {
-    if (!loading && messages.length > 0) {
-      chatEndRef.current?.scrollIntoView();
-    }
-  }, [loading, messages.length]);
-
-  useEffect(() => {
-    fetchFriendTransactions();
-
-    if (user) {
-      const intervalId = setInterval(() => {
-        fetchFriendTransactions();
-      }, 30000);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [user]);
 
   // Update the handleSendMessage function to handle case-insensitive symbols
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -723,23 +519,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
       localStorage.setItem('last_vote_day', today);
     }
   }, [user]); // Run when user changes
-
-  const formatTimestamp = (date: string | Date) => {
-    const now = new Date();
-    // Convert to Date object if it's a string
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-
-    const diffMs = now.getTime() - dateObj.getTime();
-    const diffMins = Math.round(diffMs / 60000);
-
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hr ago`;
-
-    return dateObj.toLocaleDateString();
-  };
 
   if (loading) return <div className="flex justify-center items-center h-screen"><LoadingStateAnimation /></div>;
 
@@ -843,9 +622,9 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
         </div>
       )}
 
-      {/* Left Column - Global Chat */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
 
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+        {/* Left Column - Global Chat */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 ">
           <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
 
@@ -858,41 +637,27 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
             ) : (
               <div className="space-y-3">
                 {messages.map((message) => (
-                  <div
+                  <CommentCard
                     key={message.id}
-                    className={`flex items-start gap-3 ${message.user.id === (user?.id || 'guest')
-                      ? 'bg-blue-600/20 rounded-xl p-3'
-                      : 'bg-gray-700/30 rounded-xl p-3'
-                      }`}
-                  >
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
-                      {message.user.image ? (
-                        <Image
-                          src={message.user.image}
-                          alt={message.user.name}
-                          width={40}
-                          height={40}
-                          className="object-cover"
-                        />
-                      ) : (
-                        <UserCircleIcon className="w-10 h-10 text-gray-400" />
-                      )}
-                    </div>
-
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-semibold text-white">{message.user.name}</span>
-                        <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
-                      </div>
-                      {formatMessageContent(message.content)}
-                    </div>
-                  </div>
+                    message={{
+                      id: message.id,
+                      content: message.content,
+                      imageUrl: null, // Assuming no images in `Message`
+                      createdAt: new Date(message.timestamp), // Convert timestamp
+                      updatedAt: new Date(message.timestamp), // Assuming no separate update timestamp
+                      userId: message.user.id, // Extract userId
+                      parentId: null, // Adjust as needed
+                      repostId: null, // Adjust as needed
+                    }}
+                  />
                 ))}
+
+
                 <div ref={chatEndRef} />
               </div>
             )}
           </div>
-          
+
           {/* Message input and send button */}
           {user ? (
             <form onSubmit={handleSendMessage} className="flex space-x-2">
@@ -914,8 +679,8 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
           ) : (
             <div className="bg-gray-700/30 rounded-lg p-3 text-center">
               <p className="text-gray-400">Please log in to send messages</p>
-              <button 
-                onClick={() => router.push('/login-signup')} 
+              <button
+                onClick={() => router.push('/login-signup')}
                 className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Login
