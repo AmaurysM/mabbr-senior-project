@@ -37,19 +37,33 @@ export async function GET(req: NextRequest) {
       include: { stock: true }
     });
     
-    // Format the response to include both balance and positions
-    const positions: { [symbol: string]: { shares: number; averagePrice: number } } = {};
-    userStocks.forEach((userStock) => {
-      positions[userStock.stock.name] = {
-        shares: userStock.quantity,
-        averagePrice: userStock.stock.price
-      };
-    });
+    let initialBalance = user.balance; 
+    let cumulativeValue = initialBalance;
+    const chartData = [];
+    
+    // If no transactions, return a single data point with today's date.
+    if (portfolioTransactions.length === 0) {
+      chartData.push({
+        date: new Date().toISOString().split("T")[0],
+        value: cumulativeValue,
+      });
+    } else {
+      for (const tx of portfolioTransactions) {
+        // For a "BUY", subtract the transaction's total cost.
+        // For a "SELL", add the transaction's total cost.
+        if (tx.type === "BUY") {
+          cumulativeValue -= tx.totalCost;
+        } else if (tx.type === "SELL") {
+          cumulativeValue += tx.totalCost;
+        }
+        // Format the transaction timestamp as YYYY-MM-DD.
+        const date = new Date(tx.timestamp).toISOString().split("T")[0];
+        chartData.push({ date, value: cumulativeValue });
+      }
+    }
+    // Return both holdings and chart data.
+    return NextResponse.json({ holdings: userStocks, chartData});
 
-    return NextResponse.json({
-      balance: user.balance,
-      positions: positions
-    });
     
   } catch (error) {
     console.error('Error fetching portfolio:', error);
