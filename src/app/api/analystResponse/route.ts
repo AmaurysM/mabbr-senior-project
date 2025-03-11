@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         }]
       }
     };
+    console.log(transformedData.analystResponse)
     return NextResponse.json(transformedData);
   } catch (error) {
     console.error('Yahoo Finance Analyst API Error:', error);
