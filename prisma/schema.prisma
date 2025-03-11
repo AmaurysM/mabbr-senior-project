@@ -11,34 +11,47 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid()) @map("_id")
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  badgeImage    String? // New field for the badge image
-  premium       Boolean  @default(false)
-  role          String   @default("user")
-  banned        Boolean  @default(false)
-  banReason     String?
-  banExpires    Int? // Unix timestamp for ban expiration
-  balance       Float    @default(100000.0)
-  bio           String?  @default("No bio yet.") // Added bio field
+  id             String        @id @default(cuid()) @map("_id")
+  name           String
+  email          String        @unique
+  emailVerified  Boolean       @default(false)
+  image          String?
+  badgeImage     String?
+  premium        Boolean       @default(false)
+  role           String        @default("user")
+  banned         Boolean       @default(false)
+  banReason      String?
+  banExpires     Int?
+  balance        Float         @default(100000.0)
+  bio            String?       @default("No bio yet.") 
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  chatMessages   ChatMessage[]
+  votes          UserVote[]
+  favoriteStocks String[]      @default([])
 
-  sessions      Session[]
-  accounts      Account[]
-  transactions  Transaction[]
-  following     Friendship[]  @relation(name: "FollowerRelation")
-  followers     Friendship[]  @relation(name: "FollowingRelation")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  userStocks    UserStock[]
-  userLootBoxes UserLootBox[]
+  sessions       Session[]
+  accounts       Account[]
+  transactions   Transaction[]
+  following      Friendship[]  @relation(name: "FollowerRelation")
+  followers      Friendship[]  @relation(name: "FollowingRelation")
 
+  userStocks     UserStock[]
+  userLootBoxes  UserLootBox[]
+  achievements   UserAchievement[]
+
+  posts          Post[]        @relation("UserPosts") 
+  reposts        UserPostRepost[] 
+
+  likes          UserLike[]    
+  NewsComment NewsComment[]
+  
   @@map("user")
 }
+
+
 
 model LootBox {
   id            String         @id @default(cuid()) @map("_id")
@@ -59,7 +72,6 @@ model UserStock {
   quantity Int
 
   @@unique([userId, stockId]) // Ensures each user can only have one entry per stock
-
 }
 
 model UserLootBox {
@@ -75,9 +87,9 @@ model UserLootBox {
 }
 
 model Stock {
-  id            String        @id @default(cuid()) @map("_id")
-  name          String
-  price         Float         @default(0)
+  id            String         @id @default(cuid()) @map("_id")
+  name          String         @unique
+  price         Float          @default(0)
   userStocks    UserStock[]
   lootBoxStocks LootBoxStock[]
 
@@ -122,8 +134,8 @@ model Transaction {
   totalCost   Float
   timestamp   DateTime @default(now())
   status      String   @default("COMPLETED")
-  publicNote  String?  // Optional public note
-  privateNote String?  // Optional private note
+  publicNote  String? // Optional public note
+  privateNote String? // Optional private note
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -186,13 +198,143 @@ model Verification {
 }
 
 model AlphaVantageNews {
-  id         String   @id @default(cuid()) @map("_id")
-  tickers    String   @default("NVDA") // Comma-separated list of tickers
-  data       Json     // Store the full API response as JSON
-  expiresAt  DateTime // When the cache expires
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid()) @map("_id")
+  tickers   String   @default("NVDA") // Comma-separated list of tickers
+  data      Json // Store the full API response as JSON
+  expiresAt DateTime // When the cache expires
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tickers])
   @@map("alphavantage_news")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid()) @map("_id")
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("chat_message")
+}
+
+model MarketSentiment {
+  id            String   @id @default(cuid()) @map("_id")
+  bullishCount  Int      @default(0)
+  bearishCount  Int      @default(0)
+  timestamp     DateTime @default(now())
+  mostDiscussed Json 
+  topPicks      Json 
+  marketTrend   Json 
+  date          String   @unique 
+
+  @@index([timestamp])
+  @@map("market_sentiment")
+}
+
+model UserVote {
+  id          String   @id @default(cuid()) @map("_id")
+  userId      String
+  date        String 
+  sentiment   String 
+  topPick     String? 
+  marketTrend String? 
+  timestamp   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("user_vote")
+}
+
+model Achievement {
+  id          String            @id @default(cuid()) @map("_id")
+  name        String
+  description String
+  image       String?
+  users       UserAchievement[]
+
+  @@map("achievement")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid()) @map("_id")
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievement")
+}
+
+model Post {
+  id        String   @id @default(cuid()) @map("_id")
+  content   String?  
+  imageUrl  String?  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User     @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
+
+  likes     UserLike[]
+
+  parentId  String?  
+  parent    Post?    @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Post[]   @relation("CommentThread")
+
+  repostId  String?  
+  repost    Post?    @relation("RepostRelation", fields: [repostId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reposts   Post[]   @relation("RepostRelation")
+
+  repostedBy UserPostRepost[]  
+
+  @@map("post")
+}
+
+
+model UserPostRepost {
+  id      String   @id @default(cuid()) @map("_id") // Use a single primary key
+  userId  String
+  postId  String
+
+  user    User     @relation(fields: [userId], references: [id])
+  post    Post     @relation(fields: [postId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId]) 
+  @@map("user_post_repost")
+}
+
+
+model UserLike {
+  id      String @id @default(cuid()) @map("_id")
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId  String
+  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model NewsComment {
+  id        String   @id @default(cuid()) @map("_id")
+  content   String
+  newsUrl   String   // URL of the news article
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([newsUrl])
+  @@map("news_comment")
 }
