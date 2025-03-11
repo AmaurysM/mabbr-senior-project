@@ -25,7 +25,6 @@ const Risk: React.FC = () => {
   useEffect(() => {
     const fetchHoldings = async () => {
       try {
-
         const res = await fetch("/api/user/portfolio", { credentials: "include" });
 
         if (!res.ok) throw new Error("Failed to fetch portfolio");
@@ -48,7 +47,6 @@ const Risk: React.FC = () => {
       } catch (error) {
         console.error("Error loading portfolio:", error);
         setError("Failed to load portfolio.");
-
       } finally {
         setLoading(false);
       }
@@ -110,7 +108,6 @@ const Risk: React.FC = () => {
     riskLevel = "High";
   }
 
-
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
       <p className="text-gray-300 mb-4">
@@ -119,10 +116,8 @@ const Risk: React.FC = () => {
       </p>
       <div className="w-full bg-gray-700 rounded-full h-6">
         <div
-
           className={`h-6 rounded-full ${cumulativeRiskScore < 40 ? "bg-green-500" : cumulativeRiskScore < 70 ? "bg-yellow-500" : "bg-red-500"}`}
           style={{ width: `${cumulativeRiskScore}%` }}
-
         ></div>
       </div>
       <p className="text-gray-300 mt-2">
