@@ -2,6 +2,16 @@
 import { UserStocks } from "@/lib/prisma_types";
 import React, { useState, useEffect } from "react";
 
+interface PortfolioResponse {
+  balance: number;
+  positions: {
+    [symbol: string]: {
+      shares: number;
+      averagePrice: number;
+    };
+  };
+}
+
 const PortfolioTable = () => {
   const [holdings, setHoldings] = useState<UserStocks>([]);
   const [loading, setLoading] = useState(true);
@@ -16,9 +26,25 @@ const PortfolioTable = () => {
         if (!res.ok) {
           throw new Error("Failed to fetch portfolio");
         }
-        // API now returns an object with { holdings, chartData }
-        const data = await res.json();
-        setHoldings(data.holdings);
+
+
+        const data: PortfolioResponse = await res.json();
+        
+        // Transform the positions into UserStocks format
+        const transformedHoldings: UserStocks = Object.entries(data.positions).map(([symbol, position]) => ({
+          id: symbol, // Using symbol as the id since we don't have the actual id
+          userId: "", // This field isn't used in the display
+          stockId: "", // This field isn't used in the display
+          quantity: position.shares,
+          stock: {
+            id: "", // This field isn't used in the display
+            name: symbol,
+            price: position.averagePrice
+          }
+        }));
+
+        setHoldings(transformedHoldings);
+
       } catch (error) {
         console.error("Error loading portfolio:", error);
         setError("Failed to load portfolio.");
@@ -32,7 +58,8 @@ const PortfolioTable = () => {
 
   useEffect(() => {
     const addCostToStock = async () => {
-      if (!holdings || holdings.length === 0) return;
+
+      if (!holdings.length) return;
 
       const hasAllPrices = holdings.every(
         (holding) => holding.stock.price !== 0
@@ -66,7 +93,7 @@ const PortfolioTable = () => {
   return (
     <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
       {loading ? (
-        <p className="text-gray-800">Loading portfolio...</p>
+        <p className="text-gray-300">Loading portfolio...</p>
       ) : error ? (
         <p className="text-red-500">{error}</p>
       ) : holdings.length > 0 ? (
@@ -75,7 +102,8 @@ const PortfolioTable = () => {
             <tr className="border-b border-gray-700">
               <th className="text-left py-2 px-4 text-white">Symbol</th>
               <th className="text-left py-2 px-4 text-white">Quantity</th>
-              <th className="text-left py-2 px-4 text-white">Avg. Price</th>
+              <th className="text-left py-2 px-4 text-white">Current Price</th>
+              <th className="text-left py-2 px-4 text-white">Total Value</th>
             </tr>
           </thead>
           <tbody>
@@ -83,6 +111,9 @@ const PortfolioTable = () => {
               <tr key={index} className="border-b border-gray-700">
                 <td className="py-2 px-4 text-gray-200">{holding.stock.name}</td>
                 <td className="py-2 px-4 text-gray-200">{holding.quantity}</td>
+                <td className="py-2 px-4 text-gray-200">
+                  ${holding.stock.price.toFixed(2)}
+                </td>
                 <td className="py-2 px-4 text-gray-200">
                   ${(holding.stock.price * holding.quantity).toFixed(2)}
                 </td>

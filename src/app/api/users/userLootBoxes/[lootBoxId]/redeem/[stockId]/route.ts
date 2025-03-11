@@ -40,22 +40,44 @@ export async function PATCH(
       );
     }
 
-    await prisma.userStock.upsert({
-      where: { userId_stockId: { userId: user.id, stockId } },
-      update: { quantity: { increment: 1 } },
-      create: { userId: user.id, stockId, quantity: 1 },
+    const stock = await prisma.stock.findUnique({
+      where: { id: stockId },
+      select: { id: true, name: true, price: true }
     });
 
-    if (userLootBox.quantity > 1) {
-      await prisma.userLootBox.update({
-        where: { id: userLootBox.id },
-        data: { quantity: { decrement: 1 } },
-      });
-    } else {
-      await prisma.userLootBox.delete({
-        where: { id: userLootBox.id },
-      });
+    if (!stock) {
+      return NextResponse.json({ error: "Stock not found" }, { status: 404 });
     }
+
+    await prisma.$transaction([
+      prisma.userStock.upsert({
+        where: { userId_stockId: { userId: user.id, stockId } },
+        update: { quantity: { increment: 1 } },
+        create: { userId: user.id, stockId, quantity: 1 },
+      }),
+
+      prisma.transaction.create({
+        data: {
+          userId: user.id,
+          type: 'LOOTBOX_REDEEM',
+          stockSymbol: stock.name,
+          quantity: 1,
+          price: stock.price,
+          totalCost: 0, // No cost for redeeming (already paid for the lootbox)
+          status: 'completed',
+          publicNote: 'Redeemed a lootbox item',
+        }
+      }),
+
+      userLootBox.quantity > 1
+        ? prisma.userLootBox.update({
+            where: { id: userLootBox.id },
+            data: { quantity: { decrement: 1 } },
+          })
+        : prisma.userLootBox.delete({
+            where: { id: userLootBox.id },
+          })
+    ]);
 
     return NextResponse.json({ message: "Stock redeemed successfully!" });
   } catch (error) {

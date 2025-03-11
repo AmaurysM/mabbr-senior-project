@@ -1,63 +1,115 @@
 "use client";
+import { UserStocks } from "@/lib/prisma_types";
 import React, { useEffect, useState } from "react";
 
 interface AnalystData {
-  averageAnalystRating: number | string;
-  recommendationMean: number | null;
-  recommendationKey: string | null;
-  numberOfAnalystOpinions: number;
-  timestamp: number;
+  averageAnalystRating: string | null; 
+}
+
+interface PortfolioResponse {
+  balance: number;
+  positions: {
+    [symbol: string]: {
+      shares: number;
+      averagePrice: number;
+    };
+  };
 }
 
 const Risk: React.FC = () => {
-  const [analystData, setAnalystData] = useState<AnalystData | null>(null);
+  const [holdings, setHoldings] = useState<UserStocks>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cumulativeRiskScore, setCumulativeRiskScore] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchAnalystData = async () => {
+    const fetchHoldings = async () => {
       try {
-        setLoading(true);
-        const res = await fetch("/api/analystResponse?symbol=NVDA");
-        if (!res.ok) {
-          throw new Error("Failed to fetch analyst data");
-        }
-        const data = await res.json();
-        if (data?.analystResponse?.result?.length) {
-          setAnalystData(data.analystResponse.result[0]);
-        } else {
-          throw new Error("No analyst data found");
-        }
-      } catch (err: any) {
-        setError(err.message);
+
+        const res = await fetch("/api/user/portfolio", { credentials: "include" });
+
+        if (!res.ok) throw new Error("Failed to fetch portfolio");
+
+        const data: PortfolioResponse = await res.json();
+
+        const transformedHoldings: UserStocks = Object.entries(data.positions).map(([symbol, position]) => ({
+          id: symbol,
+          userId: "",
+          stockId: "",
+          quantity: position.shares,
+          stock: {
+            id: "",
+            name: symbol,
+            price: position.averagePrice
+          }
+        }));
+
+        setHoldings(transformedHoldings);
+      } catch (error) {
+        console.error("Error loading portfolio:", error);
+        setError("Failed to load portfolio.");
+
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAnalystData();
+    fetchHoldings();
   }, []);
+
+  useEffect(() => {
+    const fetchAnalystRatings = async () => {
+      if (holdings.length === 0) return;
+
+      let totalWeightedRating = 0;
+      let totalShares = 0;
+
+      try {
+        for (const stock of holdings) {
+          const res = await fetch(`/api/analystResponse?symbol=${stock.stock.name}`);
+          if (!res.ok) continue;
+
+          const data = await res.json();
+          const analystInfo: AnalystData | undefined = data?.analystResponse?.result?.[0];
+
+          let rating: number = 0; 
+          if (analystInfo?.averageAnalystRating) {
+            const match = analystInfo.averageAnalystRating.match(/([\d.]+)/);
+            if (match) rating = parseFloat(match[0]);
+          }
+          totalWeightedRating += rating * stock.quantity;
+          totalShares += stock.quantity;
+        }
+
+        if (totalShares > 0) {
+          const weightedAverage = totalWeightedRating / totalShares;
+          const riskScore = Math.min(100, Math.max(0, ((weightedAverage - 1) / 4) * 100));
+          setCumulativeRiskScore(riskScore);
+        } else {
+          setCumulativeRiskScore(null);
+        }
+      } catch (error) {
+        console.error("Error fetching analyst data:", error);
+        setError("Failed to fetch analyst ratings.");
+      }
+    };
+
+    fetchAnalystRatings();
+  }, [holdings]);
 
   if (loading) return <div>Loading risk assessment...</div>;
   if (error) return <div>Error: {error}</div>;
-
-  // Instead of using recommendationMean (which is null), try to parse averageAnalystRating.
-  const avgRatingStr = analystData?.averageAnalystRating;
-  let numericRating = 2.5; // fallback value
-  if (typeof avgRatingStr === "string") {
-    const match = avgRatingStr.match(/(\d+(\.\d+)?)/);
-    if (match) {
-      numericRating = parseFloat(match[0]);
-    }
-  }
-
-  // Now compute riskScore using numericRating instead of the fallback 2.5
-  const riskScore = Math.min(100, Math.max(0, ((numericRating - 1) / 4) * 100));
+  if (cumulativeRiskScore === null) return <div>No analyst data available.</div>;
 
   let riskLevel: string;
-  if (riskScore < 40) riskLevel = "Low";
-  else if (riskScore < 70) riskLevel = "Moderate";
-  else riskLevel = "High";
+  if (cumulativeRiskScore < 40) {
+    riskLevel = "Low";
+  } else if (cumulativeRiskScore < 70) {
+    riskLevel = "Moderate";
+  } else {
+    riskLevel = "High";
+  }
+
 
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
@@ -65,21 +117,16 @@ const Risk: React.FC = () => {
         Your overall portfolio risk is{" "}
         <span className="font-semibold">{riskLevel}</span>.
       </p>
-      {/* Progress Bar */}
       <div className="w-full bg-gray-700 rounded-full h-6">
         <div
-          className={`h-6 rounded-full ${
-            riskScore < 40
-              ? "bg-green-500"
-              : riskScore < 70
-              ? "bg-yellow-500"
-              : "bg-red-500"
-          }`}
-          style={{ width: `${riskScore}%` }}
+
+          className={`h-6 rounded-full ${cumulativeRiskScore < 40 ? "bg-green-500" : cumulativeRiskScore < 70 ? "bg-yellow-500" : "bg-red-500"}`}
+          style={{ width: `${cumulativeRiskScore}%` }}
+
         ></div>
       </div>
       <p className="text-gray-300 mt-2">
-        Risk Score: {riskScore.toFixed(2)}/100
+        Risk Score: {cumulativeRiskScore.toFixed(2)}/100
       </p>
     </div>
   );

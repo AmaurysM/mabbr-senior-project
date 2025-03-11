@@ -41,16 +41,55 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   );
   
   const displayName = userName || userEmail.split('@')[0];
+
   const isBuy = type === 'BUY';
+  const isSell = type === 'SELL';
+  const isLootboxPurchase = type === 'LOOTBOX';
+  const isLootboxRedeem = type === 'LOOTBOX_REDEEM';
+
   const hasNotes = publicNote || (isCurrentUser && privateNote);
+
+  const getActionVerb = () => {
+    if (isBuy) return 'bought';
+    if (isSell) return 'sold';
+    if (isLootboxPurchase) return 'purchased';
+    if (isLootboxRedeem) return 'redeemed';
+    return 'traded';
+  };
+
+  const getItemDisplayName = () => {
+    if (isLootboxPurchase) return 'Lootbox';
+    if (isLootboxRedeem) return `${stockSymbol} from Lootbox`;
+    return stockSymbol;
+  };
+
+  const getPriceDisplay = () => {
+    if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
+    if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
+    return `${quantity} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
+  };
+
+  const getActionColor = () => {
+    if (isBuy || isLootboxRedeem) return 'bg-green-500';
+    if (isSell) return 'bg-red-500';
+    if (isLootboxPurchase) return 'bg-blue-500';
+    return 'bg-gray-500';
+  };
+
+  const getCostColor = () => {
+    if (isBuy || isLootboxPurchase) return 'text-green-400';
+    if (isSell) return 'text-red-400';
+    if (isLootboxRedeem) return 'text-blue-400';
+    return 'text-gray-400';
+  };
   
   return (
     <div className="bg-gray-800/60 rounded-xl p-4 mb-3 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center">
-          <div className={`w-2 h-2 rounded-full mr-2 ${isBuy ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div className={`w-2 h-2 rounded-full mr-2 ${getActionColor()}`}></div>
           <span className="font-semibold text-white">
-            {isCurrentUser ? 'You' : displayName} {isBuy ? 'bought' : 'sold'}
+            {isCurrentUser ? 'You' : displayName} {getActionVerb()}
           </span>
         </div>
         <span className="text-xs text-gray-400">{formattedTime}</span>
@@ -59,13 +98,13 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
       <div className="flex justify-between items-center">
         <div>
           <div className="flex items-baseline">
-            <span className="text-lg font-bold text-white">{stockSymbol}</span>
+            <span className="text-lg font-bold text-white">{getItemDisplayName()}</span>
             <span className="text-sm text-gray-300 ml-2">
-              {quantity} {quantity === 1 ? 'share' : 'shares'} @ ${price.toFixed(2)}
+              {getPriceDisplay()}
             </span>
           </div>
         </div>
-        <div className={`text-right ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
+        <div className={`text-right ${getCostColor()}`}>
           <div className="font-bold">${totalCost.toFixed(2)}</div>
         </div>
       </div>

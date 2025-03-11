@@ -1,9 +1,10 @@
 'use client'
+
 import React, { useState } from 'react';
 import './VerifyInvestor.css';
+// import { addUserToAchievement } from '../achievements/AchievementService';
 
 const VerifyInvestor: React.FC = () => {
-    // TODO: Grab isVerified from database
     const [isVerified, setIsVerified] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -12,7 +13,8 @@ const VerifyInvestor: React.FC = () => {
         setTimeout(() => {
             setIsVerified(true);
             setLoading(false);
-            // TODO: Update database
+            // For testing
+            // addUserToAchievement("Niski Test", "cm7ywbn2p0002isq41omo4lvs");
         }, 2000);
     };
 

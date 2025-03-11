@@ -1,11 +1,16 @@
-import React from 'react'
+import React from 'react';
 
-const LoadingStateAnimation = () => {
+interface LoadingStateProps {
+    text?: string;
+}
+
+const LoadingStateAnimation: React.FC<LoadingStateProps> = ({ text }) => {
     return (
         <div className="flex flex-col items-center space-y-4">
             <div className="w-12 h-12 border-4 border-t-blue-500 border-gray-600 rounded-full animate-spin"></div>
-            <span className="text-gray-300 text-lg">Loading your lootboxes...</span>
-        </div>)
-}
+            {text && <span className="text-gray-300 text-lg">{text}</span>}
+        </div>
+    );
+};
 
-export default LoadingStateAnimation
+export default LoadingStateAnimation;

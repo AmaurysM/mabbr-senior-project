@@ -57,13 +57,21 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => handleAcceptRequest(request.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleAcceptRequest(request.id);
+                    }}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm transition-colors"
                   >
                     Accept
                   </button>
                   <button
-                    onClick={() => handleRejectRequest(request.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRejectRequest(request.id);
+                    }}
                     className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
                   >
                     Reject
@@ -103,7 +111,7 @@ const NotificationBell: React.FC = () => {
       if (data.success) {
         setRequests(data.requests || []);
       } else {
-        console.error('Failed to fetch friend requests');
+        // console.error('Failed to fetch friend requests');
         setRequests([]);
       }
     } catch (error) {
@@ -129,7 +137,15 @@ const NotificationBell: React.FC = () => {
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (bellRef.current && !bellRef.current.contains(event.target as Node)) {
+      // Check if the click is outside both the bell and the dropdown
+      const dropdownElement = document.getElementById('notification-dropdown');
+      
+      if (
+        bellRef.current && 
+        !bellRef.current.contains(event.target as Node) &&
+        dropdownElement && 
+        !dropdownElement.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -142,25 +158,40 @@ const NotificationBell: React.FC = () => {
 
   const handleAcceptRequest = async (requestId: string) => {
     try {
+      // Show loading toast
+      const loadingToast = toast.loading('Accepting friend request...');
+      
       const response = await fetch('/api/user/accept-friend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({ requestId }),
+        credentials: 'include'
       });
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
       
       const data = await response.json();
       
       if (response.ok) {
         // Remove the request from the list
         setRequests(prev => prev.filter(req => req.id !== requestId));
+        
         // Show success message
         toast.success(data.message || 'Friend request accepted');
-        // Refresh the transactions list by reloading the page
-        window.location.reload();
+        
+        // Dispatch a custom event to notify other components that a friend request was accepted
+        const friendAcceptedEvent = new Event('friendRequestAccepted');
+        window.dispatchEvent(friendAcceptedEvent);
+        
+        // Refresh the friend requests
+        fetchRequests();
       } else {
-        console.error('Failed to accept friend request');
+        console.error('Failed to accept friend request:', data.error);
         toast.error(data.error || 'Failed to accept friend request');
       }
     } catch (error) {
@@ -171,21 +202,35 @@ const NotificationBell: React.FC = () => {
 
   const handleRejectRequest = async (requestId: string) => {
     try {
+      // Show loading toast
+      const loadingToast = toast.loading('Rejecting friend request...');
+      
       const response = await fetch('/api/user/reject-friend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({ requestId }),
+        credentials: 'include'
       });
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
+      const data = await response.json();
       
       if (response.ok) {
         // Remove the request from the list
         setRequests(prev => prev.filter(req => req.id !== requestId));
-        toast.success('Friend request rejected');
+        toast.success(data.message || 'Friend request rejected');
+        
+        // Refresh the friend requests
+        fetchRequests();
       } else {
-        console.error('Failed to reject friend request');
-        toast.error('Failed to reject friend request');
+        console.error('Failed to reject friend request:', data.error);
+        toast.error(data.error || 'Failed to reject friend request');
       }
     } catch (error) {
       console.error('Error rejecting friend request:', error);
@@ -224,8 +269,13 @@ const NotificationBell: React.FC = () => {
       {mounted && isOpen && createPortal(
         <div className="fixed inset-0 z-[9999] bg-transparent pointer-events-none">
           <div 
+            id="notification-dropdown"
             className="fixed top-16 right-4 w-80 bg-gray-800 rounded-xl shadow-xl border border-gray-700/50 overflow-hidden pointer-events-auto"
             style={{ zIndex: 99999 }}
+            onClick={(e) => {
+              // Prevent clicks inside the dropdown from closing it
+              e.stopPropagation();
+            }}
           >
             <div className="p-4 border-b border-gray-700/50">
               <h3 className="text-lg font-semibold text-white">Notifications</h3>

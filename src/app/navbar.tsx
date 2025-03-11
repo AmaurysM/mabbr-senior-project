@@ -16,13 +16,12 @@ interface NavItem {
 
 const navigationItems: NavItem[] = [
   { name: "Home", href: "/home" },
+  { name: "Community", href: "/community" },
   { name: "New Users", href: "/users" },
   { name: "Notes", href: "/note" },
   { name: "Bonds", href: "/bond" },
-  { name: "Community", href: "/community" },
   { name: "Trade", href: "/Trade" },
   { name: "Loot Box", href: "/lootbox" },
-  { name: "Leaderboards", href: "/leaderboards" },
   { name: "Portfolio", href: "/portfolio" },
   { name: "Wishlist", href: "/wishlist" },
   { name: "Profile", href: "/profile" },
@@ -152,6 +151,13 @@ const Navbar = () => {
                                 onClick={() => setProfileDropdownOpen(false)}
                             >
                               Your Profile
+                            </Link>
+                            <Link
+                                href="/achievements"
+                                className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                                onClick={() => setProfileDropdownOpen(false)}
+                            >
+                              Achievements
                             </Link>
                             <hr className="my-1 border-gray-200" />
                             <button

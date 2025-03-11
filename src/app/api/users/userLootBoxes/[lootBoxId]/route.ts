@@ -71,7 +71,7 @@ export async function POST(
 
     const lootBox = await prisma.lootBox.findUnique({
       where: { id: lootBoxId },
-      select: { id: true, price: true },
+      select: { id: true, name: true, price: true },
     });
 
     if (!lootBox) {
@@ -96,27 +96,50 @@ export async function POST(
       },
     });
 
-    await prisma.$transaction([
+    const dbOperations = [];
+
+    dbOperations.push(
       prisma.user.update({
         where: { id: user.id },
         data: { balance: { decrement: lootBox.price } },
-      }),
+      })
+    );
 
-      existingUserLootBox
-        ? 
-          prisma.userLootBox.update({
-            where: { id: existingUserLootBox.id },
-            data: { quantity: { increment: 1 } },
-          })
-        : 
-          prisma.userLootBox.create({
-            data: {
-              userId: user.id,
-              lootBoxId: lootBox.id,
-              quantity: 1,
-            },
-          }),
-    ]);
+    if (existingUserLootBox) {
+      dbOperations.push(
+        prisma.userLootBox.update({
+          where: { id: existingUserLootBox.id },
+          data: { quantity: { increment: 1 } },
+        })
+      );
+    } else {
+      dbOperations.push(
+        prisma.userLootBox.create({
+          data: {
+            userId: user.id,
+            lootBoxId: lootBox.id,
+            quantity: 1,
+          },
+        })
+      );
+    }
+
+    dbOperations.push(
+      prisma.transaction.create({
+        data: {
+          userId: user.id,
+          type: 'LOOTBOX',
+          stockSymbol: lootBox.name || 'Lootbox',
+          quantity: 1,
+          price: lootBox.price,
+          totalCost: lootBox.price,
+          status: 'completed',
+          publicNote: 'Purchased a lootbox',
+        }
+      })
+    );
+
+    await prisma.$transaction(dbOperations);
 
     return NextResponse.json({ message: "Lootbox purchased successfully" });
   } catch (error) {
