@@ -117,3 +117,5 @@ export type PostWithLikes = Prisma.PostGetPayload<{
     likes:true
   }
 }>
+export type User = Prisma.UserGetPayload<object>;
+

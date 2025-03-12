@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 
 import { Toaster } from "@/app/components/ui/sonner";
-import LoadingStateAnimation from '../components/LoadingState';
 import { FaBell, FaHashtag, FaUser, FaUsers } from 'react-icons/fa';
 import { IoIosDocument } from 'react-icons/io';
 import GlobalFeed from './globalFeed/page';
 import Notifications from './notifications/page';
 import Articles from './articles/page';
 import MyPage from './myPage/page';
+import { authClient } from '@/lib/auth-client';
 
 enum Tab {
   globalFeed = "globalFeed",
@@ -20,8 +20,8 @@ enum Tab {
 }
 
 const CommunityPage = () => {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const {data: session } = authClient.useSession();
+  const user = session?.user;
 
   const [activeComponent, setActiveComponent] = useState<Tab>(() => {
     return typeof window !== 'undefined' 
@@ -34,35 +34,6 @@ const CommunityPage = () => {
       localStorage.setItem('activeComponent', activeComponent);
     }
   }, [activeComponent]);
-
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const res = await fetch('/api/auth/get-session');
-
-        if (!res.ok) {
-          console.error('Auth response not OK:', res.status);
-          setLoading(false);
-          return;
-        }
-
-        const data = await res.json();
-
-        if (data.user) {
-          setUser(data.user);
-        }
-
-        setLoading(false);
-      } catch (error) {
-        console.error('Error during initialization:', error);
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, []);
-
-  if (loading) return <div className="flex justify-center items-center h-screen"><LoadingStateAnimation /></div>;
 
   return (
     <div className="px-4 py-6 w-full h-full max-w-[1920px] mx-auto flex">
@@ -95,7 +66,7 @@ const CommunityPage = () => {
       </div>
 
       <div className="flex-grow">
-        {activeComponent === Tab.globalFeed && <GlobalFeed user={user} />}
+        {activeComponent === Tab.globalFeed && <GlobalFeed />}
         {activeComponent === Tab.notifications && <Notifications />}
         {activeComponent === Tab.articles && <Articles />}
         {activeComponent === Tab.myPage && <MyPage user={user} />}

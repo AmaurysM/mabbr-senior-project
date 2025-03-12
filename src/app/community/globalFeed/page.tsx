@@ -7,6 +7,10 @@ import { Toaster } from "@/app/components/ui/sonner"
 import { useToast } from "@/app/hooks/use-toast";
 import LoadingStateAnimation from '@/app/components/LoadingState';
 import CommentCard from '@/app/components/CommentCard';
+import { authClient } from '@/lib/auth-client';
+import Leaderboard from '@/app/components/Leaderboard';
+import MarketSentimentTable from '@/app/components/MarketSentimentTable';
+import { useMarketSentiment } from '@/hooks/useMarkteSentiment';
 
 interface Message {
   id: string;
@@ -19,25 +23,25 @@ interface Message {
   };
 }
 
-interface MarketSentiment {
-  bullishCount: number;
-  bearishCount: number;
-  topPicks: Array<{ symbol: string; count: number }>;
-  marketTrend: Array<{ trend: string; count: number }>;
-  mostDiscussed: Array<{ symbol: string; count: number }>;
-  timestamp: Date;
-}
+// interface MarketSentiment {
+//   bullishCount: number;
+//   bearishCount: number;
+//   topPicks: Array<{ symbol: string; count: number }>;
+//   marketTrend: Array<{ trend: string; count: number }>;
+//   mostDiscussed: Array<{ symbol: string; count: number }>;
+//   timestamp: Date;
+// }
 
-interface LeaderboardEntry {
-  id: string;
-  name: string;
-  image?: string;
-  badgeImage?: string;
-  rank: number;
-  profit: number;
-  percentChange: number;
-  totalValue: number;
-}
+// interface LeaderboardEntry {
+//   id: string;
+//   name: string;
+//   image?: string;
+//   badgeImage?: string;
+//   rank: number;
+//   profit: number;
+//   percentChange: number;
+//   totalValue: number;
+// }
 
 // Add a new interface for stock data
 interface StockSymbolData {
@@ -51,23 +55,29 @@ interface StockSymbolData {
 // Add a cache for stock data to prevent flashing
 const stockDataCache: Record<string, StockSymbolData> = {};
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  image?: string;
-}
+// interface User {
+//   id: string;
+//   name: string;
+//   email: string;
+//   image?: string;
+// }
 
 
-const GlobalFeed = ({ user }: { user: User | null }) => {
+const GlobalFeed = () => {
+
+  const {data: session } = authClient.useSession();
+  const user = session?.user;
+
   const { toast } = useToast();
 
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [sentiment, setSentiment] = useState<MarketSentiment | null>(null);
+  // const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  //const [sentiment, setSentiment] = useState<MarketSentiment | null>(null);
+  const { sentiment, mutateSentiment, isLoading } = useMarketSentiment();
+  
 
   const [hasVoted, setHasVoted] = useState<boolean>(false);
   const [showVotePanel, setShowVotePanel] = useState<boolean>(false);
@@ -132,74 +142,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
     }
   };
 
-  // Modified fetchSentiment to include localStorage aggregated data
-  const fetchSentiment = async () => {
-    try {
-      // Initialize with empty data
-      const updatedSentiment: MarketSentiment = {
-        bullishCount: 0,
-        bearishCount: 0,
-        topPicks: [],
-        marketTrend: [],
-        mostDiscussed: [],
-        timestamp: new Date()
-      };
-
-      // Only use localStorage data if we're in a browser environment
-      if (typeof window !== 'undefined') {
-        const today = new Date().toISOString().split('T')[0];
-        const aggregateKey = `market_votes_${today}`;
-        const localVotes = JSON.parse(localStorage.getItem(aggregateKey) || 'null');
-
-        if (localVotes) {
-          // Update counts from localStorage
-          updatedSentiment.bullishCount = localVotes.bullish || 0;
-          updatedSentiment.bearishCount = localVotes.bearish || 0;
-
-          // Convert topPicks from localStorage
-          if (localVotes.topPicks) {
-            updatedSentiment.topPicks = Object.entries(localVotes.topPicks)
-              .map(([symbol, count]) => ({
-                symbol,
-                count: count as number
-              }))
-              .filter(pick => pick.count > 0)
-              .sort((a, b) => b.count - a.count);
-
-            // Use the same data for mostDiscussed
-            updatedSentiment.mostDiscussed = [...updatedSentiment.topPicks];
-          }
-
-          // Convert marketTrend from localStorage
-          if (localVotes.marketIndices) {
-            updatedSentiment.marketTrend = Object.entries(localVotes.marketIndices)
-              .map(([trend, count]) => ({
-                trend,
-                count: count as number
-              }))
-              .filter(trend => trend.count > 0)
-              .sort((a, b) => b.count - a.count);
-          }
-        }
-      }
-
-      setSentiment(updatedSentiment);
-    } catch (error) {
-      console.error('Error fetching sentiment:', error);
-    }
-  };
-
-  // Fetch leaderboard data
-  const fetchLeaderboard = async () => {
-    try {
-      const res = await fetch('/api/leaderboard?limit=5');
-      if (!res.ok) throw new Error('Failed to fetch leaderboard');
-      const data = await res.json();
-      setLeaderboard(data.leaderboard);
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-    }
-  };
 
   // Check if user has already voted today - use localStorage as a temporary solution
   const checkVoteStatus = async () => {
@@ -314,8 +256,7 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
           trends.sort((a, b) => b.count - a.count);
           updatedSentiment.marketTrend = trends;
         }
-
-        setSentiment(updatedSentiment);
+        mutateSentiment(updatedSentiment);
       }
 
       toast({
@@ -380,8 +321,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
         // Fetch initial data
         await Promise.all([
           fetchMessages(),
-          fetchSentiment(),
-          fetchLeaderboard(),
         ]);
 
         setLoading(false);
@@ -395,15 +334,11 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
 
     // Set up polling for messages and sentiment
     const messageInterval = setInterval(fetchMessages, 5000);
-    const sentimentInterval = setInterval(fetchSentiment, 30000);
-    const leaderboardInterval = setInterval(fetchLeaderboard, 60000);
 
     return () => {
       clearInterval(messageInterval);
-      clearInterval(sentimentInterval);
-      clearInterval(leaderboardInterval);
     };
-  }, []);
+  }, [user]);
 
   // Ensure the check runs immediately when the component mounts and when user changes
   useEffect(() => {
@@ -479,7 +414,6 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
               symbol,
             }),
           });
-          fetchSentiment();
         }
       }
     } catch (error) {
@@ -691,150 +625,12 @@ const GlobalFeed = ({ user }: { user: User | null }) => {
 
         {/* Right Column - Leaderboards & Friends */}
         <div className="flex flex-col gap-6">
-          {/* Global Leaderboard */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4">Global Leaderboard</h2>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Rank</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Trader</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Profit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.length > 0 ? (
-                    leaderboard.map((entry) => (
-                      <tr
-                        key={entry.id}
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <span className={`
-                            inline-flex items-center justify-center w-6 h-6 rounded-full 
-                            ${entry.rank === 1 ? 'bg-yellow-500/20 text-yellow-300' :
-                              entry.rank === 2 ? 'bg-gray-400/20 text-gray-300' :
-                                entry.rank === 3 ? 'bg-orange-500/20 text-orange-300' :
-                                  'bg-gray-700/50 text-gray-400'}
-                            font-bold text-xs
-                          `}>
-                            {entry.rank}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="font-semibold text-white">{entry.name}</div>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={entry.profit >= 0 ? 'text-green-400' : 'text-red-400'}>
-                            ${entry.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr className="border-b border-white/5">
-                      <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                        Loading leaderboard data...
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-
-              <div className="mt-3 text-center">
-                <button
-                  onClick={() => router.push('/leaderboards')}
-                  className="text-blue-400 hover:text-blue-300 text-sm"
-                >
-                  View Full Leaderboard →
-                </button>
-              </div>
-            </div>
-          </div>
+          {/* Top five leader board */}
+          <Leaderboard num={5}/>
 
           {/* Market Sentiment */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Market Sentiment</h2>
-              {user && hasVoted && (
-                <button
-                  onClick={() => setShowVotePanel(true)}
-                  className="text-sm text-blue-400 hover:text-blue-300"
-                >
-                  View Vote
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-300">Bulls vs Bears</span>
-                  {sentiment && (
-                    <span className="text-green-400">
-                      {Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}% Bullish
-                    </span>
-                  )}
-                </div>
-                {sentiment && (
-                  <div className="w-full bg-gray-600/50 rounded-full h-2.5">
-                    <div
-                      className="bg-green-500 h-2.5 rounded-full"
-                      style={{
-                        width: `${Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}%`
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-300">Most Likely to Outperform</span>
-                  {sentiment?.topPicks[0] && (
-                    <span className="text-blue-400">{sentiment.topPicks[0].symbol}</span>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-1 flex-wrap">
-                  {sentiment?.topPicks.map(stock => (
-                    <span
-                      key={stock.symbol}
-                      className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full"
-                    >
-                      {stock.symbol}
-                    </span>
-                  ))}
-                  {(!sentiment?.topPicks || sentiment.topPicks.length === 0) && (
-                    <span className="text-xs text-gray-400">No top picks yet - be the first to vote!</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-300">Top Index Prediction</span>
-                  {sentiment?.marketTrend[0] && (
-                    <span className="text-yellow-400">{sentiment.marketTrend[0].trend}</span>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-1 flex-wrap">
-                  {sentiment?.marketTrend.map(trend => (
-                    <span
-                      key={trend.trend}
-                      className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full"
-                    >
-                      {trend.trend}
-                    </span>
-                  ))}
-                  {(!sentiment?.marketTrend || sentiment.marketTrend.length === 0) && (
-                    <span className="text-xs text-gray-400">No index predictions yet - be the first to vote!</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <MarketSentimentTable/>
+          
         </div>
         <Toaster />
       </div>
