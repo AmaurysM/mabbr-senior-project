@@ -8,6 +8,49 @@ import { FriendRequests } from "@/lib/prisma_types";
 const Notifications = () => {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<FriendRequests>([]);
+  const [loadingFriendActivity, setLoadingFriendActivity] = useState(true);
+  const [friendTransactions, setFriendTransactions] = useState<any[]>([]);
+
+
+
+  // Add a new function to fetch friend transactions
+  const fetchFriendTransactions = async () => {
+      setLoadingFriendActivity(false);
+
+
+    try {
+      const res = await fetch('/api/user/transactions', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Filter only friend transactions (where isCurrentUser is false)
+        const friendActivity = data.transactions.filter((tx: any) => tx.isCurrentUser === false);
+        setFriendTransactions(friendActivity);
+      }
+
+      setLoadingFriendActivity(false);
+    } catch (error) {
+      console.error('Error fetching friend transactions:', error);
+      setLoadingFriendActivity(false);
+    }
+  };
+
+  useEffect(() => {
+      fetchFriendTransactions();
+  
+      
+        const intervalId = setInterval(() => {
+          fetchFriendTransactions();
+        }, 30000);
+  
+        return () => clearInterval(intervalId);
+      
+    });
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -59,7 +102,7 @@ const Notifications = () => {
                       Sent request on {new Date(notification.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  
+
                 </div>
               </li>
             ))}

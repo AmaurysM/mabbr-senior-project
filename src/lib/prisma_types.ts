@@ -111,3 +111,11 @@ export type UserPostReposts = Prisma.UserPostRepostGetPayload<{
 }>[];
 
 export type Post = Prisma.PostGetPayload<object>;
+
+export type PostWithLikes = Prisma.PostGetPayload<{
+  include:{
+    likes:true
+  }
+}>
+export type User = Prisma.UserGetPayload<object>;
+
