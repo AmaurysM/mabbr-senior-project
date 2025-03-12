@@ -2,15 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { Toaster } from "@/app/components/ui/sonner"
-import { useToast } from "@/app/hooks/use-toast";
 import LoadingStateAnimation from '@/app/components/LoadingState';
 import CommentCard from '@/app/components/CommentCard';
 import { authClient } from '@/lib/auth-client';
 import Leaderboard from '@/app/components/Leaderboard';
 import MarketSentimentTable from '@/app/components/MarketSentimentTable';
-import { useMarketSentiment } from '@/hooks/useMarkteSentiment';
+import DailyMarketVotePanel from '@/app/components/DailyMarketVotePanel';
 
 interface Message {
   id: string;
@@ -22,26 +20,6 @@ interface Message {
     image?: string;
   };
 }
-
-// interface MarketSentiment {
-//   bullishCount: number;
-//   bearishCount: number;
-//   topPicks: Array<{ symbol: string; count: number }>;
-//   marketTrend: Array<{ trend: string; count: number }>;
-//   mostDiscussed: Array<{ symbol: string; count: number }>;
-//   timestamp: Date;
-// }
-
-// interface LeaderboardEntry {
-//   id: string;
-//   name: string;
-//   image?: string;
-//   badgeImage?: string;
-//   rank: number;
-//   profit: number;
-//   percentChange: number;
-//   totalValue: number;
-// }
 
 // Add a new interface for stock data
 interface StockSymbolData {
@@ -55,37 +33,16 @@ interface StockSymbolData {
 // Add a cache for stock data to prevent flashing
 const stockDataCache: Record<string, StockSymbolData> = {};
 
-// interface User {
-//   id: string;
-//   name: string;
-//   email: string;
-//   image?: string;
-// }
-
 
 const GlobalFeed = () => {
 
   const {data: session } = authClient.useSession();
   const user = session?.user;
 
-  const { toast } = useToast();
-
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  // const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  //const [sentiment, setSentiment] = useState<MarketSentiment | null>(null);
-  const { sentiment, mutateSentiment, isLoading } = useMarketSentiment();
-  
-
-  const [hasVoted, setHasVoted] = useState<boolean>(false);
-  const [showVotePanel, setShowVotePanel] = useState<boolean>(false);
-  const [voteData, setVoteData] = useState({
-    sentiment: '',
-    topPick: '',
-    marketTrend: ''
-  });
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -142,138 +99,6 @@ const GlobalFeed = () => {
     }
   };
 
-
-  // Check if user has already voted today - use localStorage as a temporary solution
-  const checkVoteStatus = async () => {
-    if (!user) return;
-
-    try {
-      // Check if user has voted today using localStorage
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-      const voteKey = `market_vote_${user.id}_${today}`;
-      const hasVotedToday = localStorage.getItem(voteKey);
-
-      setHasVoted(!!hasVotedToday);
-      setShowVotePanel(!hasVotedToday && user !== null);
-    } catch (error) {
-      console.error('Error checking vote status:', error);
-    }
-  };
-
-  const handleVoteSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!user) {
-      toast({
-        title: "Your not logged in",
-        description: "Please log in to vote"
-      })
-      return;
-    }
-
-    if (!voteData.sentiment) {
-      toast({
-        title: "Empty field",
-        description: "Please select your market sentiment"
-      })
-      return;
-    }
-
-    try {
-      // Save vote to localStorage to prevent multiple votes
-      const today = new Date().toISOString().split('T')[0];
-      const voteKey = `market_vote_${user.id}_${today}`;
-      localStorage.setItem(voteKey, JSON.stringify(voteData));
-
-      // Store aggregated votes in localStorage for accurate global counts
-      const aggregateKey = `market_votes_${today}`;
-      let aggregatedVotes = JSON.parse(localStorage.getItem(aggregateKey) || 'null') || {
-        bullish: 0,
-        bearish: 0,
-        topPicks: {},
-        marketIndices: {}
-      };
-
-      // Update sentiment counts
-      if (voteData.sentiment === 'bullish') {
-        aggregatedVotes.bullish += 1;
-      } else {
-        aggregatedVotes.bearish += 1;
-      }
-
-      // Update stock picks
-      if (voteData.topPick) {
-        aggregatedVotes.topPicks[voteData.topPick] = (aggregatedVotes.topPicks[voteData.topPick] || 0) + 1;
-      }
-
-      // Update market indices
-      if (voteData.marketTrend) {
-        aggregatedVotes.marketIndices[voteData.marketTrend] = (aggregatedVotes.marketIndices[voteData.marketTrend] || 0) + 1;
-      }
-
-      // Save updated aggregated votes
-      localStorage.setItem(aggregateKey, JSON.stringify(aggregatedVotes));
-
-      // Update sentiment state directly with the user's vote
-      if (sentiment) {
-        const updatedSentiment = { ...sentiment };
-
-        // Update bulls/bears count
-        if (voteData.sentiment === 'bullish') {
-          updatedSentiment.bullishCount += 1;
-        } else {
-          updatedSentiment.bearishCount += 1;
-        }
-
-        // Update top picks if provided
-        if (voteData.topPick) {
-          const topPicks = [...updatedSentiment.topPicks];
-          const existingIndex = topPicks.findIndex(p => p.symbol === voteData.topPick);
-
-          if (existingIndex >= 0) {
-            topPicks[existingIndex].count += 1;
-          } else {
-            topPicks.push({ symbol: voteData.topPick, count: 1 });
-          }
-
-          // Sort by count
-          topPicks.sort((a, b) => b.count - a.count);
-          updatedSentiment.topPicks = topPicks;
-        }
-
-        // Update market trend if provided
-        if (voteData.marketTrend) {
-          const trends = [...updatedSentiment.marketTrend];
-          const existingIndex = trends.findIndex(t => t.trend === voteData.marketTrend);
-
-          if (existingIndex >= 0) {
-            trends[existingIndex].count += 1;
-          } else {
-            trends.push({ trend: voteData.marketTrend, count: 1 });
-          }
-
-          // Sort by count
-          trends.sort((a, b) => b.count - a.count);
-          updatedSentiment.marketTrend = trends;
-        }
-        mutateSentiment(updatedSentiment);
-      }
-
-      toast({
-        title: "Success",
-        description: "Vote submitted successfully!"
-      })
-
-      setHasVoted(true);
-      setShowVotePanel(false);
-
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: (error.message || "Failed to submit vote")
-      })
-    }
-  };
 
   // Add a function to fetch stock data for a symbol
   const fetchStockData = async (symbol: string): Promise<StockSymbolData | null> => {
@@ -340,12 +165,6 @@ const GlobalFeed = () => {
     };
   }, [user]);
 
-  // Ensure the check runs immediately when the component mounts and when user changes
-  useEffect(() => {
-    if (typeof window !== 'undefined' && user) {
-      checkVoteStatus();
-    }
-  }, [user]);
 
   // Scroll to bottom of chat only when messages change
   useEffect(() => {
@@ -421,140 +240,13 @@ const GlobalFeed = () => {
     }
   };
 
-  useEffect(() => {
-    // Initialize local storage on the client side
-    if (typeof window !== 'undefined') {
-      // Function to check vote status from localStorage
-      const checkInitialVoteStatus = () => {
-        if (!user) return;
-
-        const today = new Date().toISOString().split('T')[0];
-        const voteKey = `market_vote_${user.id}_${today}`;
-        const hasVotedToday = localStorage.getItem(voteKey);
-
-        setHasVoted(!!hasVotedToday);
-        setShowVotePanel(!hasVotedToday);
-      };
-
-      // Reset votes if it's a new day
-      const today = new Date().toISOString().split('T')[0];
-      const lastVoteDay = localStorage.getItem('last_vote_day');
-
-      if (lastVoteDay && lastVoteDay !== today) {
-        // It's a new day, show vote panel again
-        setShowVotePanel(user !== null);
-        setHasVoted(false);
-      } else if (user) {
-        // Same day, check if user already voted
-        checkInitialVoteStatus();
-      }
-
-      // Set today as the last vote day
-      localStorage.setItem('last_vote_day', today);
-    }
-  }, [user]); // Run when user changes
-
+  
   if (loading) return <div className="flex justify-center items-center h-screen"><LoadingStateAnimation /></div>;
 
   return (
     <div className="flex flex-col gap-6">
       {/* Daily Market Vote Panel */}
-      {user && showVotePanel && (
-        <div className="mb-6 bg-blue-900/30 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-blue-500/20 animate-fadeIn">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-white">Daily Market Pulse</h2>
-            <button
-              onClick={() => setShowVotePanel(false)}
-              className="text-gray-400 hover:text-white"
-            >
-              ✕
-            </button>
-          </div>
-
-          <form onSubmit={handleVoteSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Market Sentiment */}
-              <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
-                <h3 className="text-lg font-medium text-white mb-3">How do you think the market will be today?</h3>
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setVoteData({ ...voteData, sentiment: 'bullish' })}
-                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bullish'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
-                      }`}
-                  >
-                    <ChevronUpIcon className="w-5 h-5 inline-block mr-1" />
-                    Bullish
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setVoteData({ ...voteData, sentiment: 'bearish' })}
-                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bearish'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
-                      }`}
-                  >
-                    <ChevronDownIcon className="w-5 h-5 inline-block mr-1" />
-                    Bearish
-                  </button>
-                </div>
-              </div>
-
-              {/* Top Pick */}
-              <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
-                <h3 className="text-lg font-medium text-white mb-3">Which stock will outperform today?</h3>
-                <select
-                  value={voteData.topPick}
-                  onChange={(e) => setVoteData({ ...voteData, topPick: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select a stock</option>
-                  <option value="AAPL">Apple (AAPL)</option>
-                  <option value="MSFT">Microsoft (MSFT)</option>
-                  <option value="GOOGL">Alphabet (GOOGL)</option>
-                  <option value="AMZN">Amazon (AMZN)</option>
-                  <option value="META">Meta (META)</option>
-                  <option value="TSLA">Tesla (TSLA)</option>
-                  <option value="NVDA">NVIDIA (NVDA)</option>
-                  <option value="AMD">AMD (AMD)</option>
-                  <option value="INTC">Intel (INTC)</option>
-                </select>
-              </div>
-
-              {/* Market Trend - Changed to Index Selection */}
-              <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
-                <h3 className="text-lg font-medium text-white mb-3">Which index will outperform today?</h3>
-                <select
-                  value={voteData.marketTrend}
-                  onChange={(e) => setVoteData({ ...voteData, marketTrend: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select an index</option>
-                  <option value="S&P 500">S&P 500</option>
-                  <option value="Nasdaq">Nasdaq</option>
-                  <option value="Dow Jones">Dow Jones</option>
-                  <option value="Russell 2000">Russell 2000</option>
-                  <option value="NYSE">NYSE</option>
-                  <option value="VIX">VIX (Volatility Index)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                type="submit"
-                className="px-6 py-3 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!voteData.sentiment}
-              >
-                Submit Vote
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <DailyMarketVotePanel />
 
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
