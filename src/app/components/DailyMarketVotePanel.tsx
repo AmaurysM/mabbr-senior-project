@@ -134,11 +134,11 @@ const DailyMarketVotePanel = () => {
   useEffect(() => {
     const checkVoteStatus = () => {
       if (!user) return;
-  
+
       const today = new Date().toISOString().split('T')[0];
       const voteKey = `market_vote_${user.id}_${today}`;
       const hasVotedToday = localStorage.getItem(voteKey);
-      
+
       if (typeof window !== 'undefined') {
         const lastVoteDay = localStorage.getItem('last_vote_day');
         if (lastVoteDay && lastVoteDay !== today) {
@@ -148,113 +148,115 @@ const DailyMarketVotePanel = () => {
           // Same day, check if user already voted
           setShowVotePanel(!hasVotedToday && user !== null);
         }
-        
+
         // Set today as the last vote day
         localStorage.setItem('last_vote_day', today);
       }
     };
-  
+
     checkVoteStatus();
   }, [user]);
-  
+
 
   return (
-    <div>{user && showVotePanel && (
-      <div className="mb-6 bg-blue-900/30 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-blue-500/20 animate-fadeIn">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">Daily Market Pulse</h2>
-          <button
-            onClick={() => setShowVotePanel(false)}
-            className="text-gray-400 hover:text-white"
-          >
-            ✕
-          </button>
-        </div>
+    <>
+      {user && showVotePanel && (
+        <div className="mb-6 bg-blue-900/30 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-blue-500/20 animate-fadeIn">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Daily Market Pulse</h2>
+            <button
+              onClick={() => setShowVotePanel(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
 
-        <form onSubmit={handleVoteSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Market Sentiment */}
-            <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
-              <h3 className="text-lg font-medium text-white mb-3">How do you think the market will be today?</h3>
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setVoteData({ ...voteData, sentiment: 'bullish' })}
-                  className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bullish'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
-                    }`}
-                >
-                  <ChevronUpIcon className="w-5 h-5 inline-block mr-1" />
-                  Bullish
-                </button>
+          <form onSubmit={handleVoteSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Market Sentiment */}
+              <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
+                <h3 className="text-lg font-medium text-white mb-3">How do you think the market will be today?</h3>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setVoteData({ ...voteData, sentiment: 'bullish' })}
+                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bullish'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+                      }`}
+                  >
+                    <ChevronUpIcon className="w-5 h-5 inline-block mr-1" />
+                    Bullish
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setVoteData({ ...voteData, sentiment: 'bearish' })}
-                  className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bearish'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
-                    }`}
+                  <button
+                    type="button"
+                    onClick={() => setVoteData({ ...voteData, sentiment: 'bearish' })}
+                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bearish'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+                      }`}
+                  >
+                    <ChevronDownIcon className="w-5 h-5 inline-block mr-1" />
+                    Bearish
+                  </button>
+                </div>
+              </div>
+
+              {/* Top Pick */}
+              <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
+                <h3 className="text-lg font-medium text-white mb-3">Which stock will outperform today?</h3>
+                <select
+                  value={voteData.topPick}
+                  onChange={(e) => setVoteData({ ...voteData, topPick: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <ChevronDownIcon className="w-5 h-5 inline-block mr-1" />
-                  Bearish
-                </button>
+                  <option value="">Select a stock</option>
+                  <option value="AAPL">Apple (AAPL)</option>
+                  <option value="MSFT">Microsoft (MSFT)</option>
+                  <option value="GOOGL">Alphabet (GOOGL)</option>
+                  <option value="AMZN">Amazon (AMZN)</option>
+                  <option value="META">Meta (META)</option>
+                  <option value="TSLA">Tesla (TSLA)</option>
+                  <option value="NVDA">NVIDIA (NVDA)</option>
+                  <option value="AMD">AMD (AMD)</option>
+                  <option value="INTC">Intel (INTC)</option>
+                </select>
+              </div>
+
+              {/* Market Trend - Changed to Index Selection */}
+              <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
+                <h3 className="text-lg font-medium text-white mb-3">Which index will outperform today?</h3>
+                <select
+                  value={voteData.marketTrend}
+                  onChange={(e) => setVoteData({ ...voteData, marketTrend: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select an index</option>
+                  <option value="S&P 500">S&P 500</option>
+                  <option value="Nasdaq">Nasdaq</option>
+                  <option value="Dow Jones">Dow Jones</option>
+                  <option value="Russell 2000">Russell 2000</option>
+                  <option value="NYSE">NYSE</option>
+                  <option value="VIX">VIX (Volatility Index)</option>
+                </select>
               </div>
             </div>
 
-            {/* Top Pick */}
-            <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
-              <h3 className="text-lg font-medium text-white mb-3">Which stock will outperform today?</h3>
-              <select
-                value={voteData.topPick}
-                onChange={(e) => setVoteData({ ...voteData, topPick: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <div className="mt-6 flex justify-end">
+              <button
+                type="submit"
+                className="px-6 py-3 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!voteData.sentiment}
               >
-                <option value="">Select a stock</option>
-                <option value="AAPL">Apple (AAPL)</option>
-                <option value="MSFT">Microsoft (MSFT)</option>
-                <option value="GOOGL">Alphabet (GOOGL)</option>
-                <option value="AMZN">Amazon (AMZN)</option>
-                <option value="META">Meta (META)</option>
-                <option value="TSLA">Tesla (TSLA)</option>
-                <option value="NVDA">NVIDIA (NVDA)</option>
-                <option value="AMD">AMD (AMD)</option>
-                <option value="INTC">Intel (INTC)</option>
-              </select>
+                Submit Vote
+              </button>
             </div>
-
-            {/* Market Trend - Changed to Index Selection */}
-            <div className="bg-gray-800/50 rounded-xl p-4 border border-white/10">
-              <h3 className="text-lg font-medium text-white mb-3">Which index will outperform today?</h3>
-              <select
-                value={voteData.marketTrend}
-                onChange={(e) => setVoteData({ ...voteData, marketTrend: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select an index</option>
-                <option value="S&P 500">S&P 500</option>
-                <option value="Nasdaq">Nasdaq</option>
-                <option value="Dow Jones">Dow Jones</option>
-                <option value="Russell 2000">Russell 2000</option>
-                <option value="NYSE">NYSE</option>
-                <option value="VIX">VIX (Volatility Index)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end">
-            <button
-              type="submit"
-              className="px-6 py-3 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!voteData.sentiment}
-            >
-              Submit Vote
-            </button>
-          </div>
-        </form>
-      </div>
-    )}</div>
+          </form>
+        </div>
+      )}
+    </>
   )
 }
 
