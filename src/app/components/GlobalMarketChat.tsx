@@ -2,7 +2,7 @@
 import { authClient } from '@/lib/auth-client';
 import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import CommentCard from './CommentCard';
+import GlobalCommentCard from './GlobalCommentCard';
 import LoadingStateAnimation from './LoadingState';
 import { useGlobalMarketChat } from '@/hooks/useGlobalMarketChat';
 
@@ -20,7 +20,7 @@ interface Message {
 const GlobalMarketChat = () => {
   const { data: session } = authClient.useSession();
   const user = session?.user;
-  
+
   const { messagesData, newMessage, setNewMessage, handleSendMessage, error } = useGlobalMarketChat();
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -54,7 +54,7 @@ const GlobalMarketChat = () => {
           ) : (
             <div className="space-y-3">
               {messagesData.messages.map((message: Message) => (
-                <CommentCard
+                <GlobalCommentCard
                   key={message.id}
                   message={{
                     id: message.id,

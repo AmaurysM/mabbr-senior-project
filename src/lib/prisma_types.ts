@@ -113,9 +113,83 @@ export type UserPostReposts = Prisma.UserPostRepostGetPayload<{
 export type Post = Prisma.PostGetPayload<object>;
 
 export type PostWithLikes = Prisma.PostGetPayload<{
-  include:{
-    likes:true
-  }
-}>
+  include: {
+    likes: true;
+  };
+}>;
+
 export type User = Prisma.UserGetPayload<object>;
 
+export type UserCommunityStats = Prisma.UserGetPayload<{
+  include: {
+    transactions: true;
+    achievements: true;
+    followers: true;
+    following: true;
+    userStocks: { include: { stock: true } };
+  };
+}>;
+
+export type UserOverview = Prisma.UserGetPayload<{
+  include: {
+    NewsComment: {
+      orderBy: { createdAt: "desc" };
+      take: 3;
+    };
+    chatMessages: {
+      orderBy: { timestamp: "desc" };
+      take: 3;
+    };
+    posts: {
+      include: { likes: true; reposts: true };
+      orderBy: { createdAt: "desc" };
+      take: 3;
+    };
+    transactions: {
+      orderBy: { timestamp: "desc" };
+      take: 3;
+    };
+    achievements: true;
+  };
+}>;
+
+export type AllUserPosts = Prisma.UserGetPayload<{
+  include: {
+    NewsComment: {
+      orderBy: { createdAt: "desc" };
+    };
+    chatMessages: {
+      orderBy: { timestamp: "desc" };
+    };
+    posts: {
+      include: { likes: true; reposts: true };
+      orderBy: { createdAt: "desc" };
+    };
+    reposts: {
+      include: { post: true };
+      orderBy: { createdAt: "desc" };
+    };
+  };
+}>;
+
+export type FriendsNewsComments = Prisma.UserGetPayload<{
+  include: {
+    NewsComment: {
+      orderBy: { createdAt: "desc" };
+    };
+  };
+}>;
+
+export type FriendPortfolio = Prisma.UserGetPayload<{
+  include: {
+    userStocks: {
+      include: { stock: true };
+    };
+  };
+}>;
+
+export type FriendAchivements = Prisma.UserGetPayload<{
+  include: {
+    achievements: true
+  };
+}>;
