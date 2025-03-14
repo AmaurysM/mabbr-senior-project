@@ -1,6 +1,6 @@
 "use client";
 
-import {  FriendsNewsComments, NewsComments } from '@/lib/prisma_types';
+import {  FriendsNewsComments } from '@/lib/prisma_types';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 

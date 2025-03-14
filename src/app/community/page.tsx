@@ -12,14 +12,15 @@ import Articles from './articles/page';
 import MyPage from './myPage/page';
 import { authClient } from '@/lib/auth-client';
 import Feed from './feed/page';
+import Topics from './topics/page';
 
 enum Tab {
   globalFeed = "globalFeed",
-  topics = "topics",
+  topics = "topics",  
+  feed = "feed",
   articles = "articles",
   notifications = "notifications",
   myPage = "myPage",
-  feed = "feed"
 }
 
 const CommunityPage = () => {
@@ -56,9 +57,9 @@ const CommunityPage = () => {
                   : 'text-gray-300 hover:bg-gray-700/50'
                   }`}
               >
-                {value === Tab.globalFeed && <FaUsers className="w-5 h-5" />}
-                {value === Tab.feed && <MdOutlineRssFeed  className="w-5 h-5" />}
+                {value === Tab.globalFeed && <FaUsers className="w-5 h-5" />}                
                 {value === Tab.topics && <FaHashtag className="w-5 h-5" />}
+                {value === Tab.feed && <MdOutlineRssFeed  className="w-5 h-5" />}
                 {value === Tab.articles && <IoIosDocument className="w-5 h-5" />}
                 {value === Tab.notifications && <FaBell className="w-5 h-5" />}
                 {value === Tab.myPage && <FaUser className="w-5 h-5" />}
@@ -71,6 +72,7 @@ const CommunityPage = () => {
 
       <div className="flex-grow">
         {activeComponent === Tab.globalFeed && <GlobalFeed />}
+        {activeComponent === Tab.topics && <Topics />}
         {activeComponent === Tab.feed && <Feed />}
         {activeComponent === Tab.articles && <Articles />}        
         {activeComponent === Tab.notifications && <Notifications />}

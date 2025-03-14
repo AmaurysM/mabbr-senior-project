@@ -57,6 +57,7 @@ model Comment {
 
   commentableId   String?   // Can be postId, newsUrl, or chatId
   commentableType CommentableType
+  commentDescription String?
 
   parentId        String?  
   parent          Comment? @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -72,9 +73,12 @@ model Comment {
 }
 
 enum CommentableType {
+  TOPIC
+  ROOM
   POST
   NEWS
   GLOBALCHAT
+  FEED
 }
 
 model UserLike {
