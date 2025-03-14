@@ -1,10 +1,10 @@
 import { authClient } from '@/lib/auth-client'
-import { PostWithLikes } from '@/lib/prisma_types'
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { UserCircleIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
+import { Comment } from '@prisma/client'
 
 // Add a new interface for stock data
 interface StockSymbolData {
@@ -86,7 +86,7 @@ const StockTooltip = ({ symbol, data }: { symbol: string, data: StockSymbolData 
   );
 };
 
-const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
+const GlobalCommentCard = ({ message }: { message: Comment }) => {
   const { data: session } = authClient.useSession()
   const [poster, setPoster] = useState<{ name: string; image: string | null } | null>(null);
   const [stockData, setStockData] = useState<Record<string, StockSymbolData>>({});
@@ -296,9 +296,9 @@ const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
         {message.content && (
           <div className="text-white">{formatMessageContent(message.content)}</div>
         )}
-        {message.imageUrl && (
+        {message.image && (
           <Image
-            src={message.imageUrl}
+            src={message.image}
             alt="Attached image"
             width={400}
             height={400}
