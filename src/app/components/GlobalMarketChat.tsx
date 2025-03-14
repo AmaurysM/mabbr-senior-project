@@ -17,6 +17,8 @@ interface Message {
   };
 }
 
+
+
 const GlobalMarketChat = () => {
   const { data: session } = authClient.useSession();
   const user = session?.user;
@@ -40,6 +42,7 @@ const GlobalMarketChat = () => {
     return <div className="text-white"><LoadingStateAnimation /></div>;
   }
 
+
   return (
     <>
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 ">
@@ -59,13 +62,13 @@ const GlobalMarketChat = () => {
                   message={{
                     id: message.id,
                     content: message.content,
-                    imageUrl: null, // Assuming no images in `Message`
-                    createdAt: new Date(message.timestamp), // Convert timestamp
-                    updatedAt: new Date(message.timestamp), // Assuming no separate update timestamp
-                    userId: message.user.id, // Extract userId
-                    parentId: null, // Adjust as needed
-                    repostId: null, // Adjust as needed
-                    likes: [], // Add an empty array for likes
+                    imageUrl: null, 
+                    createdAt: new Date(message.timestamp),
+                    updatedAt: new Date(message.timestamp), 
+                    userId: message.user.id, 
+                    parentId: null, 
+                    repostId: null, 
+                    likes: [], 
                   }}
                 />
               ))}
