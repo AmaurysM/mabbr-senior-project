@@ -7,17 +7,6 @@ import LoadingStateAnimation from "./LoadingState";
 import { useGlobalMarketChat } from "@/hooks/useGlobalMarketChat";
 import { globalPosts } from "@/lib/prisma_types";
 
-interface Message {
-  id: string;
-  content: string;
-  createdAt: string | Date;
-  user: {
-    id: string;
-    name: string;
-    image?: string;
-  };
-}
-
 const GlobalMarketChat = () => {
   const { data: session } = authClient.useSession();
   const user = session?.user;

@@ -205,3 +205,15 @@ export type globalPosts = Prisma.CommentGetPayload<{
     },
   },
 }>[];
+
+export type NewsComments = Prisma.CommentGetPayload<{
+  include: {
+    user: {
+      select: {
+        id: true,
+        name: true,
+        image: true,
+      },
+    },
+  },
+}>[];

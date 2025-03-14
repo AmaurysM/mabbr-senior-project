@@ -32,7 +32,6 @@ export async function GET(req: NextRequest) {
         },
       },
     });
-    console.log("9999999999",messages)
 
     return NextResponse.json(messages);
   } catch (error) {

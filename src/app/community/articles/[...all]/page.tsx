@@ -20,11 +20,9 @@ interface Comment {
   };
 }
 
-// SWR fetcher function
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
-  // Unwrap the params promise
   const { all } = React.use(params);
   const [article, setArticle] = useState<NewsItem | null>(null);
   const [comment, setComment] = useState("");
@@ -33,10 +31,8 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
   const router = useRouter();
   const { data: session } = authClient.useSession()
 
-  // Convert the catch-all segments into a slug string
   const slug = Array.isArray(all) ? all.join("/") : all;
 
-  // Fetch article
   useEffect(() => {
     console.log("Fetching article for slug:", slug);
     if (slug) {
@@ -59,9 +55,9 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
     article?.url ? `/api/news/comments?newsUrl=${encodeURIComponent(article.url)}` : null,
     fetcher,
     {
-      refreshInterval: 10000, // Refresh every 10 seconds
-      revalidateOnFocus: true, // Refresh when tab gets focus
-      dedupingInterval: 2000, // Deduplicate requests within 2 seconds
+      refreshInterval: 10000, 
+      revalidateOnFocus: true, 
+      dedupingInterval: 2000, 
     }
   );
 
