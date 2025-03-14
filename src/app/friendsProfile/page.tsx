@@ -5,7 +5,7 @@ import Image from "next/image";
 import { User } from "@prisma/client";
 import CommunityStats from "./components/communityStats";
 import Overview from "./components/overview";
-import NewsPosts from "./components/posts";
+import NewsPosts from "./components/newsPosts";
 import Stocks from "./components/stocks";
 import Achievements from "./components/achievements";
 

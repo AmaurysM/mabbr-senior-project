@@ -1,6 +1,6 @@
 "use client";
 
-import { FriendsNewsComments, UserOverview } from '@/lib/prisma_types';
+import {  FriendsNewsComments, NewsComments } from '@/lib/prisma_types';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -21,7 +21,7 @@ const NewsPosts = ({ userId }: { userId: string }) => {
                 if (data.error) {
                     console.error("API Error:", data.error);
                 } else {
-                    setUser(data as UserOverview);
+                    setUser(data as FriendsNewsComments);
                 }
                 setLoading(false);
             })
@@ -49,7 +49,6 @@ const NewsPosts = ({ userId }: { userId: string }) => {
 
     return (
         <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Posts</h2>
             {loading ? (
                 <div className="flex justify-center items-center py-8">
                     <svg className="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -58,16 +57,16 @@ const NewsPosts = ({ userId }: { userId: string }) => {
                     <p className="mt-4 text-gray-500">No posts available</p>
                 </div>
 
-            ) : user?.NewsComment && user.NewsComment.length > 0 ? (
-                <div className="space-y-4">
-                    {user.NewsComment.map((post, idx) => (
-                        <div key={idx} className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                            <Link href={post.newsUrl}>
+            ) : user?.comments && user.comments.length > 0 ? (
+                <div className="space-y-4 rounded-lg overflow-auto">
+                    {user.comments.map((post, idx) => (
+                        <div key={idx} className="p-4 bg-gray-50  border border-gray-100">
+                            <Link href={post.commentableId || ""}>
                                 <div
                                     className="text-blue-600 hover:text-blue-800 underline font-medium"
                                     rel="noopener noreferrer"
                                 >
-                                    {formatLinkTitle(post.newsUrl)}
+                                    {formatLinkTitle(post?.commentableId || "")}
                                 </div>
                             </Link>
                             <p className="text-gray-700">{post.content || "No content"}</p>

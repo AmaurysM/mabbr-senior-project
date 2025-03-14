@@ -12,8 +12,7 @@ interface StockSymbolData {
 
 const stockDataCache: Record<string, StockSymbolData> = {};
 
-// Fetch function for SWR
-const fetchMessages = async (): Promise<globalPosts[]> => {
+const fetchMessages = async (): Promise<globalPosts> => {
   try {
     const res = await fetch("/api/chat");
     if (!res.ok) throw new Error("Failed to fetch messages");
@@ -27,28 +26,26 @@ const fetchMessages = async (): Promise<globalPosts[]> => {
 export const useGlobalMarketChat = () => {
   const [newMessage, setNewMessage] = useState<string>("");
 
-  // Fetch messages using SWR
   const {
     data: messagesData = [],
     error,
     mutate,
-  } = useSWR<globalPosts[]>("/api/chat", fetchMessages, {
+  } = useSWR<globalPosts>("/api/chat", fetchMessages, {
     revalidateOnFocus: false,
     refreshInterval: 5000,
   });
 
-  // Fetch stock data
   const fetchStockData = async (symbol: string): Promise<StockSymbolData | null> => {
     try {
       if (stockDataCache[symbol]) return stockDataCache[symbol];
 
       const res = await fetch(`/api/stocks?symbols=${symbol}`);
-      if (!res.ok) throw new Error("Failed to fetch stock data");
+      if (!res.ok) throw new Error(`Failed to fetch stock data for ${symbol}`);
 
       const data = await res.json();
       if (!data.stocks?.length) return null;
 
-      const stockData = {
+      const stockData: StockSymbolData = {
         symbol: data.stocks[0].symbol,
         price: data.stocks[0].price,
         change: data.stocks[0].change,
@@ -59,25 +56,23 @@ export const useGlobalMarketChat = () => {
       stockDataCache[symbol] = stockData;
       return stockData;
     } catch (error) {
-      console.error("Error fetching stock data:", error);
+      console.error(`Error fetching stock data for ${symbol}:`, error);
       return null;
     }
   };
 
-  // Send message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newMessage.trim()) return;
 
     try {
-      // Extract stock symbols from message
       const stockSymbols = newMessage.match(/#([A-Za-z]{1,5})\b/g);
       if (stockSymbols) {
         await Promise.all(
           stockSymbols.map((symbolWithHash) => {
             const symbol = symbolWithHash.substring(1).toUpperCase();
-            return stockDataCache[symbol] ? null : fetchStockData(symbol);
+            return stockDataCache[symbol] ? Promise.resolve(null) : fetchStockData(symbol);
           })
         );
       }
@@ -90,9 +85,8 @@ export const useGlobalMarketChat = () => {
 
       if (!res.ok) throw new Error("Failed to send message");
 
-      const newMessageData: globalPosts = await res.json();
+      const newMessageData = await res.json();
 
-      // Optimistically update UI
       mutate([...messagesData, newMessageData], false);
 
       setNewMessage("");

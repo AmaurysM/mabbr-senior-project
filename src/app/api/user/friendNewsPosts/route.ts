@@ -12,9 +12,11 @@ export async function POST(req: Request) {
     const user: FriendsNewsComments | null = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        NewsComment: {
-          orderBy: { createdAt: "desc" },
-        },
+        comments: {
+          where: {
+            commentableType: "NEWS"
+          }
+        }
       },
     });
 
