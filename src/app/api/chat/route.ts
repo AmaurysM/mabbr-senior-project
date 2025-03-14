@@ -2,30 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { globalPosts } from '@/lib/prisma_types';
 
 // GET /api/chat - Get chat messages
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     // Get query parameters
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '100');
-    const before = searchParams.get('before');
+    //const before = searchParams.get('before');
 
     // Fetch messages with user data
-    const messages = await prisma.chatMessage.findMany({
-      where: {
-        ...(before ? { timestamp: { lt: new Date(before) } } : {}),
+    const messages: globalPosts = await prisma.comment.findMany({
+      where:{
+        commentableType: 'GLOBALCHAT'
       },
       orderBy: {
-        timestamp: 'asc',
+        createdAt: 'asc'
       },
       take: limit,
       include: {
@@ -38,19 +32,9 @@ export async function GET(req: NextRequest) {
         },
       },
     });
+    console.log("9999999999",messages)
 
-    return NextResponse.json({
-      messages: messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        user: {
-          id: msg.user.id,
-          name: msg.user.name,
-          image: msg.user.image,
-        },
-      })),
-    });
+    return NextResponse.json(messages);
   } catch (error) {
     console.error('Error fetching chat messages:', error);
     return NextResponse.json(
@@ -80,10 +64,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = await prisma.chatMessage.create({
+    const message = await prisma.comment.create({
       data: {
         content: content.trim(),
         userId: session.user.id,
+        commentableType: 'GLOBALCHAT',
       },
       include: {
         user: {
@@ -96,18 +81,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      message: {
-        id: message.id,
-        content: message.content,
-        timestamp: message.timestamp,
-        user: {
-          id: message.user.id,
-          name: message.user.name,
-          image: message.user.image,
-        },
-      },
-    });
+    return NextResponse.json(message);
   } catch (error) {
     console.error('Error creating chat message:', error);
     return NextResponse.json(

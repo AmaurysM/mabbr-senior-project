@@ -193,3 +193,15 @@ export type FriendAchivements = Prisma.UserGetPayload<{
     achievements: true
   };
 }>;
+
+export type globalPosts = Prisma.CommentGetPayload<{
+  include: {
+    user: {
+      select: {
+        id: true,
+        name: true,
+        image: true,
+      },
+    },
+  },
+}>[];
