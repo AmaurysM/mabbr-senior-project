@@ -26,7 +26,6 @@ model User {
   balance        Float         @default(100000.0)
   bio            String?       @default("No bio yet.") 
 
-  chatMessages   ChatMessage[]
   votes          UserVote[]
   favoriteStocks String[]      @default([])
 
@@ -43,16 +42,69 @@ model User {
   userLootBoxes  UserLootBox[]
   achievements   UserAchievement[]
 
-  posts          Post[]        @relation("UserPosts") 
-  reposts        UserPostRepost[] 
-
   likes          UserLike[]    
-  NewsComment NewsComment[]
-  
+  comments       Comment[]
+  commentLike CommentLike[]
+
   @@map("user")
 }
 
+model Comment {
+  id              String   @id @default(cuid()) @map("_id")
+  content         String
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  commentableId   String?   // Can be postId, newsUrl, or chatId
+  commentableType CommentableType
+
+  parentId        String?  
+  parent          Comment? @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children        Comment[] @relation("CommentThread")
+
+  commentLikes    CommentLike[]
+  image           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([commentableId, commentableType])
+}
+
+enum CommentableType {
+  POST
+  NEWS
+  GLOBALCHAT
+}
+
+model UserLike {
+  id              String   @id @default(cuid()) @map("_id")
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  likeableId      String   // Can be postId or commentId
+  likeableType    LikeableType
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, likeableId, likeableType]) 
+}
+
+enum LikeableType {
+  POST
+  COMMENT
+}
+
+model CommentLike {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  commentId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@map("comment_like")
+}
 
 model LootBox {
   id            String         @id @default(cuid()) @map("_id")
@@ -210,17 +262,7 @@ model AlphaVantageNews {
   @@map("alphavantage_news")
 }
 
-model ChatMessage {
-  id        String   @id @default(cuid()) @map("_id")
-  content   String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timestamp DateTime @default(now())
 
-  @@index([userId])
-  @@index([timestamp])
-  @@map("chat_message")
-}
 
 model MarketSentiment {
   id            String   @id @default(cuid()) @map("_id")
@@ -276,66 +318,4 @@ model UserAchievement {
   @@map("user_achievement")
 }
 
-model Post {
-  id        String   @id @default(cuid()) @map("_id")
-  content   String?  
-  imageUrl  String?  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  userId    String
-  user      User     @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
-
-  likes     UserLike[]
-
-  parentId  String?  
-  parent    Post?    @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  children  Post[]   @relation("CommentThread")
-
-  repostId  String?  
-  repost    Post?    @relation("RepostRelation", fields: [repostId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  reposts   Post[]   @relation("RepostRelation")
-
-  repostedBy UserPostRepost[]  
-
-  @@map("post")
-}
-
-
-model UserPostRepost {
-  id      String   @id @default(cuid()) @map("_id") // Use a single primary key
-  userId  String
-  postId  String
-
-  user    User     @relation(fields: [userId], references: [id])
-  post    Post     @relation(fields: [postId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@unique([userId, postId]) 
-  @@map("user_post_repost")
-}
-
-
-model UserLike {
-  id      String @id @default(cuid()) @map("_id")
-  userId  String
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId  String
-  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, postId])
-}
-
-model NewsComment {
-  id        String   @id @default(cuid()) @map("_id")
-  content   String
-  newsUrl   String   // URL of the news article
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([newsUrl])
-  @@map("news_comment")
-}

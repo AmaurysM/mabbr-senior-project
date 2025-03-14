@@ -12,28 +12,23 @@ export async function POST(req: Request) {
     const user: UserOverview | null = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        NewsComment: {
-          orderBy: { createdAt: "desc" },
-          take: 3,
-        },
-        chatMessages: {
-          orderBy: { timestamp: "desc" },
-          take: 3,
-        },
-        posts: {
-          include: { likes: true, reposts: true },
-          orderBy: { createdAt: "desc" },
-          take: 3,
+        comments: {
+          include:{
+            commentLikes: true,
+          },
+          orderBy: {createdAt: "desc"},
+          take: 5
         },
         transactions: {
-          orderBy: { timestamp: "desc" },
-          take: 3,
+          orderBy: { timestamp: "desc"},
+          take: 3
         },
-        achievements: true,
-      },
+        achievements: {
+          orderBy: {earnedAt: "desc"},
+          take: 3
+        }
+      }
     });
-
-    console.log(user?.NewsComment);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

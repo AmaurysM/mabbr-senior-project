@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { FriendsNewsComments } from "@/lib/prisma_types";
+import { User } from "@/lib/prisma_types";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -9,15 +9,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
     }
 
-    const user: FriendsNewsComments | null = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        comments: {
-          where: {
-            commentableType: "NEWS"
-          }
-        }
-      },
+    const user:User | null = await prisma.user.findUnique({
+      where: { id: userId }
     });
 
     if (!user) {

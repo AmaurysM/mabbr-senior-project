@@ -96,7 +96,7 @@ const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
     try {
       // Filter out symbols that are already in the cache
       const symbolsToFetch = symbols.filter(symbol => !stockDataCache[symbol]);
-      
+
       if (symbolsToFetch.length === 0) {
         // Update state with cached data
         const cachedData: Record<string, StockSymbolData> = {};
@@ -116,7 +116,7 @@ const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
       if (!data.stocks || data.stocks.length === 0) return;
 
       const newStockData: Record<string, StockSymbolData> = {};
-      
+
       data.stocks.forEach((stock: { symbol: string; price: number; change: number; changePercent: number }) => {
         const result = {
           symbol: stock.symbol,
@@ -125,7 +125,7 @@ const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
           changePercent: stock.changePercent,
           isPositive: stock.change >= 0
         };
-        
+
         // Update cache
         stockDataCache[stock.symbol] = result;
         newStockData[stock.symbol] = result;
@@ -138,7 +138,22 @@ const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
     }
   };
 
-  const formatTimestamp = (date: Date) => formatDistanceToNow(new Date(date), { addSuffix: true });
+
+
+  const formatTimestamp = (date: string | number | Date) => {
+    if (!date) return 'Just now'; // Handle undefined/null cases
+
+    const parsedDate = new Date(date);
+
+    if (isNaN(parsedDate.getTime())) return 'Invalid time'; // Handle invalid date
+
+    // Handle cases where the time is extremely recent
+    const now = new Date();
+    if (parsedDate.getTime() > now.getTime()) return 'Just now';
+
+    return formatDistanceToNow(parsedDate, { addSuffix: true });
+  };
+
 
   const handleProfileClick = () => {
     sessionStorage.setItem("selectedUserId", message.userId);
@@ -151,7 +166,7 @@ const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
       const stockRegex = /#([A-Za-z]{1,5})\b/g;
       const matches = [...message.content.matchAll(stockRegex)];
       const symbols = matches.map(match => match[1].toUpperCase());
-      
+
       if (symbols.length > 0) {
         fetchStockData(symbols);
       }
@@ -189,11 +204,10 @@ const GlobalCommentCard = ({ message }: { message: PostWithLikes }) => {
           formattedContent.push(
             <div key={`stock-${i}`} className="inline-block relative group">
               <span
-                className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${
-                  isPositive
+                className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${isPositive
                     ? 'bg-green-900/20 text-green-300 border border-green-700/30'
                     : 'bg-red-900/20 text-red-300 border border-red-700/30'
-                } cursor-pointer`}
+                  } cursor-pointer`}
               >
                 {symbol}
                 <span className="ml-1 font-mono">

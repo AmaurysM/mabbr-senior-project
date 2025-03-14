@@ -59,9 +59,9 @@ const Overview = ({ userId }: { userId: string }) => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className=" space-y-6 rounded-lg overflow-clip">
             {/* Favorite Stocks */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6 shadow">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">
                     Favorite Stocks
                 </h2>
@@ -81,23 +81,49 @@ const Overview = ({ userId }: { userId: string }) => {
                 )}
             </div>
 
-            {/* Recent Posts */}
-            <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                    Recent Posts
-                </h2>
-                {user?.posts && user.posts.length > 0 ? (
+            {/* Display Comments Categorized by Type */}
+            <div className="bg-white p-6 shadow">
+                <h2 className="text-lg font-semibold text-gray-800 mb-4">Comments</h2>
+                {user?.comments && user.comments.length > 0 ? (
                     <div className="space-y-4">
-                        {user.posts.map((post, idx) => (
-                            <div key={idx} className="p-4 bg-gray-50 rounded-lg">
-                                <p className="text-gray-700">
-                                    {post.content || "No content"}
-                                </p>
-                                <div className="mt-2 flex justify-between items-center text-sm text-gray-500">
-                                    <span>
-                                        {post.createdAt ? formatDate(post.createdAt.toString()) : "Unknown date"}
-                                    </span>
-                                    <span className="flex items-center space-x-4">
+                        {user.comments.map((comment, idx) => {
+                            // Determine the border style based on the comment type
+                            let borderStyle = "";
+                            switch (comment.commentableType) {
+                                case "NEWS":
+                                    borderStyle = "border-l-4 border-blue-500";
+                                    break;
+                                case "POST":
+                                    borderStyle = "border-l-4 border-green-500";
+                                    break;
+                                case "GLOBALCHAT":
+                                    borderStyle = "border-l-4 border-red-500";
+                                    break;
+                                default:
+                                    borderStyle = "border-l-4 border-gray-500";
+                            }
+                            return (
+                                <div key={idx} className={`p-4 ${borderStyle}`}>
+                                    {/* For NEWS comments, display the URL on top */}
+                                    {comment.commentableType === "NEWS" && comment.commentableId && (
+                                        <div className="mb-2">
+                                            <a
+                                                href={comment.commentableId}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                {comment.commentableId}
+                                            </a>
+                                        </div>
+                                    )}
+                                    <p className="text-gray-700">{comment.content || "No content"}</p>
+                                    <div className="mt-2 flex justify-between items-center text-sm text-gray-500">
+                                        <span>
+                                            {comment.createdAt
+                                                ? formatDate(comment.createdAt.toString())
+                                                : "Unknown date"}
+                                        </span>
                                         <span className="flex items-center">
                                             <svg
                                                 className="w-4 h-4 mr-1"
@@ -112,36 +138,21 @@ const Overview = ({ userId }: { userId: string }) => {
                                                     d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                                                 ></path>
                                             </svg>
-                                            {post.likes?.length || 0}
+                                            {comment.commentLikes?.length || 0}
                                         </span>
-                                        <span className="flex items-center">
-                                            <svg
-                                                className="w-4 h-4 mr-1"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth="2"
-                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                                ></path>
-                                            </svg>
-                                            {post.reposts?.length || 0}
-                                        </span>
-                                    </span>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
-                    <p className="text-gray-500 italic">No posts yet</p>
+                    <p className="text-gray-500 italic">No comments yet</p>
                 )}
             </div>
 
+
             {/* Recent Achievements */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6 shadow">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">
                     Recent Achievements
                 </h2>
@@ -168,33 +179,8 @@ const Overview = ({ userId }: { userId: string }) => {
                 )}
             </div>
 
-            {/* Chat Messages */}
-            <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                    Chat Messages
-                </h2>
-                {user.chatMessages && user.chatMessages.length > 0 ? (
-                    <div className="space-y-4">
-                        {user.chatMessages.map((message, idx) => (
-                            <div key={idx} className="p-4 bg-gray-50 rounded-lg">
-                                <p className="text-gray-700">
-                                    {message.content || "No message content"}
-                                </p>
-                                <span className="text-sm text-gray-500">
-                                    {message.timestamp
-                                        ? formatDate(message.timestamp.toString())
-                                        : "Unknown date"}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-gray-500 italic">No chat messages yet</p>
-                )}
-            </div>
-
             {/* Transactions */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6 shadow">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">
                     Transactions
                 </h2>

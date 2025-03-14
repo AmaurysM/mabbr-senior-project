@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 
 import { Toaster } from "@/app/components/ui/sonner";
 import { FaBell, FaHashtag, FaUser, FaUsers } from 'react-icons/fa';
+import { MdOutlineRssFeed } from 'react-icons/md';
 import { IoIosDocument } from 'react-icons/io';
 import GlobalFeed from './globalFeed/page';
 import Notifications from './notifications/page';
 import Articles from './articles/page';
 import MyPage from './myPage/page';
 import { authClient } from '@/lib/auth-client';
+import Feed from './feed/page';
 
 enum Tab {
   globalFeed = "globalFeed",
@@ -17,6 +19,7 @@ enum Tab {
   articles = "articles",
   notifications = "notifications",
   myPage = "myPage",
+  feed = "feed"
 }
 
 const CommunityPage = () => {
@@ -54,6 +57,7 @@ const CommunityPage = () => {
                   }`}
               >
                 {value === Tab.globalFeed && <FaUsers className="w-5 h-5" />}
+                {value === Tab.feed && <MdOutlineRssFeed  className="w-5 h-5" />}
                 {value === Tab.topics && <FaHashtag className="w-5 h-5" />}
                 {value === Tab.articles && <IoIosDocument className="w-5 h-5" />}
                 {value === Tab.notifications && <FaBell className="w-5 h-5" />}
@@ -67,8 +71,9 @@ const CommunityPage = () => {
 
       <div className="flex-grow">
         {activeComponent === Tab.globalFeed && <GlobalFeed />}
+        {activeComponent === Tab.feed && <Feed />}
+        {activeComponent === Tab.articles && <Articles />}        
         {activeComponent === Tab.notifications && <Notifications />}
-        {activeComponent === Tab.articles && <Articles />}
         {activeComponent === Tab.myPage && <MyPage user={user} />}
       </div>
     </div>

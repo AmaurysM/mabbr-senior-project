@@ -1,3 +1,4 @@
+import { globalPosts } from "@/lib/prisma_types";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -11,47 +12,51 @@ interface StockSymbolData {
 
 const stockDataCache: Record<string, StockSymbolData> = {};
 
+const fetchMessages = async (): Promise<globalPosts> => {
+  try {
+    const res = await fetch("/api/chat");
+    if (!res.ok) throw new Error("Failed to fetch messages");
+    return await res.json();
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    return [];
+  }
+};
+
 export const useGlobalMarketChat = () => {
   const [newMessage, setNewMessage] = useState<string>("");
 
-  // Fetch messages with SWR
   const {
-    data: messagesData,
+    data: messagesData = [],
     error,
     mutate,
-  } = useSWR("/api/chat", fetchMessages, {
-    revalidateOnFocus: false, // Disable revalidation on window focus
-    refreshInterval: 5000, // Optional: set an interval for automatic revalidation
+  } = useSWR<globalPosts>("/api/chat", fetchMessages, {
+    revalidateOnFocus: false,
+    refreshInterval: 5000,
   });
 
-  // Fetch stock data with SWR
-  const fetchStockData = async (
-    symbol: string
-  ): Promise<StockSymbolData | null> => {
+  const fetchStockData = async (symbol: string): Promise<StockSymbolData | null> => {
     try {
-      if (stockDataCache[symbol]) {
-        return stockDataCache[symbol];
-      }
+      if (stockDataCache[symbol]) return stockDataCache[symbol];
 
       const res = await fetch(`/api/stocks?symbols=${symbol}`);
-      if (!res.ok) throw new Error("Failed to fetch stock data");
+      if (!res.ok) throw new Error(`Failed to fetch stock data for ${symbol}`);
 
       const data = await res.json();
-      if (!data.stocks || data.stocks.length === 0) return null;
+      if (!data.stocks?.length) return null;
 
-      const stockData = data.stocks[0];
-      const result = {
-        symbol: stockData.symbol,
-        price: stockData.price,
-        change: stockData.change,
-        changePercent: stockData.changePercent,
-        isPositive: stockData.change >= 0,
+      const stockData: StockSymbolData = {
+        symbol: data.stocks[0].symbol,
+        price: data.stocks[0].price,
+        change: data.stocks[0].change,
+        changePercent: data.stocks[0].changePercent,
+        isPositive: data.stocks[0].change >= 0,
       };
 
-      stockDataCache[symbol] = result;
-      return result;
+      stockDataCache[symbol] = stockData;
+      return stockData;
     } catch (error) {
-      console.error("Error fetching stock data:", error);
+      console.error(`Error fetching stock data for ${symbol}:`, error);
       return null;
     }
   };
@@ -62,32 +67,27 @@ export const useGlobalMarketChat = () => {
     if (!newMessage.trim()) return;
 
     try {
-      // Pre-fetch stock data for any symbols in the message
       const stockSymbols = newMessage.match(/#([A-Za-z]{1,5})\b/g);
       if (stockSymbols) {
-        for (const symbolWithHash of stockSymbols) {
-          const symbol = symbolWithHash.substring(1).toUpperCase();
-          if (!stockDataCache[symbol]) {
-            await fetchStockData(symbol);
-          }
-        }
+        await Promise.all(
+          stockSymbols.map((symbolWithHash) => {
+            const symbol = symbolWithHash.substring(1).toUpperCase();
+            return stockDataCache[symbol] ? Promise.resolve(null) : fetchStockData(symbol);
+          })
+        );
       }
 
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: newMessage.trim(),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newMessage.trim() }),
       });
 
       if (!res.ok) throw new Error("Failed to send message");
 
-      await res.json();
-      // Mutate the SWR cache to trigger re-fetch and re-render
-      mutate();
+      const newMessageData = await res.json();
+
+      mutate([...messagesData, newMessageData], false);
 
       setNewMessage("");
     } catch (error) {
@@ -102,11 +102,4 @@ export const useGlobalMarketChat = () => {
     handleSendMessage,
     error,
   };
-};
-
-// Helper function to fetch messages
-const fetchMessages = async () => {
-  const res = await fetch("/api/chat");
-  if (!res.ok) throw new Error("Failed to fetch messages");
-  return res.json();
 };

@@ -99,25 +99,6 @@ export interface Ticker {
   ticker_sentiment_score?: number;
 }
 
-export type UserPostReposts = Prisma.UserPostRepostGetPayload<{
-  include: {
-    post: {
-      include: {
-        children: true;
-        likes: true;
-      };
-    };
-  };
-}>[];
-
-export type Post = Prisma.PostGetPayload<object>;
-
-export type PostWithLikes = Prisma.PostGetPayload<{
-  include: {
-    likes: true;
-  };
-}>;
-
 export type User = Prisma.UserGetPayload<object>;
 
 export type UserCommunityStats = Prisma.UserGetPayload<{
@@ -127,56 +108,6 @@ export type UserCommunityStats = Prisma.UserGetPayload<{
     followers: true;
     following: true;
     userStocks: { include: { stock: true } };
-  };
-}>;
-
-export type UserOverview = Prisma.UserGetPayload<{
-  include: {
-    NewsComment: {
-      orderBy: { createdAt: "desc" };
-      take: 3;
-    };
-    chatMessages: {
-      orderBy: { timestamp: "desc" };
-      take: 3;
-    };
-    posts: {
-      include: { likes: true; reposts: true };
-      orderBy: { createdAt: "desc" };
-      take: 3;
-    };
-    transactions: {
-      orderBy: { timestamp: "desc" };
-      take: 3;
-    };
-    achievements: true;
-  };
-}>;
-
-export type AllUserPosts = Prisma.UserGetPayload<{
-  include: {
-    NewsComment: {
-      orderBy: { createdAt: "desc" };
-    };
-    chatMessages: {
-      orderBy: { timestamp: "desc" };
-    };
-    posts: {
-      include: { likes: true; reposts: true };
-      orderBy: { createdAt: "desc" };
-    };
-    reposts: {
-      include: { post: true };
-      orderBy: { createdAt: "desc" };
-    };
-  };
-}>;
-
-export type FriendsNewsComments = Prisma.UserGetPayload<{
-  include: {
-    NewsComment: {
-      orderBy: { createdAt: "desc" };
-    };
   };
 }>;
 
@@ -192,4 +123,56 @@ export type FriendAchivements = Prisma.UserGetPayload<{
   include: {
     achievements: true
   };
+}>;
+
+export type globalPosts = Prisma.CommentGetPayload<{
+  include: {
+    user: {
+      select: {
+        id: true,
+        name: true,
+        image: true,
+      },
+    },
+  },
+}>[];
+
+export type NewsComments = Prisma.CommentGetPayload<{
+  include: {
+    user: {
+      select: {
+        id: true,
+        name: true,
+        image: true,
+      },
+    },
+  },
+}>[];
+
+export type UserOverview = Prisma.UserGetPayload<{
+  include: {
+    comments: {
+      include:{commentLikes: true},
+      orderBy: {createdAt: "desc"},
+      take: 5
+    },
+    transactions: {
+      orderBy: { timestamp: "desc"},
+      take: 3
+    },
+    achievements: {
+      orderBy: {earnedAt: "desc"},
+      take: 3
+    }
+  }
+}>;
+
+export type FriendsNewsComments = Prisma.UserGetPayload<{
+  include: {
+    comments: {
+      where: {
+        commentableType: "NEWS"
+      }
+    }
+  },
 }>;

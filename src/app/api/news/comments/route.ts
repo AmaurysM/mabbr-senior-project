@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { NewsComments } from "@/lib/prisma_types";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,9 +17,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const comments = await prisma.newsComment.findMany({
+    const comments: NewsComments = await prisma.comment.findMany({
       where: { 
-        newsUrl: decodeURIComponent(newsUrl) 
+        commentableType: "NEWS",
+        commentableId: decodeURIComponent(newsUrl) 
       },
       include: {
         user: {
@@ -69,10 +71,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newComment = await prisma.newsComment.create({
+    const newComment = await prisma.comment.create({
       data: {
+        commentableType: "NEWS",
+        commentableId: newsUrl,
         content,
-        newsUrl,
         userId,
       },
       include: {
