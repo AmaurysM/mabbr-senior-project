@@ -192,7 +192,23 @@ export type Comments = Prisma.CommentGetPayload<{
   },
 }>[];
 
-export type Comment = Prisma.CommentGetPayload<{
+export type Comment = Omit<
+  Prisma.CommentGetPayload<{
+    include: {
+      user: true;
+      commentLikes: true;
+      children: {
+        include: {
+          user: true;
+          commentLikes: true;
+        };
+      };
+    };
+  }>,
+  "children"
+> & { children?: Comment[] };
+
+export type CommentWithChildren = Prisma.CommentGetPayload<{
   include: {
     user:true,
     commentLikes: true, 
@@ -200,6 +216,13 @@ export type Comment = Prisma.CommentGetPayload<{
       include: {
         user: true,
         commentLikes: true, 
+        children: {
+          include: {
+            user: true,
+            commentLikes: true, 
+            children: true
+          },
+        },
       },
     },
   },

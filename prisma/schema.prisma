@@ -76,6 +76,7 @@ enum CommentableType {
   TOPIC
   ROOM
   POST
+  COMMENT
   NEWS
   GLOBALCHAT
   FEED
