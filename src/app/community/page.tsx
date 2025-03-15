@@ -40,13 +40,11 @@ const CommunityPage = () => {
   }, [activeComponent]);
 
   return (
-    <div className="px-4 py-6 w-full h-full max-w-[1920px] mx-auto flex">
+    <div className="py-6 w-full h-full flex">
       <Toaster />
-      <div className="w-64 flex-shrink-0 mr-6">
+      <div className="w-64 flex-shrink-0 mr-3">
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 sticky top-6">
-          <div className="flex items-center justify-center mb-6 p-2">
-            <h1 className="text-xl font-bold text-white">StockSocial</h1>
-          </div>
+
           <nav className="space-y-2">
             {Object.entries(Tab).map(([key, value]) => (
               <button

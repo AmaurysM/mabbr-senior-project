@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Topic, Topics } from "@/lib/prisma_types";
-import Room from "./room/page";
+import Room from "./posts/page";
 import { MessageSquare, Plus, Loader2, Search, TrendingUp, Clock, MessageCircle } from "lucide-react";
 
 const TopicsPage = () => {
@@ -52,9 +52,9 @@ const TopicsPage = () => {
             const response = await fetch("/api/topics/new", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     content: roomName,
-                    commentDescription: roomDescription 
+                    commentDescription: roomDescription
                 }),
             });
 
@@ -82,7 +82,7 @@ const TopicsPage = () => {
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
         const diffMinutes = Math.floor(diffTime / (1000 * 60));
-        
+
         if (diffMinutes < 60) {
             return `${diffMinutes} minutes ago`;
         } else if (diffHours < 24) {
@@ -92,7 +92,7 @@ const TopicsPage = () => {
         }
     };
 
-    const filteredTopics = topics.filter(topic => 
+    const filteredTopics = topics.filter(topic =>
         topic.content.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -109,9 +109,9 @@ const TopicsPage = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto  min-h-screen ">
+        <div className="max-w-4xl mx-auto min-h-screen ">
             {/* Search & Create */}
-            <div className="bg-white rounded-md shadow-md p-4 mb-4">
+            <div className=" border border-white/10 rounded-md shadow-md p-4 mb-4">
                 <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -134,9 +134,9 @@ const TopicsPage = () => {
 
                 {/* Create Topic Form */}
                 {showCreateForm && (
-                    <div className="mt-4 border border-gray-200 rounded-md p-4 bg-gray-50">
-                        <h3 className="font-medium mb-3">Create New Topic</h3>
-                        
+                    <div className="mt-4 border border-white/10 rounded-md p-4 bg-gray-700">
+                        <h3 className="font-medium mb-3 text-blue-500">Create New Topic</h3>
+
                         <div className="mb-3">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Topic Name</label>
                             <input
@@ -144,10 +144,10 @@ const TopicsPage = () => {
                                 value={roomName}
                                 onChange={(e) => setRoomName(e.target.value)}
                                 placeholder="Enter a name for your topic..."
-                                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full p-2 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                             />
                         </div>
-                        
+
                         <div className="mb-3">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
                             <textarea
@@ -157,22 +157,21 @@ const TopicsPage = () => {
                                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-24"
                             />
                         </div>
-                        
+
                         <div className="flex justify-end gap-2">
                             <button
                                 onClick={() => setShowCreateForm(false)}
-                                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+                                className="px-4 py-2 border border-white/10 rounded-md hover:bg-gray-100"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={createTopic}
                                 disabled={creating || !roomName.trim()}
-                                className={`px-4 py-2 text-white rounded-md ${
-                                    creating || !roomName.trim()
-                                        ? "bg-gray-400 cursor-not-allowed"
-                                        : "bg-blue-500 hover:bg-blue-600"
-                                }`}
+                                className={`px-4 py-2 text-white rounded-md ${creating || !roomName.trim()
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : "bg-blue-500 hover:bg-blue-600"
+                                    }`}
                             >
                                 {creating ? (
                                     <span className="flex items-center">
@@ -189,16 +188,16 @@ const TopicsPage = () => {
             </div>
 
             {/* Sorting options */}
-            <div className="bg-white rounded-md shadow-md p-3 mb-4">
+            <div className="border border-white/10 rounded-md shadow-md p-3 mb-4">
                 <div className="flex space-x-4 text-sm font-medium">
-                    <button 
+                    <button
                         onClick={() => setSortBy("new")}
                         className={`flex items-center ${sortBy === "new" ? "text-blue-500" : "text-gray-500"} hover:bg-gray-100 px-3 py-1 rounded-full`}
                     >
                         <Clock className="w-4 h-4 mr-1" />
                         New
                     </button>
-                    <button 
+                    <button
                         onClick={() => setSortBy("top")}
                         className={`flex items-center ${sortBy === "top" ? "text-blue-500" : "text-gray-500"} hover:bg-gray-100 px-3 py-1 rounded-full`}
                     >
@@ -217,17 +216,17 @@ const TopicsPage = () => {
 
             {/* Topics list */}
             {loading ? (
-                <div className="bg-white rounded-md shadow-md p-12 flex flex-col items-center justify-center">
+                <div className="border border-white/10 rounded-md shadow-md p-12 flex flex-col items-center justify-center">
                     <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-                    <p className="text-gray-600">Loading topics...</p>
+                    <p className="text-gray-200">Loading topics...</p>
                 </div>
             ) : sortedTopics.length > 0 ? (
                 <div className="space-y-3">
                     {sortedTopics.map((topic) => (
-                        <div 
+                        <div
                             key={topic.id}
                             onClick={() => setSelectedTopic(topic)}
-                            className="bg-white rounded-md shadow-md hover:border-blue-500 hover:border-2 border border-transparent transition-all cursor-pointer overflow-hidden"
+                            className="bg-gray-700 rounded-md shadow-md border-2 border-white/10 hover:border-blue-500  transition-all cursor-pointer overflow-hidden"
                         >
                             <div className="flex p-3">
                                 {/* Topic icon */}
@@ -236,14 +235,14 @@ const TopicsPage = () => {
                                         {topic.content.charAt(0).toUpperCase()}
                                     </div>
                                 </div>
-                                
+
                                 {/* Topic content */}
                                 <div className="flex-1">
-                                    <h3 className="font-medium text-lg">{topic.content}</h3>
+                                    <h3 className="font-medium text-lg text-blue-500">{topic.content}</h3>
                                     {topic.commentDescription && (
-                                        <p className="text-gray-600 text-sm line-clamp-2">{topic.commentDescription}</p>
+                                        <p className="text-gray-200 text-sm line-clamp-2">{topic.commentDescription}</p>
                                     )}
-                                    
+
                                     <div className="flex items-center mt-2 text-xs text-gray-500">
                                         <Clock className="w-3 h-3 mr-1" />
                                         <span>{formatDate(topic.createdAt.toString())}</span>
