@@ -229,3 +229,30 @@ export type CommentWithChildren = Prisma.CommentGetPayload<{
 }>;
 
 export type NewRoomComent = Prisma.CommentGetPayload<object>;
+
+export type Notifications = Prisma.FriendshipGetPayload<{
+  include: {
+    requester: {
+      select: { id: true, name: true, email: true },
+      include: {
+        transactions: true, // Fetch the friend's transactions
+        comments: true,
+      }
+    },
+    recipient: {
+      select: { id: true, name: true, email: true },
+      include: {
+        transactions: true, // Fetch the friend's transactions
+        comments: true,
+      }
+    },
+  },
+
+}>[];
+
+export type UsableUser = Prisma.UserGetPayload<{
+  omit: {
+    id: true,
+    
+  }
+}>

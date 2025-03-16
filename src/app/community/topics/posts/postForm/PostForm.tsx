@@ -52,50 +52,50 @@ const PostForm: React.FC<CommentFormProps> = ({ topicId, userId, onNewComment, s
   };
 
   return (
-    <div className="bg-white rounded-b-md shadow-md p-4 mb-4">
-      <div className="flex items-center mb-2">
+    <div className="bg-gray-800 rounded-md shadow-lg p-5 mb-4 text-white">
+      <div className="flex items-center mb-3">
         {session.user.image ? (
           <Image
             src={session.user.image}
             alt={session.user.name}
-            width={32}
-            height={32}
-            className="rounded-full mr-2"
+            width={40}
+            height={40}
+            className="rounded-full mr-3 border-2 border-blue-500"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2">
+          <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-lg font-semibold mr-3">
             {session.user.name?.charAt(0).toUpperCase() || "U"}
           </div>
         )}
-        <span className="text-sm font-medium">Comment as {session.user.name}</span>
+        <span className="text-sm font-medium text-gray-300">Comment as {session.user.name}</span>
       </div>
       <textarea
         value={commentText}
         onChange={(e) => setCommentText(e.target.value)}
-        className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-32"
+        className="w-full p-3 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-32 bg-gray-700 text-white"
         placeholder="What are your thoughts?"
       />
       {imagePreview && (
-        <div className="relative mt-2 inline-block">
+        <div className="relative mt-3 inline-block">
           <Image
             src={imagePreview}
             alt="Preview"
-            className="max-h-40 rounded-md"
+            className="max-h-40 rounded-md border border-gray-600"
           />
           <button
             onClick={() => {
               setImage(null);
               setImagePreview(null);
             }}
-            className="absolute top-1 right-1 bg-gray-800 rounded-full p-1 text-white"
+            className="absolute top-1 right-1 bg-gray-900 rounded-full p-1 text-white text-xs hover:bg-red-500"
           >
             ✕
           </button>
         </div>
       )}
-      <div className="flex justify-between mt-2">
-        <label className="cursor-pointer hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-sm flex items-center">
-          <ImageIcon className="w-4 h-4 mr-1" />
+      <div className="flex justify-between mt-3">
+        <label className="cursor-pointer bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-2 rounded-md text-sm flex items-center">
+          <ImageIcon className="w-4 h-4 mr-2" />
           Add Image
           <input
             type="file"
@@ -106,10 +106,10 @@ const PostForm: React.FC<CommentFormProps> = ({ topicId, userId, onNewComment, s
         </label>
         <button
           onClick={handleCommentSubmit}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-medium flex items-center disabled:bg-gray-300"
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center disabled:bg-gray-500 disabled:cursor-not-allowed"
           disabled={!commentText.trim() && !image}
         >
-          <Send className="w-4 h-4 mr-1" />
+          <Send className="w-4 h-4 mr-2" />
           Comment
         </button>
       </div>

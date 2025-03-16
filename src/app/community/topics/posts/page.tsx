@@ -80,35 +80,33 @@ const Room: React.FC<RoomProps> = ({ topic, onBack }) => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full h-full overflow-auto bg-gray-900 text-white rounded-lg shadow-lg ">
             {/* Header */}
-            <div className="bg-blue-500 h-32 w-full relative rounded-t-md">
-                <div className="absolute bottom-0 left-0 p-4 flex items-end">
-                    <div className="bg-white rounded-full h-16 w-16 flex items-center justify-center text-2xl font-bold border-4 border-white shadow-md">
-                        {topic.content.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="ml-4 text-white">
-                        <h1 className="text-2xl font-bold">{topic.content}</h1>
-                        <div className="flex items-center text-sm">
-                            <Calendar className="w-4 h-4 mr-1" />
-                            <span>{formatDate(topic.createdAt.toString())}</span>
-                        </div>
+            <div className="bg-blue-600 h-36 w-full relative rounded-t-lg flex items-end p-4">
+                <div className="bg-white text-blue-600 font-bold rounded-full h-16 w-16 flex items-center justify-center text-2xl border-4 border-white shadow-md">
+                    {topic.content.charAt(0).toUpperCase()}
+                </div>
+                <div className="ml-4">
+                    <h1 className="text-2xl font-bold">{topic.content}</h1>
+                    <div className="flex items-center text-sm text-gray-200">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        <span>{formatDate(topic.createdAt.toString())}</span>
                     </div>
                 </div>
             </div>
 
             {/* Back button and topic description */}
-            <div className="bg-gray-600 p-4 shadow-md mb-2">
+            <div className="bg-gray-800 p-4 mt-4 rounded-md shadow">
                 <button
                     onClick={onBack}
-                    className="flex items-center text-white hover:text-blue-500 transition"
+                    className="flex items-center text-gray-300 hover:text-blue-400 transition"
                 >
                     <ArrowLeft className="w-4 h-4 mr-1" /> Back to Topics
                 </button>
-                <p className="mt-4 text-gray-200">{topic.commentDescription}</p>
+                <p className="mt-3 text-gray-400">{topic.commentDescription}</p>
             </div>
 
-            {/* Comment submission form for new (top-level) comments */}
+            {/* Comment submission form */}
             <PostForm
                 topicId={topic.id}
                 userId={session.user.id}
@@ -117,23 +115,21 @@ const Room: React.FC<RoomProps> = ({ topic, onBack }) => {
             />
 
             {/* Sort options */}
-            <div className="bg-gray-600 rounded-md shadow-md p-3 mb-4">
-                <div className="flex space-x-4 text-sm font-medium">
-                    <button
-                        onClick={() => setSortBy("new")}
-                        className={`flex items-center ${sortBy === "new" ? "text-blue-500" : "text-gray-200"}`}
-                    >
-                        <Clock className="w-4 h-4 mr-1" />
-                        New
-                    </button>
-                    <button
-                        onClick={() => setSortBy("top")}
-                        className={`flex items-center ${sortBy === "top" ? "text-blue-500" : "text-gray-200"}`}
-                    >
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        Top
-                    </button>
-                </div>
+            <div className="bg-gray-800 rounded-md shadow-md p-3 mt-4 flex space-x-4 text-sm font-medium">
+                <button
+                    onClick={() => setSortBy("new")}
+                    className={`flex items-center px-3 py-1 rounded-md transition ${sortBy === "new" ? "bg-blue-500 text-white" : "text-gray-300 hover:text-white"}`}
+                >
+                    <Clock className="w-4 h-4 mr-1" />
+                    New
+                </button>
+                <button
+                    onClick={() => setSortBy("top")}
+                    className={`flex items-center px-3 py-1 rounded-md transition ${sortBy === "top" ? "bg-blue-500 text-white" : "text-gray-300 hover:text-white"}`}
+                >
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    Top
+                </button>
             </div>
 
             {/* Comments list */}

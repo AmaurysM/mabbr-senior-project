@@ -486,7 +486,7 @@ const HomePage = () => {
   const favoriteStocks = swrStocks.filter((stock) => favorites.has(stock.symbol));
 
   return (
-      <div className="px-8 py-6 w-full h-full max-w-[1920px] mx-auto">
+      <div className="px-8 py-6 w-full h-full">
         {/* Header and Account Info */}
         <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
           <h2 className="text-2xl font-bold text-white mb-3">Paper Trading Account</h2>

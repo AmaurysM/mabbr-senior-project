@@ -1,112 +1,136 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Bell } from "lucide-react";
 import LoadingStateAnimation from "@/app/components/LoadingState";
-import { FriendRequests } from "@/lib/prisma_types";
+import useSWRInfinite from "swr/infinite";
+
+interface NotificationItem {
+  id: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: string;
+  friendInfo: {
+    id: string;
+    name: string;
+    email: string;
+    hasPosted: boolean;
+  };
+}
+
+interface NotificationsResponse {
+  success: boolean;
+  notifications: NotificationItem[];
+}
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error('Failed to fetch notifications');
+  }
+  return res.json();
+};
+
+const getKey = (pageIndex: number, previousPageData: NotificationsResponse | null) => {
+  if (previousPageData && !previousPageData.notifications.length) return null;
+
+  if (pageIndex === 0) return `/api/user/notifications?skip=0&take=10`;
+
+  return `/api/user/notifications?skip=${pageIndex * 10}&take=10`;
+};
 
 const Notifications = () => {
-  const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState<FriendRequests>([]);
-  const [loadingFriendActivity, setLoadingFriendActivity] = useState(true);
-  const [friendTransactions, setFriendTransactions] = useState<any[]>([]);
+  const [isIntersecting, setIsIntersecting] = useState(false);
+  const loaderRef = useRef<HTMLDivElement>(null);
 
-
-
-  // Add a new function to fetch friend transactions
-  const fetchFriendTransactions = async () => {
-      setLoadingFriendActivity(false);
-
-
-    try {
-      const res = await fetch('/api/user/transactions', {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        // Filter only friend transactions (where isCurrentUser is false)
-        const friendActivity = data.transactions.filter((tx: any) => tx.isCurrentUser === false);
-        setFriendTransactions(friendActivity);
-      }
-
-      setLoadingFriendActivity(false);
-    } catch (error) {
-      console.error('Error fetching friend transactions:', error);
-      setLoadingFriendActivity(false);
+  const { data, error, size, setSize, isValidating } = useSWRInfinite<NotificationsResponse>(
+    getKey,
+    fetcher,
+    {
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      persistSize: true,
     }
-  };
+  );
 
-  useEffect(() => {
-      fetchFriendTransactions();
-  
-      
-        const intervalId = setInterval(() => {
-          fetchFriendTransactions();
-        }, 30000);
-  
-        return () => clearInterval(intervalId);
-      
-    });
+  const allNotifications = data ? data.flatMap(page => page.notifications) : [];
+  const isEmpty = data?.[0]?.notifications.length === 0;
+  const isReachingEnd = isEmpty || (data && data[data.length - 1]?.notifications.length < 10);
+  const isLoadingMore = isValidating || (size > 0 && data && typeof data[size - 1] === "undefined");
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/user/notifications");
-        const data: FriendRequests = await response.json();
-        setNotifications(data || []);
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
-        setNotifications([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNotifications();
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [entry] = entries;
+    setIsIntersecting(entry.isIntersecting);
   }, []);
 
-  if (loading) {
+  useEffect(() => {
+    const observer = new IntersectionObserver(handleObserver, { threshold: 0.5 });
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
+    return () => {
+      if (loaderRef.current) {
+        observer.unobserve(loaderRef.current);
+      }
+    };
+  }, [handleObserver]);
+
+  useEffect(() => {
+    if (isIntersecting && !isReachingEnd && !isLoadingMore) {
+      setSize(size + 1);
+    }
+  }, [isIntersecting, isReachingEnd, isLoadingMore, setSize, size]);
+
+  if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen w-full">
+      <div className="w-full p-4 text-red-500 bg-red-100 rounded-md">
+        Failed to load notifications: {error.message}
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center min-h-64 w-full">
         <LoadingStateAnimation />
       </div>
     );
   }
 
   return (
-    <div className="w-full h-screen flex flex-col">
-      {notifications.length === 0 ? (
+    <div className="w-full h-full flex flex-col overflow-auto">
+      {isEmpty ? (
         <div className="flex flex-col items-center justify-center flex-grow">
           <Bell className="w-12 h-12 text-gray-500" />
           <p className="text-gray-400 mt-2">No notifications</p>
         </div>
       ) : (
-        <div className="flex-grow overflow-y-auto">
+        <div className="flex-grow">
           <ul className="w-full space-y-2">
-            {notifications.map((notification) => (
+            {allNotifications.map((notification) => (
               <li
                 key={notification.id}
                 className="w-full p-4 border-b border-gray-700 bg-gray-900 text-gray-200"
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-base font-semibold">
-                      {notification.requester.name} ({notification.requester.email})
-                    </p>
+                    <div className="text-base font-semibold">
+                      {notification.friendInfo.name} ({notification.friendInfo.email})
+                    </div>
                     <p className="text-xs text-gray-400">
-                      Sent request on {new Date(notification.createdAt).toLocaleDateString()}
+                      {notification.status === "pending" ? "Sent request" : "Became friends"} on {new Date(notification.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-
                 </div>
               </li>
             ))}
           </ul>
+
+          {/* Loader reference element */}
+          <div ref={loaderRef} className="h-10 flex justify-center items-center">
+            {!isReachingEnd && isLoadingMore && <LoadingStateAnimation />}
+          </div>
         </div>
       )}
     </div>
