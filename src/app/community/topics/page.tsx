@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Topic } from "@/lib/prisma_types";
+import { Topic, Topics } from "@/lib/prisma_types";
 import Room from "./posts/page";
-import { MessageSquare, Plus, Loader2, Search, TrendingUp, Clock, MessageCircle } from "lucide-react";
+import { Plus, Loader2, Search, TrendingUp, Clock } from "lucide-react";
 import useSWRInfinite from "swr/infinite";
 
 const PAGE_SIZE = 10;
@@ -94,7 +94,6 @@ const TopicsPage = () => {
                 throw new Error(newTopic.error || "Failed to create topic");
             }
 
-            // Refresh the data
             mutate();
             
             setRoomName("");
@@ -124,21 +123,21 @@ const TopicsPage = () => {
         }
     };
 
-    // Filter topics based on search query
     const filteredTopics = topics.filter(topic =>
         topic.content.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Sort topics based on selected sort option
-    const sortedTopics = [...filteredTopics].sort((a, b) => {
+    const sortedTopics: Topics = [...filteredTopics].sort((a, b) => {
         if (sortBy === "new") {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         } else {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            // Sort by the number of comments (children)
+            const aCommentsCount = a._count?.children || 0;
+            const bCommentsCount = b._count?.children || 0;
+            return bCommentsCount - aCommentsCount;
         }
     });
 
-    // Handle intersection observer for infinite scrolling
     const loadMoreRef = (node: HTMLDivElement) => {
         if (!node) return;
         
@@ -290,67 +289,25 @@ const TopicsPage = () => {
 
                                 {/* Topic content */}
                                 <div className="flex-1">
-                                    <h3 className="font-medium text-lg text-blue-500">{topic.content}</h3>
-                                    {topic.commentDescription && (
-                                        <p className="text-gray-200 text-sm line-clamp-2">{topic.commentDescription}</p>
-                                    )}
-
-                                    <div className="flex items-center mt-2 text-xs text-gray-500">
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        <span>{formatDate(topic.createdAt.toString())}</span>
-                                        <span className="mx-2">•</span>
-                                        <MessageCircle className="w-3 h-3 mr-1" />
-                                        <span>0 comments</span>
+                                    <h3 className="font-medium text-lg text-gray-100">{topic.content}</h3>
+                                    <p className="text-sm text-gray-400">{topic.commentDescription}</p>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <p className="text-xs text-gray-500">{formatDate(topic.createdAt.toString())}</p>
+                                        <p className="text-xs text-gray-400">
+                                            {topic._count && topic._count.children ? topic._count.children : 0} comments
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     ))}
-                    
-                    {/* Load more trigger */}
-                    {!isReachingEnd && (
-                        <div 
-                            ref={loadMoreRef}
-                            className="py-4 text-center"
-                        >
-                            {isLoadingMore ? (
-                                <div className="flex justify-center items-center">
-                                    <Loader2 className="w-6 h-6 text-blue-500 animate-spin mr-2" />
-                                    <span className="text-gray-500">Loading more topics...</span>
-                                </div>
-                            ) : (
-                                <button 
-                                    onClick={() => setSize(size + 1)}
-                                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
-                                >
-                                    Load More
-                                </button>
-                            )}
-                        </div>
-                    )}
-                    
-                    {/* End message */}
-                    {isReachingEnd && topics.length > 0 && (
-                        <div className="py-4 text-center text-gray-500">
-                            You've reached the end of the list
-                        </div>
-                    )}
-                </div>
-            ) : searchQuery ? (
-                <div className="bg-white rounded-md shadow-md p-12 text-center">
-                    <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-600 mb-1">No topics found matching `{searchQuery}`</p>
-                    <p className="text-gray-500 text-sm">Try a different search term or create a new topic</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-md shadow-md p-12 text-center">
-                    <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-600 mb-1">No topics yet</p>
-                    <p className="text-gray-500 text-sm">Create a new topic to get started</p>
-                </div>
+                <div className="text-center text-gray-400">No topics available</div>
             )}
+            <div ref={loadMoreRef}></div>
         </div>
     );
 };
 
-export default TopicsPage
+export default TopicsPage;

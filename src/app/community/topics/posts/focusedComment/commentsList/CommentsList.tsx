@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
 import { Comment } from "@/lib/prisma_types";
@@ -7,18 +7,16 @@ import CommentReplyForm from "./commentReplyForm/commentReplyForm";
 
 interface CommentsListProps {
   comments: Comment[];
-  onLikeComment: (commentId: string) => void;
   onSelectComment: (comment: Comment) => void;
   selectedComment: Comment | null;
   session: any;
   onNewReply: (newReply: Comment) => void;
   sortBy: "new" | "top";
-  level?: number; 
+  level?: number;
 }
 
 const CommentsList: React.FC<CommentsListProps> = ({
   comments,
-  onLikeComment,
   onSelectComment,
   selectedComment,
   session,
@@ -26,6 +24,24 @@ const CommentsList: React.FC<CommentsListProps> = ({
   sortBy,
   level = 0,
 }) => {
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [commentLikesCount, setCommentLikesCount] = useState<{ [key: string]: number }>({});
+
+  useEffect(() => {
+    const likedSet = new Set<string>();
+    const likesCount: { [key: string]: number } = {};
+
+    comments.forEach((comment) => {
+      likesCount[comment.id] = comment.commentLikes.length;
+      if (comment.commentLikes.some((like) => like.userId === session.user.id)) {
+        likedSet.add(comment.id);
+      }
+    });
+
+    setLikedComments(likedSet);
+    setCommentLikesCount(likesCount);
+  }, [comments, session]);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -53,14 +69,60 @@ const CommentsList: React.FC<CommentsListProps> = ({
     }
   });
 
-  //if (level > 3) return; // change this to show a button that loads more comment after 3
+  const onLikeComment = async (commentId: string) => {
+    const isLiked = likedComments.has(commentId);
+    const updatedLikes = new Set(likedComments);
+    const updatedLikesCount = { ...commentLikesCount };
+
+    if (isLiked) {
+      updatedLikes.delete(commentId);
+      updatedLikesCount[commentId] -= 1;
+    } else {
+      updatedLikes.add(commentId);
+      updatedLikesCount[commentId] += 1;
+    }
+
+    setLikedComments(updatedLikes);
+    setCommentLikesCount(updatedLikesCount);
+
+    try {
+      const response = await fetch("/api/topics/posts/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentId, userId: session?.user?.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to like/unlike the comment.");
+      }
+    } catch (error) {
+      console.error("Error liking/unliking comment:", error);
+
+      // Revert changes on failure
+      setLikedComments((prev) => {
+        const newLikes = new Set(prev);
+        if (isLiked) {
+          newLikes.delete(commentId);
+        } else {
+          newLikes.add(commentId);
+        }
+        return newLikes;
+      });
+      setCommentLikesCount({
+        ...commentLikesCount,
+        [commentId]: isLiked
+          ? updatedLikesCount[commentId] + 1
+          : updatedLikesCount[commentId] - 1,
+      });
+    }
+  };
 
   return (
     <div className={`text-gray-100 ${level > 0 ? "ml-6 " : ""}`}>
       {sortedComments.map((comment) => (
         <div key={comment.id}>
-          <div className={` bg-gray-500 shadow-md ${ comment.children?.length || 0 > 1 ? "rounded-bl-sm overflow-hidden" : "mb-1"}`}>
-            <div className="bg-gray-700 px-4 py-2 flex items-center ">
+          <div className={`bg-gray-500 shadow-md ${comment.children?.length || 0 > 1 ? "rounded-bl-sm overflow-hidden" : "mb-1"}`}>
+            <div className="bg-gray-700 px-4 py-2 flex items-center">
               {comment.user.image ? (
                 <Image
                   src={comment.user.image}
@@ -75,9 +137,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 </div>
               )}
               <span className="font-medium text-sm">{comment.user.name}</span>
-              <span className=" text-xs ml-2">
-                • {formatDate(comment.createdAt.toString())}
-              </span>
+              <span className="text-xs ml-2">• {formatDate(comment.createdAt.toString())}</span>
             </div>
 
             <div className="p-4">
@@ -94,26 +154,26 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center mt-3  text-sm">
+              <div className="flex items-center mt-3 text-sm">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onLikeComment(comment.id);
                   }}
-                  className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1"
+                  className={`flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ${likedComments.has(comment.id) ? 'bg-blue-500' : 'text-gray-100'}`}
                 >
                   <ArrowUp className="w-4 h-4 mr-1" />
-                  <span>{comment.commentLikes?.length || 0}</span>
+                  <span>{commentLikesCount[comment.id] || 0}</span>
                 </button>
-                <button className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ml-2">
-                  <ArrowDown className="w-4 h-4 mr-1" />
+                <button className="flex items-center  hover:bg-gray-700 rounded-full px-2 py-1 ml-2">
+                  <ArrowDown className="w-4 h-4 mr-1 " />
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectComment(comment);
                   }}
-                  className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ml-2"
+                  className="flex items-center  hover:bg-gray-700 rounded-full px-2 py-1 ml-2"
                 >
                   <MessageSquare className="w-4 h-4 mr-1" />
                   Reply
@@ -123,16 +183,14 @@ const CommentsList: React.FC<CommentsListProps> = ({
 
             {/* Conditionally render the reply form */}
             {selectedComment?.id === comment.id && (
-              <div className="mt-2 mx-4 mb-4 bg-gray-700 p-2 rounded-md">
+              <div className="mt-2 mx-4">
                 <CommentReplyForm
                   parentComment={comment}
                   session={session}
                   onNewReply={onNewReply}
                 />
                 {!session && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    You need to be logged in to reply
-                  </p>
+                  <p className="text-sm text-gray-500 mt-2">You need to be logged in to reply</p>
                 )}
               </div>
             )}
@@ -142,7 +200,6 @@ const CommentsList: React.FC<CommentsListProps> = ({
           {comment.children && comment.children.length > 0 && (
             <CommentsList
               comments={comment.children}
-              onLikeComment={onLikeComment}
               onSelectComment={onSelectComment}
               selectedComment={selectedComment}
               session={session}

@@ -53,7 +53,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, onNewRepl
   };
 
   return (
-    <div className="bg-gray-500  shadow-md p-4 mb-4">
+    <div className="bg-gray-500 shadow-md p-4 mb-4">
       <div className="flex items-center mb-2">
         {session.user.image ? (
           <Image

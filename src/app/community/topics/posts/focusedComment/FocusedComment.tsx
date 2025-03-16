@@ -17,6 +17,7 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
 
+  // Fetch replies whenever the comment id or sorting order changes
   const fetchReplies = async () => {
     try {
       const response = await fetch("/api/topics/posts/comments", {
@@ -36,10 +37,13 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   };
 
   useEffect(() => {
-    fetchReplies();
+    fetchReplies(); // Fetch replies on initial mount
   }, [comment.id]);
 
-  // This is hell
+  useEffect(() => {
+    fetchReplies(); // Refetch replies whenever sortBy changes
+  }, [sortBy]);
+
   const addReplyToTree = (comments: Comment[], newReply: Comment): Comment[] => {
     return comments.map((c) => {
       if (c.id === newReply.parentId) {
@@ -59,14 +63,12 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   };
 
   const handleNewReplyToTree = (newReply: Comment) => {
-
     setReplies((prev) => addReplyToTree(prev, newReply));
     setReplyToComment(null); 
   };
 
   const handleNewReply = (newReply: Comment) => {
-      setReplies((prev) => [newReply, ...prev]);
-
+    setReplies((prev) => [newReply, ...prev]);
     setReplyToComment(null); 
   };
 
@@ -74,9 +76,15 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
     setReplyToComment((prev) => (prev?.id === clickedComment.id ? null : clickedComment));
   };
 
-  const handleLikeComment = async (commentId: string) => {
-    console.log("Like comment:", commentId);
-  };
+  const sortedReplies = [...replies].sort((a, b) => {
+    if (sortBy === "new") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else {
+      const aLikes = a.commentLikes?.length || 0;
+      const bLikes = b.commentLikes?.length || 0;
+      return bLikes - aLikes;
+    }
+  });
 
   return (
     <div className="border-b border-white/10 text-gray-50">
@@ -145,10 +153,9 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
 
       {/* Replies list */}
       <div className="mt-4">
-        {replies.length > 0 ? (
+        {sortedReplies.length > 0 ? (
           <CommentsList
-            comments={replies} 
-            onLikeComment={handleLikeComment}
+            comments={sortedReplies} 
             onSelectComment={handleCommentClick}
             selectedComment={replyToComment}
             session={session}

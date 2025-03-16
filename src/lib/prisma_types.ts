@@ -177,7 +177,15 @@ export type FriendsNewsComments = Prisma.UserGetPayload<{
   },
 }>;
 
-export type Topics = Prisma.CommentGetPayload<object>[];
+export type Topics = Prisma.CommentGetPayload<{
+  include:{
+    _count: {
+      select: {
+        children: true,
+      }
+    }
+  }
+}>[];
 export type Topic = Prisma.CommentGetPayload<object>;
 export type Comments = Prisma.CommentGetPayload<{
   include: {
