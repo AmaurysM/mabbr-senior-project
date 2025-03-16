@@ -53,7 +53,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, onNewRepl
   };
 
   return (
-    <div className="bg-white rounded-b-md shadow-md p-4 mb-4">
+    <div className="bg-gray-500  shadow-md p-4 mb-4">
       <div className="flex items-center mb-2">
         {session.user.image ? (
           <Image
@@ -73,11 +73,11 @@ const ReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, onNewRepl
       <textarea
         value={replyText}
         onChange={(e) => setReplyText(e.target.value)}
-        className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-20"
+        className="w-full text-gray-700 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-20"
         placeholder="Write a reply..."
       />
       {imagePreview && (
-        <div className="relative mt-2 inline-block">
+        <div className="relative mt-2 inline-block ">
           <Image src={imagePreview} alt="Preview" className="max-h-40 rounded-md" />
           <button
             onClick={() => {
@@ -91,7 +91,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, onNewRepl
         </div>
       )}
       <div className="flex justify-between mt-2">
-        <label className="cursor-pointer hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-sm flex items-center">
+        <label className="cursor-pointer hover:bg-gray-700 px-3 py-1.5 rounded-full text-sm flex items-center">
           <ImageIcon className="w-4 h-4 mr-1" />
           Add Image
           <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />

@@ -80,7 +80,7 @@ const Room: React.FC<RoomProps> = ({ topic, onBack }) => {
     }
 
     return (
-        <div className="w-full h-full overflow-auto bg-gray-900 text-white rounded-lg shadow-lg ">
+        <div className="w-full overflow-auto text-white">
             {/* Header */}
             <div className="bg-blue-600 h-36 w-full relative rounded-t-lg flex items-end p-4">
                 <div className="bg-white text-blue-600 font-bold rounded-full h-16 w-16 flex items-center justify-center text-2xl border-4 border-white shadow-md">

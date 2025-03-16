@@ -56,11 +56,11 @@ const CommentsList: React.FC<CommentsListProps> = ({
   //if (level > 3) return; // change this to show a button that loads more comment after 3
 
   return (
-    <div className={` ${level > 0 ? "ml-6 " : ""}`}>
+    <div className={`text-gray-100 ${level > 0 ? "ml-6 " : ""}`}>
       {sortedComments.map((comment) => (
         <div key={comment.id}>
-          <div className={`bg-white shadow-md ${ comment.children?.length || 0 > 1 ? "rounded-bl-sm overflow-hidden" : "mb-1"}`}>
-            <div className="bg-gray-100 px-4 py-2 flex items-center ">
+          <div className={` bg-gray-500 shadow-md ${ comment.children?.length || 0 > 1 ? "rounded-bl-sm overflow-hidden" : "mb-1"}`}>
+            <div className="bg-gray-700 px-4 py-2 flex items-center ">
               {comment.user.image ? (
                 <Image
                   src={comment.user.image}
@@ -75,7 +75,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 </div>
               )}
               <span className="font-medium text-sm">{comment.user.name}</span>
-              <span className="text-gray-500 text-xs ml-2">
+              <span className=" text-xs ml-2">
                 • {formatDate(comment.createdAt.toString())}
               </span>
             </div>
@@ -94,18 +94,18 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center mt-3 text-gray-500 text-sm">
+              <div className="flex items-center mt-3  text-sm">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onLikeComment(comment.id);
                   }}
-                  className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1"
+                  className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1"
                 >
                   <ArrowUp className="w-4 h-4 mr-1" />
                   <span>{comment.commentLikes?.length || 0}</span>
                 </button>
-                <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
+                <button className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ml-2">
                   <ArrowDown className="w-4 h-4 mr-1" />
                 </button>
                 <button
@@ -113,7 +113,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
                     e.stopPropagation();
                     onSelectComment(comment);
                   }}
-                  className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2"
+                  className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ml-2"
                 >
                   <MessageSquare className="w-4 h-4 mr-1" />
                   Reply
@@ -123,7 +123,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
 
             {/* Conditionally render the reply form */}
             {selectedComment?.id === comment.id && (
-              <div className="mt-2 mx-4 mb-4 bg-gray-50 p-4 rounded-md">
+              <div className="mt-2 mx-4 mb-4 bg-gray-700 p-2 rounded-md">
                 <CommentReplyForm
                   parentComment={comment}
                   session={session}

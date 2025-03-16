@@ -161,7 +161,7 @@ const TopicsPage = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto min-h-screen">
+        <div className="max-w-4xl mx-auto">
             {/* Search & Create */}
             <div className="border border-white/10 rounded-md shadow-md p-4 mb-4">
                 <div className="flex flex-col sm:flex-row gap-2">

@@ -72,8 +72,8 @@ const CommentReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, on
 
   if (!session) {
     return (
-      <div className="bg-white rounded-md shadow-sm p-4 border border-gray-200">
-        <p className="text-gray-600 text-center">
+      <div className="bg-gray-500 rounded-md shadow-sm p-4 border border-white/10">
+        <p className="text-gray-700 text-center">
           You need to be logged in to reply
         </p>
       </div>
@@ -81,7 +81,7 @@ const CommentReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, on
   }
 
   return (
-    <div className="bg-white rounded-md shadow-sm p-4 border border-gray-200">
+    <div className="bg-gray-600 rounded-md shadow-sm p-4 border border-white/10">
       <div className="flex items-center mb-2">
         {session?.user?.image ? (
           <Image
@@ -102,7 +102,7 @@ const CommentReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, on
       <textarea
         value={replyText}
         onChange={(e) => setReplyText(e.target.value)}
-        className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-20 resize-y"
+        className="w-full text-gray-700 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-20 resize-y"
         placeholder="Write a reply..."
         disabled={isSubmitting}
       />
@@ -139,7 +139,7 @@ const CommentReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, on
       )}
 
       <div className="flex justify-between mt-2">
-        <label className={`cursor-pointer ${isSubmitting ? 'opacity-50' : 'hover:bg-gray-200'} text-gray-700 px-3 py-1.5 rounded-full text-sm flex items-center`}>
+        <label className={`cursor-pointer ${isSubmitting ? 'opacity-50' : 'hover:bg-gray-200'}  px-3 py-1.5 rounded-full text-sm flex items-center`}>
           <ImageIcon className="w-4 h-4 mr-1" />
           Add Image
           <input

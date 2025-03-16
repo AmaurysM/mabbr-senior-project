@@ -79,13 +79,13 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   };
 
   return (
-    <div className="mb-4 p-4 bg-white rounded-sm border-b border-white/10">
+    <div className="border-b border-white/10 text-gray-50">
       <button onClick={onClose} className="flex items-center text-gray-500 hover:text-blue-500">
         <ArrowLeft className="w-4 h-4 mr-1" /> Back to Comments
       </button>
 
-      <div className="bg-white shadow-md overflow-hidden mt-2">
-        <div className="bg-gray-100 px-4 py-2 flex items-center">
+      <div className="bg-gray-500 shadow-md overflow-hidden mt-2">
+        <div className="bg-gray-700 px-4 py-2 flex items-center">
           {comment.user.image ? (
             <Image
               src={comment.user.image}
@@ -118,24 +118,24 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
       </div>
 
       {/* Reply form for the main comment */}
-      <div className="mt-4">
-        <h3 className="text-md font-medium mb-2">Reply to this comment</h3>
+      <div className="bg-gray-700">
+        <h3 className="text-md font-medium m-3 pt-2">Reply to this comment</h3>
         <ReplyForm parentComment={comment} session={session} onNewReply={handleNewReply} />
       </div>
 
       {/* Sort options */}
-      <div className="bg-white rounded-md shadow-md p-3 mb-4">
+      <div className="bg-gray-700  shadow-md p-3 mb-4">
         <div className="flex space-x-4 text-sm font-medium">
           <button
             onClick={() => setSortBy("new")}
-            className={`flex items-center ${sortBy === "new" ? "text-blue-500" : "text-gray-500"}`}
+            className={`flex items-center ${sortBy === "new" ? "text-blue-500" : "text-gray-200"}`}
           >
             <Clock className="w-4 h-4 mr-1" />
             New
           </button>
           <button
             onClick={() => setSortBy("top")}
-            className={`flex items-center ${sortBy === "top" ? "text-blue-500" : "text-gray-500"}`}
+            className={`flex items-center ${sortBy === "top" ? "text-blue-500" : "text-gray-200"}`}
           >
             <TrendingUp className="w-4 h-4 mr-1" />
             Top

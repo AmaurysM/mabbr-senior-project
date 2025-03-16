@@ -38,9 +38,9 @@ const PostsList: React.FC<CommentsListProps> = ({
         comments.map((comment) => (
           <div
             key={comment.id}
-            className="bg-white shadow-md overflow-hidden cursor-pointer"
+            className="bg-gray-500 shadow-md overflow-hidden cursor-pointer"
           >
-            <div className="bg-gray-100 px-4 py-2 flex items-center">
+            <div className="bg-gray-700 px-4 py-2 flex items-center">
               {comment.user.image ? (
                 <Image
                   src={comment.user.image}
@@ -55,7 +55,7 @@ const PostsList: React.FC<CommentsListProps> = ({
                 </div>
               )}
               <span className="font-medium text-sm">{comment.user.name}</span>
-              <span className="text-gray-500 text-xs ml-2">
+              <span className="text-gray-300 text-xs ml-2">
                 • {formatDate(comment.createdAt.toString())}
               </span>
             </div>
@@ -74,7 +74,7 @@ const PostsList: React.FC<CommentsListProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center mt-3 text-gray-500 text-sm">
+              <div className="flex items-center mt-3 text-gray-800 text-sm">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -107,7 +107,7 @@ const PostsList: React.FC<CommentsListProps> = ({
           </div>
         ))
       ) : (
-        <div className="bg-white rounded-md shadow-md p-6 text-center">
+        <div className="bg-gray-700 rounded-md shadow-md p-6 text-center">
           <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-2" />
           <p className="text-gray-500">No comments yet. Be the first to share your thoughts!</p>
         </div>
