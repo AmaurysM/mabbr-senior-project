@@ -7,10 +7,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-gray-800">
+      <body className="h-screen bg-gray-800 flex flex-col">
         <Navbar />
         
-        <main className="">
+        <main className="flex-grow h-full overflow-auto">
           {children}
         </main>
         <Toaster

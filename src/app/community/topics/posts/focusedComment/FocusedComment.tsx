@@ -17,6 +17,7 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
 
+  // Fetch replies whenever the comment id or sorting order changes
   const fetchReplies = async () => {
     try {
       const response = await fetch("/api/topics/posts/comments", {
@@ -36,10 +37,13 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   };
 
   useEffect(() => {
-    fetchReplies();
+    fetchReplies(); // Fetch replies on initial mount
   }, [comment.id]);
 
-  // This is hell
+  useEffect(() => {
+    fetchReplies(); // Refetch replies whenever sortBy changes
+  }, [sortBy]);
+
   const addReplyToTree = (comments: Comment[], newReply: Comment): Comment[] => {
     return comments.map((c) => {
       if (c.id === newReply.parentId) {
@@ -59,14 +63,12 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   };
 
   const handleNewReplyToTree = (newReply: Comment) => {
-
     setReplies((prev) => addReplyToTree(prev, newReply));
     setReplyToComment(null); 
   };
 
   const handleNewReply = (newReply: Comment) => {
-      setReplies((prev) => [newReply, ...prev]);
-
+    setReplies((prev) => [newReply, ...prev]);
     setReplyToComment(null); 
   };
 
@@ -74,18 +76,24 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
     setReplyToComment((prev) => (prev?.id === clickedComment.id ? null : clickedComment));
   };
 
-  const handleLikeComment = async (commentId: string) => {
-    console.log("Like comment:", commentId);
-  };
+  const sortedReplies = [...replies].sort((a, b) => {
+    if (sortBy === "new") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else {
+      const aLikes = a.commentLikes?.length || 0;
+      const bLikes = b.commentLikes?.length || 0;
+      return bLikes - aLikes;
+    }
+  });
 
   return (
-    <div className="mb-4 p-4 bg-white rounded-sm border-b border-white/10">
+    <div className="border-b border-white/10 text-gray-50">
       <button onClick={onClose} className="flex items-center text-gray-500 hover:text-blue-500">
         <ArrowLeft className="w-4 h-4 mr-1" /> Back to Comments
       </button>
 
-      <div className="bg-white shadow-md overflow-hidden mt-2">
-        <div className="bg-gray-100 px-4 py-2 flex items-center">
+      <div className="bg-gray-500 shadow-md overflow-hidden mt-2">
+        <div className="bg-gray-700 px-4 py-2 flex items-center">
           {comment.user.image ? (
             <Image
               src={comment.user.image}
@@ -118,24 +126,24 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
       </div>
 
       {/* Reply form for the main comment */}
-      <div className="mt-4">
-        <h3 className="text-md font-medium mb-2">Reply to this comment</h3>
+      <div className="bg-gray-700">
+        <h3 className="text-md font-medium m-3 pt-2">Reply to this comment</h3>
         <ReplyForm parentComment={comment} session={session} onNewReply={handleNewReply} />
       </div>
 
       {/* Sort options */}
-      <div className="bg-white rounded-md shadow-md p-3 mb-4">
+      <div className="bg-gray-700  shadow-md p-3 mb-4">
         <div className="flex space-x-4 text-sm font-medium">
           <button
             onClick={() => setSortBy("new")}
-            className={`flex items-center ${sortBy === "new" ? "text-blue-500" : "text-gray-500"}`}
+            className={`flex items-center ${sortBy === "new" ? "text-blue-500" : "text-gray-200"}`}
           >
             <Clock className="w-4 h-4 mr-1" />
             New
           </button>
           <button
             onClick={() => setSortBy("top")}
-            className={`flex items-center ${sortBy === "top" ? "text-blue-500" : "text-gray-500"}`}
+            className={`flex items-center ${sortBy === "top" ? "text-blue-500" : "text-gray-200"}`}
           >
             <TrendingUp className="w-4 h-4 mr-1" />
             Top
@@ -145,10 +153,9 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
 
       {/* Replies list */}
       <div className="mt-4">
-        {replies.length > 0 ? (
+        {sortedReplies.length > 0 ? (
           <CommentsList
-            comments={replies} 
-            onLikeComment={handleLikeComment}
+            comments={sortedReplies} 
             onSelectComment={handleCommentClick}
             selectedComment={replyToComment}
             session={session}

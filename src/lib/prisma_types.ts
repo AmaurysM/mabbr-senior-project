@@ -177,7 +177,15 @@ export type FriendsNewsComments = Prisma.UserGetPayload<{
   },
 }>;
 
-export type Topics = Prisma.CommentGetPayload<object>[];
+export type Topics = Prisma.CommentGetPayload<{
+  include:{
+    _count: {
+      select: {
+        children: true,
+      }
+    }
+  }
+}>[];
 export type Topic = Prisma.CommentGetPayload<object>;
 export type Comments = Prisma.CommentGetPayload<{
   include: {
@@ -229,3 +237,30 @@ export type CommentWithChildren = Prisma.CommentGetPayload<{
 }>;
 
 export type NewRoomComent = Prisma.CommentGetPayload<object>;
+
+export type Notifications = Prisma.FriendshipGetPayload<{
+  include: {
+    requester: {
+      select: { id: true, name: true, email: true },
+      include: {
+        transactions: true, // Fetch the friend's transactions
+        comments: true,
+      }
+    },
+    recipient: {
+      select: { id: true, name: true, email: true },
+      include: {
+        transactions: true, // Fetch the friend's transactions
+        comments: true,
+      }
+    },
+  },
+
+}>[];
+
+export type UsableUser = Prisma.UserGetPayload<{
+  omit: {
+    id: true,
+    
+  }
+}>

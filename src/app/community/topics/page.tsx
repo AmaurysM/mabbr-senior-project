@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Topic, Topics } from "@/lib/prisma_types";
 import Room from "./posts/page";
-import { MessageSquare, Plus, Loader2, Search, TrendingUp, Clock, MessageCircle } from "lucide-react";
+import { Plus, Loader2, Search, TrendingUp, Clock } from "lucide-react";
+import useSWRInfinite from "swr/infinite";
+
+const PAGE_SIZE = 10;
 
 const TopicsPage = () => {
-    const [topics, setTopics] = useState<Topics>([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const [roomName, setRoomName] = useState("");
@@ -17,27 +18,56 @@ const TopicsPage = () => {
     const [sortBy, setSortBy] = useState<"new" | "top">("new");
     const [showCreateForm, setShowCreateForm] = useState(false);
 
-    useEffect(() => {
-        fetchTopics();
-    }, []);
-
-    const fetchTopics = async () => {
-        try {
-            setLoading(true);
-            const response = await fetch("/api/topics", { method: "POST" });
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || "Failed to fetch topics");
-            }
-
-            setTopics(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "An unknown error occurred");
-        } finally {
-            setLoading(false);
+    const fetcher = async (url: string, cursor: string | null) => {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ limit: PAGE_SIZE, cursor }),
+        });
+        
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || "Failed to fetch topics");
         }
+        
+        return res.json();
     };
+
+    const getKey = (pageIndex: number, previousPageData: any) => {
+        if (previousPageData && !previousPageData.hasMore) return null;
+        
+        if (pageIndex === 0) return ["/api/topics", null];
+        
+        return ["/api/topics", previousPageData.nextCursor];
+    };
+
+    const {
+        data,
+        error: swrError,
+        size,
+        setSize,
+        isLoading,
+        mutate
+    } = useSWRInfinite(
+        getKey,
+        ([url, cursor]) => fetcher(url, cursor),
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+        }
+    );
+
+    useEffect(() => {
+        if (swrError) {
+            setError(swrError.message || "Failed to fetch topics");
+        } else {
+            setError(null);
+        }
+    }, [swrError]);
+
+    const topics = data ? data.flatMap(pageData => pageData.topics) : [];
+    const isReachingEnd = data && data[data.length - 1]?.hasMore === false;
+    const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
 
     const createTopic = async () => {
         if (!roomName.trim()) {
@@ -64,7 +94,8 @@ const TopicsPage = () => {
                 throw new Error(newTopic.error || "Failed to create topic");
             }
 
-            setTopics((prevTopics) => [newTopic, ...prevTopics]);
+            mutate();
+            
             setRoomName("");
             setRoomDescription("");
             setShowCreateForm(false);
@@ -96,22 +127,42 @@ const TopicsPage = () => {
         topic.content.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const sortedTopics = [...filteredTopics].sort((a, b) => {
+    const sortedTopics: Topics = [...filteredTopics].sort((a, b) => {
         if (sortBy === "new") {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         } else {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            // Sort by the number of comments (children)
+            const aCommentsCount = a._count?.children || 0;
+            const bCommentsCount = b._count?.children || 0;
+            return bCommentsCount - aCommentsCount;
         }
     });
+
+    const loadMoreRef = (node: HTMLDivElement) => {
+        if (!node) return;
+        
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && !isReachingEnd && !isLoadingMore) {
+                    setSize(size + 1);
+                }
+            },
+            { threshold: 0.5 }
+        );
+        
+        observer.observe(node);
+        
+        return () => observer.disconnect();
+    };
 
     if (selectedTopic) {
         return <Room topic={selectedTopic} onBack={() => setSelectedTopic(null)} />;
     }
 
     return (
-        <div className="max-w-4xl mx-auto min-h-screen ">
+        <div className="max-w-4xl mx-auto">
             {/* Search & Create */}
-            <div className=" border border-white/10 rounded-md shadow-md p-4 mb-4">
+            <div className="border border-white/10 rounded-md shadow-md p-4 mb-4">
                 <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -215,7 +266,7 @@ const TopicsPage = () => {
             )}
 
             {/* Topics list */}
-            {loading ? (
+            {isLoading && size === 1 ? (
                 <div className="border border-white/10 rounded-md shadow-md p-12 flex flex-col items-center justify-center">
                     <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
                     <p className="text-gray-200">Loading topics...</p>
@@ -226,7 +277,7 @@ const TopicsPage = () => {
                         <div
                             key={topic.id}
                             onClick={() => setSelectedTopic(topic)}
-                            className="bg-gray-700 rounded-md shadow-md border-2 border-white/10 hover:border-blue-500  transition-all cursor-pointer overflow-hidden"
+                            className="bg-gray-700 rounded-md shadow-md border-2 border-white/10 hover:border-blue-500 transition-all cursor-pointer overflow-hidden"
                         >
                             <div className="flex p-3">
                                 {/* Topic icon */}
@@ -238,36 +289,23 @@ const TopicsPage = () => {
 
                                 {/* Topic content */}
                                 <div className="flex-1">
-                                    <h3 className="font-medium text-lg text-blue-500">{topic.content}</h3>
-                                    {topic.commentDescription && (
-                                        <p className="text-gray-200 text-sm line-clamp-2">{topic.commentDescription}</p>
-                                    )}
-
-                                    <div className="flex items-center mt-2 text-xs text-gray-500">
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        <span>{formatDate(topic.createdAt.toString())}</span>
-                                        <span className="mx-2">•</span>
-                                        <MessageCircle className="w-3 h-3 mr-1" />
-                                        <span>0 comments</span>
+                                    <h3 className="font-medium text-lg text-gray-100">{topic.content}</h3>
+                                    <p className="text-sm text-gray-400">{topic.commentDescription}</p>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <p className="text-xs text-gray-500">{formatDate(topic.createdAt.toString())}</p>
+                                        <p className="text-xs text-gray-400">
+                                            {topic._count && topic._count.children ? topic._count.children : 0} comments
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
-            ) : searchQuery ? (
-                <div className="bg-white rounded-md shadow-md p-12 text-center">
-                    <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-600 mb-1">No topics found matching `{searchQuery}`</p>
-                    <p className="text-gray-500 text-sm">Try a different search term or create a new topic</p>
-                </div>
             ) : (
-                <div className="bg-white rounded-md shadow-md p-12 text-center">
-                    <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-600 mb-1">No topics yet</p>
-                    <p className="text-gray-500 text-sm">Create a new topic to get started</p>
-                </div>
+                <div className="text-center text-gray-400">No topics available</div>
             )}
+            <div ref={loadMoreRef}></div>
         </div>
     );
 };

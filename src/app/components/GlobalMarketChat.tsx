@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import GlobalCommentCard from "./GlobalCommentCard";
 import LoadingStateAnimation from "./LoadingState";
 import { useGlobalMarketChat } from "@/hooks/useGlobalMarketChat";
-import { globalPosts } from "@/lib/prisma_types";
 
 const GlobalMarketChat = () => {
   const { data: session } = authClient.useSession();
@@ -17,7 +16,6 @@ const GlobalMarketChat = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Scroll to the bottom of the chat when new messages arrive
   useEffect(() => {
     if (messagesData && messagesData.length > 0) {
       const timer = setTimeout(() => {
@@ -47,7 +45,7 @@ const GlobalMarketChat = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {messagesData.map((message: globalPosts,key) => (
+            {messagesData.map((message,key) => (
               <GlobalCommentCard key={key} message={message} />
             ))}
             <div ref={chatEndRef} />
