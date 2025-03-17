@@ -18,32 +18,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const existingLike = await prisma.commentLike.findUnique({
-      where: {
-        userId_commentId: {
-          userId: session.user.id,
-          commentId: commentId,
-        },
-      },
-    });
-
-    if (existingLike) {
-      await prisma.commentLike.delete({
-        where: {
-          id: existingLike.id,
-        },
-      });
-
-      return NextResponse.json(
-        { message: "Like removed", liked: false },
-        { status: 200 }
-      );
-    }
+    // Use the userId from the session instead of the request body for security
+    const currentUserId = session.user.id;
 
     const existingDislike = await prisma.commentDislike.findUnique({
       where: {
         userId_commentId: {
-          userId: session.user.id,
+          userId: currentUserId,
           commentId: commentId,
         },
       },
@@ -55,21 +36,43 @@ export async function POST(req: Request) {
           id: existingDislike.id,
         },
       });
+
+      return NextResponse.json(
+        { message: "Dislike removed", liked: false },
+        { status: 200 }
+      );
     }
 
-    await prisma.commentLike.create({
+    const existingLike = await prisma.commentLike.findUnique({
+      where: {
+        userId_commentId: {
+          userId: currentUserId,
+          commentId: commentId,
+        },
+      },
+    });
+
+    if (existingLike) {
+      await prisma.commentLike.delete({
+        where: {
+          id: existingLike.id,
+        },
+      });
+    }
+
+    await prisma.commentDislike.create({
       data: {
-        userId: session.user.id,
+        userId: currentUserId,
         commentId: commentId,
       },
     });
 
     return NextResponse.json(
-      { message: "Like added", liked: true },
+      { message: "Dislike added", liked: true },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error liking/unliking comment:", error);
+    console.error("Error dislike/undisliking comment:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

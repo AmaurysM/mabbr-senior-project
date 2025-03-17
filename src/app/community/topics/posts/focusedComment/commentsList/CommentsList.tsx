@@ -26,20 +26,35 @@ const CommentsList: React.FC<CommentsListProps> = ({
 }) => {
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [commentLikesCount, setCommentLikesCount] = useState<{ [key: string]: number }>({});
+  const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set());
+  const [commentDislikesCount, setCommentDislikesCount] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
     const likedSet = new Set<string>();
     const likesCount: { [key: string]: number } = {};
+    const dislikedSet = new Set<string>();
+    const dislikesCount: { [key: string]: number } = {};
 
     comments.forEach((comment) => {
       likesCount[comment.id] = comment.commentLikes.length;
-      if (comment.commentLikes.some((like) => like.userId === session.user.id)) {
+      if (comment.commentLikes.some((like) => like.userId === session?.user?.id)) {
         likedSet.add(comment.id);
+      }
+      
+      if (comment.commentDislikes && Array.isArray(comment.commentDislikes)) {
+        dislikesCount[comment.id] = comment.commentDislikes.length;
+        if (comment.commentDislikes.some((dislike) => dislike.userId === session?.user?.id)) {
+          dislikedSet.add(comment.id);
+        }
+      } else {
+        dislikesCount[comment.id] = 0;
       }
     });
 
     setLikedComments(likedSet);
     setCommentLikesCount(likesCount);
+    setDislikedComments(dislikedSet);
+    setCommentDislikesCount(dislikesCount);
   }, [comments, session]);
 
   const formatDate = (dateString: string) => {
@@ -71,19 +86,30 @@ const CommentsList: React.FC<CommentsListProps> = ({
 
   const onLikeComment = async (commentId: string) => {
     const isLiked = likedComments.has(commentId);
+    const isDisliked = dislikedComments.has(commentId);
+    
     const updatedLikes = new Set(likedComments);
     const updatedLikesCount = { ...commentLikesCount };
+    const updatedDislikes = new Set(dislikedComments);
+    const updatedDislikesCount = { ...commentDislikesCount };
+
+    if (isDisliked) {
+      updatedDislikes.delete(commentId);
+      updatedDislikesCount[commentId] = Math.max(0, (updatedDislikesCount[commentId] || 1) - 1);
+    }
 
     if (isLiked) {
       updatedLikes.delete(commentId);
-      updatedLikesCount[commentId] -= 1;
+      updatedLikesCount[commentId] = Math.max(0, (updatedLikesCount[commentId] || 1) - 1);
     } else {
       updatedLikes.add(commentId);
-      updatedLikesCount[commentId] += 1;
+      updatedLikesCount[commentId] = (updatedLikesCount[commentId] || 0) + 1;
     }
 
     setLikedComments(updatedLikes);
     setCommentLikesCount(updatedLikesCount);
+    setDislikedComments(updatedDislikes);
+    setCommentDislikesCount(updatedDislikesCount);
 
     try {
       const response = await fetch("/api/topics/posts/like", {
@@ -97,119 +123,172 @@ const CommentsList: React.FC<CommentsListProps> = ({
       }
     } catch (error) {
       console.error("Error liking/unliking comment:", error);
+      setLikedComments(new Set([...likedComments]));
+      setCommentLikesCount({ ...commentLikesCount });
+      setDislikedComments(new Set([...dislikedComments]));
+      setCommentDislikesCount({ ...commentDislikesCount });
+    }
+  };
 
-      // Revert changes on failure
-      setLikedComments((prev) => {
-        const newLikes = new Set(prev);
-        if (isLiked) {
-          newLikes.delete(commentId);
-        } else {
-          newLikes.add(commentId);
-        }
-        return newLikes;
+  const onDislikeComment = async (commentId: string) => {
+    const isDisliked = dislikedComments.has(commentId);
+    const isLiked = likedComments.has(commentId);
+    
+    const updatedDislikes = new Set(dislikedComments);
+    const updatedDislikesCount = { ...commentDislikesCount };
+    const updatedLikes = new Set(likedComments);
+    const updatedLikesCount = { ...commentLikesCount };
+
+    if (isLiked) {
+      updatedLikes.delete(commentId);
+      updatedLikesCount[commentId] = Math.max(0, (updatedLikesCount[commentId] || 1) - 1);
+    }
+
+    if (isDisliked) {
+      updatedDislikes.delete(commentId);
+      updatedDislikesCount[commentId] = Math.max(0, (updatedDislikesCount[commentId] || 1) - 1);
+    } else {
+      updatedDislikes.add(commentId);
+      updatedDislikesCount[commentId] = (updatedDislikesCount[commentId] || 0) + 1;
+    }
+
+    setDislikedComments(updatedDislikes);
+    setCommentDislikesCount(updatedDislikesCount);
+    setLikedComments(updatedLikes);
+    setCommentLikesCount(updatedLikesCount);
+
+    try {
+      const response = await fetch("/api/topics/posts/dislike", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentId, userId: session?.user?.id }),
       });
-      setCommentLikesCount({
-        ...commentLikesCount,
-        [commentId]: isLiked
-          ? updatedLikesCount[commentId] + 1
-          : updatedLikesCount[commentId] - 1,
-      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to update dislike.");
+      }
+    } catch (error) {
+      console.error("Error disliking comment:", error);
+      setLikedComments(new Set([...likedComments]));
+      setCommentLikesCount({ ...commentLikesCount });
+      setDislikedComments(new Set([...dislikedComments]));
+      setCommentDislikesCount({ ...commentDislikesCount });
     }
   };
 
   return (
     <div className={`text-gray-100 ${level > 0 ? "ml-6 " : ""}`}>
-      {sortedComments.map((comment) => (
-        <div key={comment.id}>
-          <div className={`bg-gray-500 shadow-md ${comment.children?.length || 0 > 1 ? "rounded-bl-sm overflow-hidden" : "mb-1"}`}>
-            <div className="bg-gray-700 px-4 py-2 flex items-center">
-              {comment.user.image ? (
-                <Image
-                  src={comment.user.image}
-                  alt={comment.user.name}
-                  width={24}
-                  height={24}
-                  className="rounded-full mr-2"
-                />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs mr-2">
-                  {comment.user.name?.charAt(0).toUpperCase() || "U"}
-                </div>
-              )}
-              <span className="font-medium text-sm">{comment.user.name}</span>
-              <span className="text-xs ml-2">• {formatDate(comment.createdAt.toString())}</span>
-            </div>
-
-            <div className="p-4">
-              <p className="text-gray-800">{comment.content}</p>
-              {comment.image && (
-                <div className="mt-2">
+      {sortedComments.map((comment) => {
+        const hasUserLiked = likedComments.has(comment.id);
+        const hasUserDisliked = dislikedComments.has(comment.id);
+        
+        return (
+          <div key={comment.id}>
+            <div className={`bg-gray-500 shadow-md ${comment.children?.length || 0 > 1 ? "rounded-bl-sm overflow-hidden" : "mb-1"}`}>
+              <div className="bg-gray-700 px-4 py-2 flex items-center">
+                {comment.user.image ? (
                   <Image
-                    src={comment.image}
-                    alt="Comment Image"
-                    width={400}
-                    height={300}
-                    className="rounded-md max-w-full h-auto"
+                    src={comment.user.image}
+                    alt={comment.user.name}
+                    width={24}
+                    height={24}
+                    className="rounded-full mr-2"
                   />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs mr-2">
+                    {comment.user.name?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                )}
+                <span className="font-medium text-sm">{comment.user.name}</span>
+                <span className="text-xs ml-2">• {formatDate(comment.createdAt.toString())}</span>
+              </div>
+
+              <div className="p-4">
+                <p className="text-gray-800">{comment.content}</p>
+                {comment.image && (
+                  <div className="mt-2">
+                    <Image
+                      src={comment.image}
+                      alt="Comment Image"
+                      width={400}
+                      height={300}
+                      className="rounded-md max-w-full h-auto"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center mt-3 text-sm">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onLikeComment(comment.id);
+                    }}
+                    className={`flex items-center rounded-full px-2 py-1 transition ${
+                      hasUserLiked
+                        ? "bg-blue-500 text-white"
+                        : "hover:bg-gray-700 text-gray-100"
+                    }`}
+                  >
+                    <ArrowUp className="w-4 h-4 mr-1" />
+                    <span>{commentLikesCount[comment.id] || 0}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDislikeComment(comment.id);
+                    }}
+                    className={`flex items-center rounded-full px-2 py-1 ml-2 transition ${
+                      hasUserDisliked
+                        ? "bg-red-500 text-white"
+                        : "hover:bg-gray-700 text-gray-100"
+                    }`}
+                  >
+                    <ArrowDown className="w-4 h-4 mr-1" />
+                    <span>{commentDislikesCount[comment.id] || 0}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectComment(comment);
+                    }}
+                    className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ml-2"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1" />
+                    Reply
+                  </button>
+                </div>
+              </div>
+
+              {/* Conditionally render the reply form */}
+              {selectedComment?.id === comment.id && (
+                <div className="mt-2 mx-4">
+                  <CommentReplyForm
+                    parentComment={comment}
+                    session={session}
+                    onNewReply={onNewReply}
+                  />
+                  {!session && (
+                    <p className="text-sm text-gray-500 mt-2">You need to be logged in to reply</p>
+                  )}
                 </div>
               )}
-
-              <div className="flex items-center mt-3 text-sm">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLikeComment(comment.id);
-                  }}
-                  className={`flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ${likedComments.has(comment.id) ? 'bg-blue-500' : 'text-gray-100'}`}
-                >
-                  <ArrowUp className="w-4 h-4 mr-1" />
-                  <span>{commentLikesCount[comment.id] || 0}</span>
-                </button>
-                <button className="flex items-center  hover:bg-gray-700 rounded-full px-2 py-1 ml-2">
-                  <ArrowDown className="w-4 h-4 mr-1 " />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectComment(comment);
-                  }}
-                  className="flex items-center  hover:bg-gray-700 rounded-full px-2 py-1 ml-2"
-                >
-                  <MessageSquare className="w-4 h-4 mr-1" />
-                  Reply
-                </button>
-              </div>
             </div>
 
-            {/* Conditionally render the reply form */}
-            {selectedComment?.id === comment.id && (
-              <div className="mt-2 mx-4">
-                <CommentReplyForm
-                  parentComment={comment}
-                  session={session}
-                  onNewReply={onNewReply}
-                />
-                {!session && (
-                  <p className="text-sm text-gray-500 mt-2">You need to be logged in to reply</p>
-                )}
-              </div>
+            {/* Render nested comments recursively */}
+            {comment.children && comment.children.length > 0 && (
+              <CommentsList
+                comments={comment.children}
+                onSelectComment={onSelectComment}
+                selectedComment={selectedComment}
+                session={session}
+                onNewReply={onNewReply}
+                sortBy={sortBy}
+                level={level + 1}
+              />
             )}
           </div>
-
-          {/* Render nested comments recursively */}
-          {comment.children && comment.children.length > 0 && (
-            <CommentsList
-              comments={comment.children}
-              onSelectComment={onSelectComment}
-              selectedComment={selectedComment}
-              session={session}
-              onNewReply={onNewReply}
-              sortBy={sortBy}
-              level={level + 1}
-            />
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
