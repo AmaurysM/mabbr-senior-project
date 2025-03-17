@@ -17,7 +17,6 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
 
-  // Fetch replies whenever the comment id or sorting order changes
   const fetchReplies = async () => {
     try {
       const response = await fetch("/api/topics/posts/comments", {

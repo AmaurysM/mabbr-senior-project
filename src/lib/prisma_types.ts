@@ -205,10 +205,12 @@ export type Comment = Omit<
     include: {
       user: true;
       commentLikes: true;
+      commentDislikes: true;
       children: {
         include: {
           user: true;
           commentLikes: true;
+          commentDislikes: true;
         };
       };
     };

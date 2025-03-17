@@ -44,7 +44,8 @@ model User {
 
   likes          UserLike[]    
   comments       Comment[]
-  commentLike CommentLike[]
+  commentLike    CommentLike[]
+  commentDislike CommentDislike[]
 
   @@map("user")
 }
@@ -64,6 +65,8 @@ model Comment {
   children        Comment[] @relation("CommentThread")
 
   commentLikes    CommentLike[]
+  commentDislikes  CommentDislike[]
+
   image           String?
 
   createdAt       DateTime @default(now())
@@ -82,6 +85,29 @@ enum CommentableType {
   FEED
 }
 
+
+model CommentLike {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  commentId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@map("comment_like")
+}
+
+model CommentDislike {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  commentId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@map("comment_dislike")
+}
+
 model UserLike {
   id              String   @id @default(cuid()) @map("_id")
   userId          String
@@ -98,17 +124,6 @@ model UserLike {
 enum LikeableType {
   POST
   COMMENT
-}
-
-model CommentLike {
-  id        String   @id @default(cuid()) @map("_id")
-  userId    String
-  commentId String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, commentId])
-  @@map("comment_like")
 }
 
 model LootBox {
