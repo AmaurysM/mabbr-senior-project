@@ -12,11 +12,12 @@ function normalizeUrl(url: string): string {
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ all: string[] }> }
 ) {
-  const { all } = await params;
-  const url = all.join('/');
-  console.log(url, "inside GET");
+
+  const { pathname } = new URL(req.url);
+  const segments = pathname.split('/').filter(Boolean);
+  const allSegments = segments.slice(3); // adjust if your base route is different
+  const url = decodeURIComponent(allSegments.join('/'));
 
   if (!url) {
     return NextResponse.json(

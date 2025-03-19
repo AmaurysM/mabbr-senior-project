@@ -34,7 +34,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, price, stocks = [] } = body;
+    const { name, price, stocks = [] } = body;
 
     // Validate required fields
     if (!name || price === undefined) {
@@ -50,14 +50,13 @@ export async function POST(request: NextRequest) {
       const newLootbox = await tx.lootBox.create({
         data: {
           name,
-          description,
           price,
         }
       });
 
       // Create stock relations if stocks are provided
       if (stocks.length > 0) {
-        await tx.lootBoxStocks.createMany({
+        await tx.lootBoxStock.createMany({
           data: stocks.map((stockId: string) => ({
             lootBoxId: newLootbox.id,
             stockId

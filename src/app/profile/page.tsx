@@ -339,7 +339,7 @@ const ProfilePage = () => {
 
                     if (session.user.id) {
                         try {
-                            const response = await fetch(`/api/user/${session.user.id}`, {
+                            const response = await fetch(`/api/user?id=${session.user.id}`, {
                                 credentials: 'include'
                             });
                             if (response.ok) {
@@ -395,7 +395,7 @@ const ProfilePage = () => {
                 const formData = new FormData();
                 formData.append('image', file);
 
-                const response = await fetch(`/api/user/${userId}/image`, {
+                const response = await fetch(`/api/user/image?id=${userId}`, {
                     method: 'POST',
                     body: formData,
                     credentials: 'include'
@@ -422,7 +422,7 @@ const ProfilePage = () => {
     const updateName = async (newName: string) => {
         if (!userId) return;
 
-        const response = await fetch(`/api/user/${userId}`, {
+        const response = await fetch(`/api/user?id=${userId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -452,7 +452,7 @@ const ProfilePage = () => {
         if (!userId) return;
 
         try {
-            const response = await fetch(`/api/user/${userId}`, {
+            const response = await fetch(`/api/user?id=${userId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -500,7 +500,7 @@ const ProfilePage = () => {
         try {
             setIsSavingBio(true);
 
-            const response = await fetch(`/api/user/${userId}`, {
+            const response = await fetch(`/api/user?id=${userId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

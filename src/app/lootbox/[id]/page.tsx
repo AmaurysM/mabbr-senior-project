@@ -38,7 +38,7 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
       try {
         console.log(`Fetching lootbox with ID: ${resolvedId}`);
         
-        const response = await fetch(`/api/users/userLootBoxes/${resolvedId}`);
+        const response = await fetch(`/api/users/userLootBoxes/loot?id=${resolvedId}`);
         console.log("Response status:", response.status);
     
         if (response.status === 404) {
@@ -179,11 +179,15 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
         setSelectedStock(winningStock);
   
         try {
-          const response = await fetch(`/api/users/userLootBoxes/${lootBox.id}/redeem/${winningStock.stockId}`, {
+          const response = await fetch(`/api/users/userLootBoxes/loot`, {
             method: "PATCH", 
             headers: {
               "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+              lootBoxId: lootBox.id,
+              winningStockId: winningStock.stockId,
+            }),
           });
         
           if (!response.ok) {

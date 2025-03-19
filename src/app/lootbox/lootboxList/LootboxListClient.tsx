@@ -28,7 +28,7 @@ const LootboxListClient = ({ initialLootboxes, title = "Market", subtitle = "Sel
     setError(null);
     
     try {
-      const response = await fetch(`/api/users/userLootBoxes/${lootBoxId}`, {
+      const response = await fetch(`/api/users/userLootBoxes?id=${lootBoxId}`, {
         method: "POST",
       });
 

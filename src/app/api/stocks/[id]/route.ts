@@ -4,11 +4,11 @@ import prisma from '@/lib/prisma';
 // GET a specific stock
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
-    
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id') || '';
+
     const stock = await prisma.stock.findUnique({
       where: { id }
     });
@@ -22,7 +22,7 @@ export async function GET(
 
     return NextResponse.json(stock);
   } catch (error) {
-    console.error(`Error fetching stock ${params.id}:`, error);
+    console.error(`Error fetching stock: `, error);
     return NextResponse.json(
       { error: 'Failed to fetch stock' },
       { status: 500 }
@@ -33,10 +33,10 @@ export async function GET(
 // UPDATE a stock
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id') || '';
     const body = await request.json();
     const { name, ticker, price } = body;
 
@@ -53,10 +53,10 @@ export async function PUT(
     }
 
     // If ticker is being changed, check for duplicates
-    if (ticker && ticker !== existingStock.ticker) {
+    if (ticker && ticker !== existingStock.name) {
       const duplicateTicker = await prisma.stock.findFirst({
         where: { 
-          ticker,
+          name,
           id: { not: id }
         }
       });
@@ -74,14 +74,13 @@ export async function PUT(
       where: { id },
       data: {
         name,
-        ticker,
         price
       }
     });
 
     return NextResponse.json(updatedStock);
   } catch (error) {
-    console.error(`Error updating stock ${params.id}:`, error);
+    console.error(`Error updating stock: `, error);
     return NextResponse.json(
       { error: 'Failed to update stock' },
       { status: 500 }
@@ -92,10 +91,10 @@ export async function PUT(
 // DELETE a stock
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id') || '';
 
     // Check if stock exists
     const existingStock = await prisma.stock.findUnique({
@@ -110,7 +109,7 @@ export async function DELETE(
     }
 
     // Check if stock is used in any lootboxes
-    const stockInUse = await prisma.lootBoxStocks.findFirst({
+    const stockInUse = await prisma.lootBoxStock.findFirst({
       where: { stockId: id }
     });
 
@@ -128,7 +127,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`Error deleting stock ${params.id}:`, error);
+    console.error(`Error deleting stock: `, error);
     return NextResponse.json(
       { error: 'Failed to delete stock' },
       { status: 500 }
