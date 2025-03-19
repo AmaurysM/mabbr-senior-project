@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Topic, Topics } from "@/lib/prisma_types";
-import Room from "./posts/page";
 import { Plus, Loader2, Search, TrendingUp, Clock } from "lucide-react";
 import useSWRInfinite from "swr/infinite";
+import Room from "./posts/Room";
 
 const PAGE_SIZE = 10;
 
@@ -33,12 +33,12 @@ const TopicsPage = () => {
         return res.json();
     };
 
-    const getKey = (pageIndex: number, previousPageData: any) => {
+    const getKey = (pageIndex: number, previousPageData: { hasMore: boolean; nextCursor: string } | null) => {
         if (previousPageData && !previousPageData.hasMore) return null;
         
         if (pageIndex === 0) return ["/api/topics", null];
         
-        return ["/api/topics", previousPageData.nextCursor];
+        return ["/api/topics", previousPageData?.nextCursor || null];
     };
 
     const {
@@ -50,7 +50,7 @@ const TopicsPage = () => {
         mutate
     } = useSWRInfinite(
         getKey,
-        ([url, cursor]) => fetcher(url, cursor),
+        ([url, cursor]) => fetcher(url || "", cursor || ""),
         {
             revalidateOnFocus: false,
             revalidateOnReconnect: false,

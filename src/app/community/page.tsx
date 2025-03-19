@@ -10,7 +10,6 @@ import GlobalFeed from "./globalFeed/page";
 import Notifications from "./notifications/page";
 import Articles from "./articles/page";
 import MyPage from "./myPage/page";
-import { authClient } from "@/lib/auth-client";
 import Feed from "./feed/page";
 import Topics from "./topics/page";
 
@@ -24,8 +23,6 @@ enum Tab {
 }
 
 const CommunityPage = () => {
-  const { data: session } = authClient.useSession();
-  const user = session?.user;
 
   const [activeComponent, setActiveComponent] = useState<Tab>(() => {
     return typeof window !== "undefined"
@@ -80,7 +77,7 @@ const CommunityPage = () => {
         {activeComponent === Tab.feed && <Feed />}
         {activeComponent === Tab.articles && <Articles />}
         {activeComponent === Tab.notifications && <Notifications />}
-        {activeComponent === Tab.myPage && <MyPage user={user} />}
+        {activeComponent === Tab.myPage && <MyPage />}
       </div>
 
       <Toaster />

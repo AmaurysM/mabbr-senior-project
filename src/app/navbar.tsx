@@ -42,7 +42,7 @@ const Navbar = () => {
     const fetchUserData = async () => {
       if (user?.id) {
         try {
-          const response = await fetch(`/api/user/${user.id}`, {
+          const response = await fetch(`/api/user?id=${user.id}`, {
             credentials: 'include'
           });
           

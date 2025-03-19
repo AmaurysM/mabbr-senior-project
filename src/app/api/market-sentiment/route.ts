@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 
 // GET - Retrieve current market sentiment
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -53,7 +52,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST - Update market sentiment
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),

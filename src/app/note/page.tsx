@@ -71,7 +71,7 @@ const StockNotes = () => {
         ? { publicNote: publicNoteText }
         : { privateNote: privateNoteText };
   
-      const response = await fetch(`/api/user/note/${selectedTransactionId}`, {
+      const response = await fetch(`/api/user/note?id=${selectedTransactionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedNote),

@@ -2,17 +2,15 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, Calendar, Clock, TrendingUp } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { Topic, Comment, Comments } from "@/lib/prisma_types";
+import { Topic, Comment } from "@/lib/prisma_types";
 import PostForm from "./postForm/PostForm";
 import PostsList from "./postsList/PostsList";
 import FocusedComment from "./focusedComment/FocusedComment";
 
-interface RoomProps {
-  topic: Topic;
-  onBack: () => void;
-}
 
-const Room: React.FC<RoomProps> = ({ topic, onBack }) => {
+
+const Room = ({ topic, onBack }: { topic: Topic, onBack: ()=> void}) => {
+
   const [comments, setComments] = useState<Comment[]>([]);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [focusedComment, setFocusedComment] = useState<Comment | null>(null);
@@ -28,8 +26,8 @@ const Room: React.FC<RoomProps> = ({ topic, onBack }) => {
           body: JSON.stringify({ topicId: topic.id }),
         });
         if (!response.ok) throw new Error("Failed to fetch comments");
-        const data: Comments = await response.json();
-        setComments(data);
+        const data: Comment[] = await response.json();
+        setComments(data as Comment[]);
       } catch (error) {
         console.error(error);
       }

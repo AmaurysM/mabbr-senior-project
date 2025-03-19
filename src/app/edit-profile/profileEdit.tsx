@@ -1,14 +1,13 @@
 'use client';
 import React, { useState } from 'react';
 import './EditProfile.css';
+import Image from 'next/image';
 
-interface ProfileProps {
-  initialName: string;
-  initialEmail: string;
-  initialBio: string;
-}
-
-const Profile: React.FC<ProfileProps> = ({ initialName, initialEmail, initialBio }) => {
+const Profile = ({ initialName, initialEmail, initialBio }:{
+  initialName: string,
+  initialEmail: string,
+  initialBio: string,
+}) => {
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [bio, setBio] = useState(initialBio);
@@ -65,7 +64,7 @@ const Profile: React.FC<ProfileProps> = ({ initialName, initialEmail, initialBio
         <h4>Upload Profile Picture:</h4>
         <input type="file" accept="image/*" onChange={handleFileChange} />
         {previewUrl && (
-          <img
+          <Image
             src={previewUrl}
             alt="Profile Preview"
             style={{ width: '100%', borderRadius: '8px', margin: '10px 0' }}

@@ -2,20 +2,10 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
-import { Comment } from "@/lib/prisma_types";
+import { Comment, SessionType } from "@/lib/prisma_types";
 import CommentReplyForm from "./commentReplyForm/commentReplyForm";
 
-interface CommentsListProps {
-  comments: Comment[];
-  onSelectComment: (comment: Comment) => void;
-  selectedComment: Comment | null;
-  session: any;
-  onNewReply: (newReply: Comment) => void;
-  sortBy: "new" | "top";
-  level?: number;
-}
-
-const CommentsList: React.FC<CommentsListProps> = ({
+const CommentsList = ({
   comments,
   onSelectComment,
   selectedComment,
@@ -23,6 +13,14 @@ const CommentsList: React.FC<CommentsListProps> = ({
   onNewReply,
   sortBy,
   level = 0,
+}: {
+  comments: Comment[],
+  onSelectComment: (comment: Comment) => void,
+  selectedComment: Comment | null,
+  session: SessionType,
+  onNewReply: (newReply: Comment) => void,
+  sortBy: "new" | "top",
+  level?: number,
 }) => {
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [commentLikesCount, setCommentLikesCount] = useState<{ [key: string]: number }>({});

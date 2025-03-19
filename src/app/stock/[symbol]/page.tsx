@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { FaHammer } from "react-icons/fa"; // Importing the construction icon
+import { FaHammer } from "react-icons/fa"; 
 
 const StockPage = () => {
   const { symbol } = useParams();

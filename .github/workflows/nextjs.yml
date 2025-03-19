@@ -62,7 +62,9 @@ jobs:
         run: ${{ steps.detect-package-manager.outputs.runner }} lint || echo "Linting completed with warnings/errors, continuing build..."
       
       - name: Build with Next.js
-        run: ${{ steps.detect-package-manager.outputs.runner }} next build --no-lint
+        run: |
+            ${{ steps.detect-package-manager.outputs.runner }} next build --no-lint && \
+            ${{ steps.detect-package-manager.outputs.runner }} next export
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
