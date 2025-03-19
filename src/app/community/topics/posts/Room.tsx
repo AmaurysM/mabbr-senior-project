@@ -10,6 +10,7 @@ import FocusedComment from "./focusedComment/FocusedComment";
 
 
 const Room = ({ topic, onBack }: { topic: Topic, onBack: ()=> void}) => {
+
   const [comments, setComments] = useState<Comment[]>([]);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [focusedComment, setFocusedComment] = useState<Comment | null>(null);

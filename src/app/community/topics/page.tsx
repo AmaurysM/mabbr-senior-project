@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Topic, Topics } from "@/lib/prisma_types";
-import Room from "./posts/page";
 import { Plus, Loader2, Search, TrendingUp, Clock } from "lucide-react";
 import useSWRInfinite from "swr/infinite";
+import Room from "./posts/Room";
 
 const PAGE_SIZE = 10;
 
