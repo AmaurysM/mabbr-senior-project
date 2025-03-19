@@ -2,10 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import TransactionCard from '@/app/components/TransactionCard';
-
-interface MyPageProps {
-  user?: any;
-}
+import { authClient } from '@/lib/auth-client';
 
 interface Transaction {
   id: string;
@@ -23,11 +20,15 @@ interface Transaction {
   privateNote?: string;
 }
 
-const MyPage: React.FC<MyPageProps> = ({ user }) => {
+const MyPage = () => {
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [friendEmail, setFriendEmail] = useState('');
   const [friendError, setFriendError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const { data: session } = authClient.useSession()
+  const user = session?.user;
 
   // Function to fetch user's transactions
   const fetchTransactions = async () => {
@@ -105,7 +106,7 @@ const MyPage: React.FC<MyPageProps> = ({ user }) => {
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
         <h2 className="text-xl font-bold text-white mb-4">My Page</h2>
         <p className="text-gray-200 mb-6">Welcome back, {user.name || user.email}!</p>
-        
+
         {/* Add Friend Section */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10 mb-6">
           <h3 className="text-lg font-bold text-white mb-4">Add Friend</h3>
@@ -126,7 +127,7 @@ const MyPage: React.FC<MyPageProps> = ({ user }) => {
             {friendError && <div className="text-red-400 mt-2">{friendError}</div>}
           </div>
         </div>
-        
+
         {/* My Activity Section */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10 mb-6">
           <h3 className="text-lg font-bold text-white mb-4">My Activity</h3>
@@ -134,7 +135,7 @@ const MyPage: React.FC<MyPageProps> = ({ user }) => {
             <div className="text-gray-400 text-center py-4">Loading your transactions...</div>
           ) : userTransactions.length === 0 ? (
             <div className="text-gray-400 text-center py-4">
-              You haven't made any trades yet. Start trading to see your activity here.
+              You haven&apos;t made any trades yet. Start trading to see your activity here.
             </div>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
@@ -144,7 +145,7 @@ const MyPage: React.FC<MyPageProps> = ({ user }) => {
             </div>
           )}
         </div>
-        
+
         {/* Friend Activity Section */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
           <h3 className="text-lg font-bold text-white mb-4">Friend Activity</h3>

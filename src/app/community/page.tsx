@@ -80,7 +80,7 @@ const CommunityPage = () => {
         {activeComponent === Tab.feed && <Feed />}
         {activeComponent === Tab.articles && <Articles />}
         {activeComponent === Tab.notifications && <Notifications />}
-        {activeComponent === Tab.myPage && <MyPage user={user} />}
+        {activeComponent === Tab.myPage && <MyPage />}
       </div>
 
       <Toaster />
