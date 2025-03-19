@@ -4,13 +4,12 @@ import Image from "next/image";
 import { Send, ImageIcon, Loader2, X } from "lucide-react";
 import { Comment } from "@/lib/prisma_types";
 
-interface ReplyFormProps {
-  parentComment: Comment;
-  session: any;
-  onNewReply: (reply: Comment) => void;
-}
 
-const CommentReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, onNewReply }) => {
+const CommentReplyForm = ({ parentComment, session, onNewReply }: {
+  parentComment: Comment,
+  session: any,
+  onNewReply: (reply: Comment) => void,
+}) => {
   const [replyText, setReplyText] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);

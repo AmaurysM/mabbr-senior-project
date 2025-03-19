@@ -6,13 +6,12 @@ import { Comment, Comments } from "@/lib/prisma_types";
 import CommentsList from "./commentsList/CommentsList";
 import ReplyForm from "./replyForm/ReplyForm";
 
-interface FocusedCommentProps {
-  comment: Comment;
-  onClose: () => void;
-  session: any;
-}
 
-const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, session }) => {
+const FocusedComment = ({ comment, onClose, session } : {
+  comment: Comment,
+  onClose: () => void,
+  session: any,
+}) => {
   const [replies, setReplies] = useState<Comment[]>(comment.children || []);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);

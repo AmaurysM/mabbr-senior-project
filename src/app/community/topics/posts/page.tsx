@@ -7,12 +7,9 @@ import PostForm from "./postForm/PostForm";
 import PostsList from "./postsList/PostsList";
 import FocusedComment from "./focusedComment/FocusedComment";
 
-interface RoomProps {
-  topic: Topic;
-  onBack: () => void;
-}
 
-const Room: React.FC<RoomProps> = ({ topic, onBack }) => {
+
+const Room = ({ topic, onBack }: { topic: Topic, onBack: ()=> void}) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [focusedComment, setFocusedComment] = useState<Comment | null>(null);
