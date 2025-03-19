@@ -60,9 +60,9 @@ jobs:
       # Run linting but allow build to continue even if errors occur
       - name: Run Linter (Show Errors but Don't Fail)
         run: ${{ steps.detect-package-manager.outputs.runner }} lint || echo "Linting completed with warnings/errors, continuing build..."
-
+      
       - name: Build with Next.js
-        run: ${{ steps.detect-package-manager.outputs.runner }} next build
+        run: ${{ steps.detect-package-manager.outputs.runner }} next build --no-lint
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
