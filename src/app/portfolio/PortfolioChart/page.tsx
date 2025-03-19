@@ -1,3 +1,5 @@
+"use client";
+
 import { Transaction } from '@prisma/client';
 import React, { useState, useEffect } from 'react';
 import {
