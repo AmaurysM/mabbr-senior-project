@@ -1,15 +1,13 @@
 import prisma from "@/lib/prisma";
-import { authPlugin } from "@/middlewarePlugin";
 import { betterAuth, BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { openAPI } from "better-auth/plugins";
-import { authClient } from "./auth-client";
 import { headers } from "next/headers";
 
 const requiredEnvVars = {
-  NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-  NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL:
-    process.env.NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL,
+  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+  EMAIL_VERIFICATION_CALLBACK_URL:
+    process.env.EMAIL_VERIFICATION_CALLBACK_URL,
 } as const;
 
 Object.entries(requiredEnvVars).forEach(([key, value]) => {
