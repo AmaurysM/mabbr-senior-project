@@ -2,12 +2,12 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Send, ImageIcon, Loader2, X } from "lucide-react";
-import { Comment } from "@/lib/prisma_types";
+import { Comment, SessionType } from "@/lib/prisma_types";
 
 
 const CommentReplyForm = ({ parentComment, session, onNewReply }: {
   parentComment: Comment,
-  session: any,
+  session: SessionType | null,
   onNewReply: (reply: Comment) => void,
 }) => {
   const [replyText, setReplyText] = useState("");
@@ -29,7 +29,7 @@ const CommentReplyForm = ({ parentComment, session, onNewReply }: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: session.user.id,
+          userId: session?.user.id,
           content: replyText,
           image: imageUrl,
           commentableId: parentComment.commentableId,

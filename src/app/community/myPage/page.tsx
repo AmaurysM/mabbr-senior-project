@@ -67,7 +67,11 @@ const MyPage = () => {
         setFriendError(data.error || 'Failed to add friend. Please try again later.');
       }
     } catch (error) {
-      setFriendError('Failed to add friend. Please try again later.');
+      if (error instanceof Error) {
+        setFriendError(error.message);
+      } else {
+        setFriendError("An unknown error occurred");
+      }    
     }
   };
 

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
-import { Comment } from "@/lib/prisma_types";
+import { Comment, SessionType } from "@/lib/prisma_types";
 import CommentReplyForm from "./commentReplyForm/commentReplyForm";
 
 const CommentsList = ({
@@ -17,7 +17,7 @@ const CommentsList = ({
   comments: Comment[],
   onSelectComment: (comment: Comment) => void,
   selectedComment: Comment | null,
-  session: any,
+  session: SessionType,
   onNewReply: (newReply: Comment) => void,
   sortBy: "new" | "top",
   level?: number,

@@ -2,18 +2,18 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Send, Image as ImageIcon } from "lucide-react";
-import { Comment } from "@/lib/prisma_types";
+import { Comment, SessionType } from "@/lib/prisma_types";
 
-interface ReplyFormProps {
+const ReplyForm = ({ parentComment, session, onNewReply }:{
   parentComment: Comment;
-  session: any;
-  onNewReply: (reply: any) => void;
-}
-
-const ReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, onNewReply }) => {
+  session: SessionType;
+  onNewReply: (reply: Comment) => void;
+}) => {
   const [replyText, setReplyText] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  if (!session) return;
 
   const handleReplySubmit = async () => {
     if (!replyText.trim() && !image) return;
