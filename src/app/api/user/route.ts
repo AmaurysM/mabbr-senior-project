@@ -6,11 +6,13 @@ import { headers } from 'next/headers';
 // GET user data
 export async function GET(
     request: NextRequest,
-    context: { params: Promise<{ id: string }> }
 ) {
     try {
         // Await the dynamic route parameters
-        const params = await context.params;
+        // const params = await context.params;
+
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id') || '';
 
         // Get the session using the auth object
         const session = await auth.api.getSession({ headers: await headers() });
@@ -20,7 +22,7 @@ export async function GET(
 
         // Fetch user data
         const user = await prisma.user.findUnique({
-            where: { id: params.id },
+            where: { id },
             // Only select fields we need and that exist in the schema
             select: {
                 id: true,
@@ -51,11 +53,11 @@ export async function GET(
 // Update user data
 export async function PATCH(
     request: NextRequest,
-    context: { params: Promise<{ id: string }> }
 ) {
     try {
         // Await the dynamic route parameters
-        const params = await context.params;
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id') || '';
 
         // Get the session using the auth object
         const session = await auth.api.getSession({ headers: await headers() });
@@ -64,7 +66,7 @@ export async function PATCH(
         }
 
         // Verify user is updating their own profile
-        if (session.user.id !== params.id) {
+        if (session.user.id !== id) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -90,7 +92,7 @@ export async function PATCH(
 
         // Update user in database
         const updatedUser = await prisma.user.update({
-            where: { id: params.id },
+            where: { id },
             data: {
                 ...filteredData,
                 updatedAt: new Date(), // Explicitly set updatedAt to current time

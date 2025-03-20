@@ -3,14 +3,13 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { Send, Image as ImageIcon } from "lucide-react";
 
-interface CommentFormProps {
-  topicId: string;
-  userId: string;
-  onNewComment: (comment: any) => void;
-  session: any;
-}
 
-const PostForm: React.FC<CommentFormProps> = ({ topicId, userId, onNewComment, session }) => {
+const PostForm = ({ topicId, userId, onNewComment, session }:{
+  topicId: string,
+  userId: string,
+  onNewComment: (comment:any) => void,
+  session: any
+}) => {
   const [commentText, setCommentText] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);

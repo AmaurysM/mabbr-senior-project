@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { authClient } from "./auth-client";
 
 export type AllLootboxesWithStocks = Prisma.LootBoxGetPayload<{
   include: {
@@ -266,3 +267,6 @@ export type UsableUser = Prisma.UserGetPayload<{
     
   }
 }>
+
+export type Session = Prisma.SessionGetPayload<object>;
+export type SessionType = ReturnType<typeof authClient.useSession>["data"];

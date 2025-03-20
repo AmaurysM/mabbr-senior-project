@@ -2,15 +2,14 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Send, ImageIcon, Loader2, X } from "lucide-react";
-import { Comment } from "@/lib/prisma_types";
+import { Comment, SessionType } from "@/lib/prisma_types";
 
-interface ReplyFormProps {
-  parentComment: Comment;
-  session: any;
-  onNewReply: (reply: Comment) => void;
-}
 
-const CommentReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, onNewReply }) => {
+const CommentReplyForm = ({ parentComment, session, onNewReply }: {
+  parentComment: Comment,
+  session: SessionType | null,
+  onNewReply: (reply: Comment) => void,
+}) => {
   const [replyText, setReplyText] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -30,7 +29,7 @@ const CommentReplyForm: React.FC<ReplyFormProps> = ({ parentComment, session, on
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: session.user.id,
+          userId: session?.user.id,
           content: replyText,
           image: imageUrl,
           commentableId: parentComment.commentableId,

@@ -2,17 +2,16 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Clock, MessageSquare, TrendingUp } from "lucide-react";
-import { Comment, Comments } from "@/lib/prisma_types";
+import { Comment, SessionType } from "@/lib/prisma_types";
 import CommentsList from "./commentsList/CommentsList";
 import ReplyForm from "./replyForm/ReplyForm";
 
-interface FocusedCommentProps {
-  comment: Comment;
-  onClose: () => void;
-  session: any;
-}
 
-const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, session }) => {
+const FocusedComment = ({ comment, onClose, session } : {
+  comment: Comment,
+  onClose: () => void,
+  session: SessionType,
+}) => {
   const [replies, setReplies] = useState<Comment[]>(comment.children || []);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
@@ -28,7 +27,7 @@ const FocusedComment: React.FC<FocusedCommentProps> = ({ comment, onClose, sessi
         }),
       });
       if (!response.ok) throw new Error("Failed to fetch comments");
-      const data: Comments = await response.json();
+      const data: Comment[] = await response.json();
       setReplies(data);
     } catch (error) {
       console.error(error);

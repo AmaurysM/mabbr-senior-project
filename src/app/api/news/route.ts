@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 import { AlphaVantageNews } from '@/lib/prisma_types';
 
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;

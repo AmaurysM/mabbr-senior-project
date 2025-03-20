@@ -28,12 +28,11 @@ const extractS3KeyFromUrl = (url: string): string | null => {
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // Await and then destructure the dynamic route parameter
-    const params = await context.params;
-    const { id } = params;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id') || '';
     
     // Get the session using your auth object
     const session = await auth.api.getSession({ headers: await headers() });

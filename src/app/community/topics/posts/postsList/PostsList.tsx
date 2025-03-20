@@ -4,16 +4,14 @@ import Image from "next/image";
 import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
 import { Comment } from "@/lib/prisma_types";
 
-interface PostsListProps {
-  comments: Comment[];
-  onSelectComment: (comment: Comment) => void;
-  userId: string; 
-}
-
-const PostsList: React.FC<PostsListProps> = ({
+const PostsList = ({
   comments,
   onSelectComment,
   userId,
+}:{
+  comments: Comment[],
+  onSelectComment: (comment: Comment) => void,
+  userId: string,
 }) => {
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [commentLikesCount, setCommentLikesCount] = useState<{ [key: string]: number }>({});

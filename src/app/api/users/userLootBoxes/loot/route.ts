@@ -3,9 +3,54 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+export async function GET(
+  request: NextRequest,
+) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const lootBoxId = searchParams.get("id");
+
+    console.log(lootBoxId);
+
+    if (!lootBoxId) {
+      return NextResponse.json(
+        { error: "Lootbox ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const lootbox = await prisma.userLootBox.findUnique({
+      where: { id:lootBoxId },
+      include: {
+        lootBox: {
+          include: {
+            lootBoxStocks: {
+              include: {
+                stock: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!lootbox) {
+      return NextResponse.json({ error: "Lootbox not found" }, { status: 404 });
+    }
+    console.log(" Lootbox found: ", lootbox);
+    return NextResponse.json(lootbox);
+  } catch (error) {
+    console.error(`Error fetching lootbox `, error);
+    return NextResponse.json(
+      { error: "Failed to fetch lootbox" },
+      { status: 500 }
+    );
+  }
+}
+
+
 export async function PATCH(
   request: NextRequest,
-  context: { params: { lootBoxId: string; stockId: string } }
 ) {
   try {
     const session = await auth.api.getSession({
@@ -16,9 +61,10 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { lootBoxId, stockId } = await context.params; 
+    const { lootBoxId, winningStockId } = await request.json();
 
-    //console.log("Redeeming stock:", stockId, "from lootbox:", lootBoxId);
+    if (!lootBoxId) return NextResponse.json({ error: "Lootbox id not found" }, { status: 404 });
+    if (!winningStockId) return NextResponse.json({ error: "Stock id not found" }, { status: 404 });
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -41,7 +87,7 @@ export async function PATCH(
     }
 
     const stock = await prisma.stock.findUnique({
-      where: { id: stockId },
+      where: { id: winningStockId },
       select: { id: true, name: true, price: true }
     });
 
@@ -51,9 +97,9 @@ export async function PATCH(
 
     await prisma.$transaction([
       prisma.userStock.upsert({
-        where: { userId_stockId: { userId: user.id, stockId } },
+        where: { userId_stockId: { userId: user.id, stockId: winningStockId } },
         update: { quantity: { increment: 1 } },
-        create: { userId: user.id, stockId, quantity: 1 },
+        create: { userId: user.id, stockId: winningStockId, quantity: 1 },
       }),
 
       prisma.transaction.create({
@@ -88,3 +134,4 @@ export async function PATCH(
     );
   }
 }
+
