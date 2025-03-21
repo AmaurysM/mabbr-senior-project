@@ -4,19 +4,16 @@ import React, { useState, useEffect, useRef } from "react";
 
 import { Toaster } from "@/app/components/ui/sonner";
 import { FaBell, FaHashtag, FaUser, FaUsers } from "react-icons/fa";
-import { MdOutlineRssFeed } from "react-icons/md";
 import { IoIosDocument } from "react-icons/io";
 import GlobalFeed from "./globalFeed/page";
 import Notifications from "./notifications/page";
 import Articles from "./articles/page";
 import MyPage from "./myPage/page";
-import Feed from "./feed/page";
 import Topics from "./topics/page";
 
 enum Tab {
   globalFeed = "globalFeed",
   topics = "topics",
-  feed = "feed",
   articles = "articles",
   notifications = "notifications",
   myPage = "myPage",
@@ -60,7 +57,6 @@ const CommunityPage = () => {
             >
               {value === Tab.globalFeed && <FaUsers className="w-5 h-5" />}
               {value === Tab.topics && <FaHashtag className="w-5 h-5" />}
-              {value === Tab.feed && <MdOutlineRssFeed className="w-5 h-5" />}
               {value === Tab.articles && <IoIosDocument className="w-5 h-5" />}
               {value === Tab.notifications && <FaBell className="w-5 h-5" />}
               {value === Tab.myPage && <FaUser className="w-5 h-5" />}
@@ -74,7 +70,6 @@ const CommunityPage = () => {
       <div ref={scrollRef} className="flex-grow h-full overflow-y-auto p-4">
          {activeComponent === Tab.globalFeed && <GlobalFeed />}
         {activeComponent === Tab.topics && <Topics />}
-        {activeComponent === Tab.feed && <Feed />}
         {activeComponent === Tab.articles && <Articles />}
         {activeComponent === Tab.notifications && <Notifications />}
         {activeComponent === Tab.myPage && <MyPage />}

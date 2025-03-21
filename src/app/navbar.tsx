@@ -17,10 +17,7 @@ interface NavItem {
 const navigationItems: NavItem[] = [
   { name: "Home", href: "/home" },
   { name: "Community", href: "/community" },
-  { name: "New Users", href: "/users" },
   { name: "Notes", href: "/note" },
-  { name: "Bonds", href: "/bond" },
-  { name: "Trade", href: "/Trade" },
   { name: "Loot Box", href: "/lootbox" },
   { name: "Portfolio", href: "/portfolio" },
 ];
@@ -28,11 +25,10 @@ const navigationItems: NavItem[] = [
 const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session } = authClient.useSession();
   const user = session?.user || null;
 
   const [profileImage, setProfileImage] = useState<string>("/default-profile.png");
-  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [imageError, setImageError] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState<boolean>(false);
@@ -51,7 +47,6 @@ const Navbar = () => {
             if (userData.image) {
               setProfileImage(userData.image);
               // Set image as loaded since we have a valid URL
-              setImageLoaded(true);
               setImageError(false);
             }
           }
