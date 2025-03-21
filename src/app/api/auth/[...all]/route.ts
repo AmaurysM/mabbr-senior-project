@@ -5,7 +5,7 @@ import arcjet, { protectSignup } from "@arcjet/next";
 import { NextRequest, NextResponse } from "next/server";
 
 const aj = arcjet({
-  key: process.env.ARCJET_KEY!, 
+  key: process.env.ARCJET_KEY!,
   rules: [
     protectSignup({
       email: {
@@ -18,8 +18,8 @@ const aj = arcjet({
       },
       rateLimit: {
         mode: "LIVE",
-        interval:"1m", 
-        max: 60, 
+        interval: "1m",
+        max: 60,
       },
     }),
   ],
@@ -28,34 +28,37 @@ const aj = arcjet({
 const betterAuthHandlers = toNextJsHandler(auth.handler);
 
 const ajProtectedPost = async (req: NextRequest) => {
-    const { email } = await req.clone().json()
-    const decision = await aj.protect(req, { email })
+  const { email } = await req.clone().json();
+  const decision = await aj.protect(req, { email });
 
-    if (decision.isDenied()) {
-        if (decision.reason.isEmail()){
-            let message = '';
-            if (decision.reason.emailTypes.includes("INVALID")){
-                message = "email address format is invalid. Is there a typo?";
-            } else if (decision.reason.emailTypes.includes("DISPOSABLE")){
-                message = "we do not allow disposable email addresses.";
-            } else if (decision.reason.emailTypes.includes("NO_MX_RECORDS")){
-                message = "your email domain does not have an MX record. Is there a typo?";
-            } else {
-                message = "invalid email.";
-            } 
+  if (decision.isDenied()) {
+    if (decision.reason.isEmail()) {
+      let message = "";
+      if (decision.reason.emailTypes.includes("INVALID")) {
+        message = "email address format is invalid. Is there a typo?";
+      } else if (decision.reason.emailTypes.includes("DISPOSABLE")) {
+        message = "we do not allow disposable email addresses.";
+      } else if (decision.reason.emailTypes.includes("NO_MX_RECORDS")) {
+        message =
+          "your email domain does not have an MX record. Is there a typo?";
+      } else {
+        message = "invalid email.";
+      }
 
-            return NextResponse.json({
-                message, 
-                reason: decision.reason
-            },{ status: 400 })
-        } else {
-            return NextResponse.json({ message: "Forbidden"}, { status: 403 });
-        }
+      return NextResponse.json(
+        {
+          message,
+          reason: decision.reason,
+        },
+        { status: 400 }
+      );
+    } else {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
+  }
 
-    return betterAuthHandlers.POST(req)
-}
+  return betterAuthHandlers.POST(req.clone());
+};
 
-
-export { ajProtectedPost as POST }
+export { ajProtectedPost as POST };
 export const { GET } = betterAuthHandlers;
