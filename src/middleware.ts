@@ -14,15 +14,23 @@ export default function middleware(req: NextRequest) {
     pathname === route || pathname.startsWith(`${route}/`)
   );
 
+  const isUnauthenticatedRoute = ONLY_UNAUTHENTICATED_ROUTES.some(route => 
+    pathname === route || pathname.startsWith(`${route}/`)
+  );
+
+  console.log({
+    pathname,
+    sessionExists,
+    isProtectedRoute,
+    isUnauthenticatedRoute
+  });
+
   if (isProtectedRoute && !sessionExists) {
     return NextResponse.redirect(
       new URL(DEFAULT_UNAUTHENTICATED_REDIRECT, req.url)
     );
   }
 
-  const isUnauthenticatedRoute = ONLY_UNAUTHENTICATED_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(`${route}/`)
-  );
 
   if (sessionExists && isUnauthenticatedRoute) {
     return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
