@@ -1,20 +1,20 @@
+// Routes that require authentication
 export const PROTECTED_ROUTES = [
-  , "/profile"
-  , "/dashboard"
-  , "/settings"
-  , "/achievements"
-  , "/bond"
-  , "edit-profile"
-  , "lootbox"
-  , "note"
-  , "portfolio"
-  , "profile"
-  , "trade"
+  "/profile",
+  "/dashboard",
+  "/settings",
+  "/achievements",
+  "/bond",
+  "/edit-profile",
+  "/lootbox",
+  "/note",
+  "/portfolio",
+  "/trade"
 ];
 
 // Routes that should only be accessible when not authenticated.
 export const ONLY_UNAUTHENTICATED_ROUTES = [
-  "/login-signup",
+  "/login-signup"
 ];
 
 // Default route to redirect to when an unauthenticated user tries to access a protected route.

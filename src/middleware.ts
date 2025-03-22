@@ -6,15 +6,12 @@ import {
   DEFAULT_LOGIN_REDIRECT,
 } from "@/lib/constants/routes";
 
-
-
 export default function middleware(req: NextRequest) {
   const sessionExists = req.cookies.has("better-auth.session_token");
-
   const pathname = req.nextUrl.pathname;
 
-  const isProtectedRoute = PROTECTED_ROUTES.some(route =>
-    pathname.startsWith(route||"/")
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
+    pathname === route || pathname.startsWith(`${route}/`)
   );
 
   if (isProtectedRoute && !sessionExists) {
@@ -23,10 +20,11 @@ export default function middleware(req: NextRequest) {
     );
   }
 
-  if (
-    sessionExists &&
-    ONLY_UNAUTHENTICATED_ROUTES.some(route => pathname.startsWith(route))
-  ) {
+  const isUnauthenticatedRoute = ONLY_UNAUTHENTICATED_ROUTES.some(route => 
+    pathname === route || pathname.startsWith(`${route}/`)
+  );
+
+  if (sessionExists && isUnauthenticatedRoute) {
     return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
   }
 
@@ -34,9 +32,8 @@ export default function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Matcher entries as before.
   matcher: [
+    // Exclude files and API routes, include everything else
     "/((?!api|_next|_vercel|.*\\..*).*)",
-    "/([\\w-]+)",
   ],
 };
