@@ -7,33 +7,33 @@ import {
 } from "@/lib/constants/routes";
 
 export default function middleware(req: NextRequest) {
-  const sessionExists = req.cookies.has("better-auth.session_token");
-  const pathname = req.nextUrl.pathname;
+  const sessionToken = req.cookies.get("better-auth.session_token");
+  const sessionExists = !!sessionToken?.value;
+  
+  const { pathname } = req.nextUrl;
+  
+  console.log(`Path: ${pathname}, Session exists: ${sessionExists}`);
+  
+  if (sessionExists) {
+    const isUnauthenticatedRoute = ONLY_UNAUTHENTICATED_ROUTES.some(route => 
+      pathname === route || pathname.startsWith(`${route}/`)
+    );
+    
+    if (isUnauthenticatedRoute) {
+      const destination = new URL(DEFAULT_LOGIN_REDIRECT, req.url);
+      destination.searchParams.set('t', Date.now().toString());
+      return NextResponse.redirect(destination);
+    }
+  }
 
   const isProtectedRoute = PROTECTED_ROUTES.some(route => 
     pathname === route || pathname.startsWith(`${route}/`)
   );
-
-  const isUnauthenticatedRoute = ONLY_UNAUTHENTICATED_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(`${route}/`)
-  );
-
-  console.log({
-    pathname,
-    sessionExists,
-    isProtectedRoute,
-    isUnauthenticatedRoute
-  });
-
+  
   if (isProtectedRoute && !sessionExists) {
     return NextResponse.redirect(
       new URL(DEFAULT_UNAUTHENTICATED_REDIRECT, req.url)
     );
-  }
-
-
-  if (sessionExists && isUnauthenticatedRoute) {
-    return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
   }
 
   return NextResponse.next();
@@ -41,7 +41,6 @@ export default function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Exclude files and API routes, include everything else
-    "/((?!api|_next|_vercel|.*\\..*).*)",
+    "/((?!api|_next/static|_next/image|_vercel|favicon.ico|.*\\..*).*)",
   ],
 };
