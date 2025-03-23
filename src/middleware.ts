@@ -1,39 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  ONLY_UNAUTHENTICATED_ROUTES,
-  DEFAULT_UNAUTHENTICATED_REDIRECT,
-  PROTECTED_ROUTES,
-  DEFAULT_LOGIN_REDIRECT,
-} from "@/lib/constants/routes";
+import { betterFetch } from '@better-fetch/fetch';
+import { type NextRequest, NextResponse } from 'next/server';
 
-export default function middleware(req: NextRequest) {
-  const sessionToken = req.cookies.get("better-auth.session_token");
-  const sessionExists = !!sessionToken?.value;
-  
-  const { pathname } = req.nextUrl;
-  
-  console.log(`Path: ${pathname}, Session exists: ${sessionExists}`);
-  
-  if (sessionExists) {
-    const isUnauthenticatedRoute = ONLY_UNAUTHENTICATED_ROUTES.some(route => 
-      pathname === route || pathname.startsWith(`${route}/`)
-    );
-    
-    if (isUnauthenticatedRoute) {
-      const destination = new URL(DEFAULT_LOGIN_REDIRECT, req.url);
-      destination.searchParams.set('t', Date.now().toString());
-      return NextResponse.redirect(destination);
-    }
-  }
+import type { auth } from '@/lib/auth';
 
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(`${route}/`)
+const PUBLIC_PATHS = [
+  "/",
+  "/home",
+  "/login-signup",
+  "/leaderboards",
+  "/community"
+];
+
+const PUBLIC_PREFIXES = [
+  "/api/auth",
+  "/api/leaderboard",
+  "/api/market-sentiment",
+  "/api/chat",
+  "/api",
+  "/_next",
+  "/images",
+  "/public",
+  "/assets",
+  "/static",
+  "/favicon.ico"
+];
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.includes(pathname) ||
+    pathname.includes('.') ||
+    PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
+}
+
+type Session = typeof auth.$Infer.Session;
+
+export async function middleware(request: NextRequest) {
+
+  const { data: session } = await betterFetch<Session>(
+    '/api/auth/get-session',
+    {
+      baseURL: request.nextUrl.origin,
+      headers: {
+        cookie: request.headers.get('cookie') || '',
+      },
+    },
   );
   
-  if (isProtectedRoute && !sessionExists) {
-    return NextResponse.redirect(
-      new URL(DEFAULT_UNAUTHENTICATED_REDIRECT, req.url)
-    );
+  const { pathname } = request.nextUrl;
+
+  if (session && pathname === "/login-signup") {
+    return NextResponse.redirect(new URL("/profile", request.nextUrl.origin));
+  }
+
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  if (!session) {
+    const loginUrl = new URL("/login-signup", request.nextUrl.origin);
+    loginUrl.searchParams.set("returnTo", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
@@ -41,6 +66,6 @@ export default function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|_vercel|favicon.ico|.*\\..*).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/auth|api/|images|public|assets|static).*)"
   ],
 };
