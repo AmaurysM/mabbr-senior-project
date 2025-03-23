@@ -61,4 +61,4 @@ const betterAuthHandlers = toNextJsHandler(auth.handler);
 // };
 
 // export { ajProtectedPost as POST };
-export const { GET } = betterAuthHandlers;
+export const { GET, POST } = betterAuthHandlers;
