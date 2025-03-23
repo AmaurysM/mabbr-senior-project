@@ -66,11 +66,12 @@ interface SessionData {
   };
   expires?: string;
 }
+type Session = typeof auth.$Infer.Session;
 
 export async function getSession() {
   try {
     const response = await auth.api.getSession({
-      headers: await headers(), // you need to pass the headers object.
+      headers: await headers(),
     });
 
     if (!response) {
