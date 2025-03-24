@@ -4,19 +4,13 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { commentableId, parentId } = await req.json();
-    if (!commentableId || !parentId) {
-      return NextResponse.json({ error: "Missing room ID" }, { status: 400 });
-    }
+    const { commentId } = await req.json();
 
     const comments: Comments  = await prisma.comment.findMany({
       where: { 
-        commentableId: commentableId,
-        parentId: parentId,
-        commentableType: "COMMENT",
-       },
-       orderBy: {createdAt: "desc"},
-       include: {
+        id:commentId,
+      },
+      include: {
         user: true,
         commentLikes: true, 
         commentDislikes: true, 
@@ -29,8 +23,7 @@ export async function POST(req: Request) {
         },
       },
     });
-
-
+    
     return NextResponse.json(comments);
   } catch (error) {
     console.error("Error fetching user:", error);

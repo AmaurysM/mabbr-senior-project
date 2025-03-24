@@ -9,7 +9,7 @@ import FocusedComment from "./focusedComment/FocusedComment";
 
 
 
-const Room = ({ topic, onBack }: { topic: Topic, onBack: ()=> void}) => {
+const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
@@ -35,7 +35,7 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: ()=> void}) => {
     fetchComments();
   }, [topic.id, sortBy]); // Re-fetch comments when either topic or sortBy changes
 
-  if (!session) return null;
+  
 
   const handleNewComment = (newComment: Comment) => {
     setComments((prev) => [newComment, ...prev]);
@@ -68,11 +68,34 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: ()=> void}) => {
     }
   };
 
+  useEffect(() => {
+    const savedTopicId = localStorage.getItem("selectedCommentId");
+
+    if (savedTopicId && comments.length > 0) {
+      const topic = comments.find(t => t.id === savedTopicId);
+      if (topic) {
+        setFocusedComment(topic);
+      }
+    }
+  }, [comments,sortBy]);
+
+  const handleSelectComment = (topic: Comment | null) => {
+    setFocusedComment(topic);
+
+    if (topic) {
+      localStorage.setItem("selectedCommentId", topic.id);
+    } else {
+      localStorage.removeItem("selectedCommentId");
+    }
+  };
+
+  if (!session) return null;
+  
   if (focusedComment) {
     return (
       <FocusedComment
-        comment={focusedComment}
-        onClose={() => setFocusedComment(null)}
+        commentId={focusedComment.id}
+        onClose={() => handleSelectComment(null)}
         session={session}
       />
     );
@@ -135,7 +158,7 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: ()=> void}) => {
       <PostsList
         userId={session.user.id}
         comments={sortedComments}
-        onSelectComment={(comment: Comment) => setFocusedComment(comment)}
+        onSelectComment={(comment: Comment) => handleSelectComment(comment)}
       />
     </div>
   );

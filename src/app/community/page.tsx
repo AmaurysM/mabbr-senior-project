@@ -20,22 +20,20 @@ enum Tab {
 }
 
 const CommunityPage = () => {
-
-  const [activeComponent, setActiveComponent] = useState<Tab>(() => {
-    return typeof window !== "undefined"
-      ? (localStorage.getItem("activeComponent") as Tab) || Tab.globalFeed
-      : Tab.globalFeed;
-  });
-
+  const [activeComponent, setActiveComponent] = useState<Tab>(Tab.globalFeed);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("activeComponent", activeComponent);
+    const storedActive = localStorage.getItem("activeComponent") as Tab;
+    if (storedActive) {
+      setActiveComponent(storedActive);
     }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("activeComponent", activeComponent);
   }, [activeComponent]);
 
-  // When activeComponent changes, scroll to the top of the right container
   useEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
   }, [activeComponent]);
@@ -68,7 +66,7 @@ const CommunityPage = () => {
 
       {/* Right Content (Scrollable) */}
       <div ref={scrollRef} className="flex-grow h-full overflow-y-auto p-4">
-         {activeComponent === Tab.globalFeed && <GlobalFeed />}
+        {activeComponent === Tab.globalFeed && <GlobalFeed />}
         {activeComponent === Tab.topics && <Topics />}
         {activeComponent === Tab.articles && <Articles />}
         {activeComponent === Tab.notifications && <Notifications />}
