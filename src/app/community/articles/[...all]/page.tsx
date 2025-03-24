@@ -118,6 +118,11 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
     return formatDate(dateString);
   };
 
+  const handleProfileClick = (userId: string) => {
+    sessionStorage.setItem("selectedUserId", userId);
+    router.push(`/friendsProfile`)
+  }
+
   if (!article) {
     return (
       <div className="flex items-center justify-center h-64 bg-gray-900">
@@ -237,7 +242,10 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
           ) : comments.length > 0 ? (
             comments.map((c) => (
               <div key={c.id} className="border-t border-gray-700 pt-3">
-                <div className="flex items-center text-sm text-gray-400 mb-1">
+                <div 
+                  className="flex items-center text-sm text-gray-400 mb-1 p-2 hover:text-blue-400 hover:bg-gray-600"
+                  onClick={() => handleProfileClick(c.user.id)}
+                >
                   <div className="flex items-center">
                     {c.user.image && (
                       <Image

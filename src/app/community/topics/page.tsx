@@ -155,8 +155,29 @@ const TopicsPage = () => {
         return () => observer.disconnect();
     };
 
+    useEffect(() => {
+        const savedTopicId = localStorage.getItem("selectedTopicId");
+        
+        if (savedTopicId && topics.length > 0) {
+            const topic = topics.find(t => t.id === savedTopicId);
+            if (topic) {
+                setSelectedTopic(topic);
+            }
+        }
+    }, [topics]);
+    
+    const handleSelectTopic = (topic:Topic|null) => {
+        setSelectedTopic(topic);
+
+        if (topic) {
+            localStorage.setItem("selectedTopicId", topic.id);
+        } else {
+            localStorage.removeItem("selectedTopicId");
+        }
+    };
+
     if (selectedTopic) {
-        return <Room topic={selectedTopic} onBack={() => setSelectedTopic(null)} />;
+        return <Room topic={selectedTopic} onBack={() => handleSelectTopic(null)} />;
     }
 
     return (
@@ -276,7 +297,7 @@ const TopicsPage = () => {
                     {sortedTopics.map((topic) => (
                         <div
                             key={topic.id}
-                            onClick={() => setSelectedTopic(topic)}
+                            onClick={() => handleSelectTopic(topic)}
                             className="bg-gray-700 rounded-md shadow-md border-2 border-white/10 hover:border-blue-500 transition-all cursor-pointer overflow-hidden"
                         >
                             <div className="flex p-3">

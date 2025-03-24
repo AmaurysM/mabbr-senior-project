@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { User } from "@prisma/client";
 import CommunityStats from "./components/communityStats";
 import Overview from "./components/overview";
@@ -9,85 +10,40 @@ import NewsPosts from "./components/newsPosts";
 import Stocks from "./components/stocks";
 import Achievements from "./components/achievements";
 
-// // Extend types based on the Prisma schema
-// interface User extends User {
-//     transactions?: Transaction [];
-//     userStocks?: UserStock[];
-//     posts?: Post[];
-//     achievements?: UserAchievement[];
-//     followers?: { id: string }[];
-//     following?: { id: string }[];
-//     favoriteStocks: string[];
-// }
-
-// interface ExtendedTransaction extends Transaction {
-//     stockSymbol: string;
-//     price: number;
-//     quantity: number;
-//     timestamp: Date;
-// }
-
-// interface ExtendedUserStock extends UserStock {
-//     stockId: string;
-//     quantity: number;
-//     stock?: {
-//         name: string;
-//         price: number;
-//     };
-// }
-
-// interface ExtendedPost extends Post {
-//     content?: string;
-//     createdAt: Date;
-//     likes?: { id: string }[];
-//     reposts?: { id: string }[];
-// }
-
-// interface ExtendedUserAchievement extends UserAchievement {
-//     achievement?: {
-//         id: string;
-//         name: string;
-//         description: string;
-//         image?: string;
-//     };
-// }
-
 const FriendsProfilePage = () => {
-  const [user, setUser] = useState<User | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<string>("overview");
+    const router = useRouter();
+    const [user, setUser] = useState<User | undefined>(undefined);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [activeTab, setActiveTab] = useState<string>("overview");
 
-  useEffect(() => {
-    const userId = sessionStorage.getItem("selectedUserId");
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    fetch("/api/user/getUser", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userId }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          console.error("API Error:", data.error);
-        } else {
-          // Cast data as a User if you're sure the response matches your User type
-          setUser(data as User);
+    useEffect(() => {
+        const userId = sessionStorage.getItem("selectedUserId");
+        if (!userId) {
+            setLoading(false);
+            return;
         }
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching user:", error);
-        setLoading(false);
-      });
-  }, []);
 
-
+        fetch("/api/user/getUser", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ userId }),
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.error) {
+                    console.error("API Error:", data.error);
+                } else {
+                    setUser(data as User);
+                }
+                setLoading(false);
+            })
+            .catch((error) => {
+                console.error("Error fetching user:", error);
+                setLoading(false);
+            });
+    }, []);
 
     if (loading) {
         return (
@@ -115,18 +71,6 @@ const FriendsProfilePage = () => {
         );
     }
 
-
-
-    // // Format date nicely
-    // const formatDate = (dateString: string | Date) => {
-    //     const date = new Date(dateString);
-    //     return new Intl.DateTimeFormat('en-US', {
-    //         year: 'numeric',
-    //         month: 'long',
-    //         day: 'numeric'
-    //     }).format(date);
-    // };
-
     // Get member duration
     const getMemberDuration = () => {
         const joinDate = new Date(user.createdAt);
@@ -142,9 +86,19 @@ const FriendsProfilePage = () => {
         return remainingMonths ? `${diffYears} years, ${remainingMonths} months` : `${diffYears} years`;
     };
 
-
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-full bg-gray-50 relative">
+            {/* Floating Back Button */}
+            <button
+                onClick={() => router.back()}
+                className="fixed z-50 bg-white shadow rounded-full p-2 m-5 hover:bg-gray-100 transition"
+                aria-label="Go Back"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+
             {/* Cover and Profile Header */}
             <div className="relative">
                 <div className="h-64 w-full bg-gradient-to-r from-blue-500 to-indigo-600"></div>
@@ -152,12 +106,11 @@ const FriendsProfilePage = () => {
                     <div className="relative -mt-32">
                         <div className="flex flex-col sm:flex-row items-center sm:items-end sm:space-x-5">
                             <div className="flex">
-                                <div className="h-36 w-36 rounded-full ring-4 ring-white bg-white overflow-hidden">
+                                <div className="relative h-36 w-36 rounded-full ring-4 ring-white bg-white overflow-hidden">
                                     <Image
                                         src={user.image || "/default-avatar.png"}
                                         alt={user.name || "User"}
-                                        width={144}
-                                        height={144}
+                                        fill
                                         className="object-cover"
                                         loading="lazy"
                                     />
@@ -190,7 +143,7 @@ const FriendsProfilePage = () => {
             {/* Main Content */}
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 pt-4">
                 {/* Stats Bar */}
-                <CommunityStats userId={user.id}/>
+                <CommunityStats userId={user.id} />
 
                 {/* Bio */}
                 {user.bio && (
@@ -203,13 +156,13 @@ const FriendsProfilePage = () => {
                 {/* Tabs */}
                 <div className="mb-6 border-b border-gray-200">
                     <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
-                        {["overview", "newsPosts", "portfolio", "achievements", "transactions"].map((tab) => (
+                        {["overview", "newsPosts", "portfolio", "achievements"].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`${activeTab === tab
-                                        ? "border-blue-500 text-blue-600"
-                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                    ? "border-blue-500 text-blue-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors`}
                             >
                                 {tab}
@@ -221,25 +174,24 @@ const FriendsProfilePage = () => {
                 {/* Tab Content */}
                 <div className="space-y-6">
                     {activeTab === "overview" && (
-                        <Overview userId={user.id}/>
+                        <Overview userId={user.id} />
                     )}
 
                     {activeTab === "newsPosts" && (
-                        <NewsPosts userId={user.id}/>
+                        <NewsPosts userId={user.id} />
                     )}
 
                     {activeTab === "portfolio" && (
-                        <Stocks userId={user.id}/>
+                        <Stocks userId={user.id} />
                     )}
 
                     {activeTab === "achievements" && (
-                        <Achievements userId={user.id}/>
+                        <Achievements userId={user.id} />
                     )}
                 </div>
             </div>
         </div>
-    )
-}
-
+    );
+};
 
 export default FriendsProfilePage;

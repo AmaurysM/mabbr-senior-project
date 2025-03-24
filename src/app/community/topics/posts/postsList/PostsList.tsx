@@ -3,16 +3,18 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
 import { Comment } from "@/lib/prisma_types";
+import { useRouter } from 'next/navigation'
 
 const PostsList = ({
   comments,
   onSelectComment,
   userId,
-}:{
+}: {
   comments: Comment[],
   onSelectComment: (comment: Comment) => void,
   userId: string,
 }) => {
+  const router = useRouter();
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [commentLikesCount, setCommentLikesCount] = useState<{ [key: string]: number }>({});
   const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set());
@@ -29,7 +31,7 @@ const PostsList = ({
       if (comment.commentLikes.some((like) => like.userId === userId)) {
         likedSet.add(comment.id);
       }
-      
+
 
       if (comment.commentDislikes && Array.isArray(comment.commentDislikes)) {
         dislikesCount[comment.id] = comment.commentDislikes.length;
@@ -50,7 +52,7 @@ const PostsList = ({
   const onLikeComment = async (commentId: string) => {
     const isLiked = likedComments.has(commentId);
     const isDisliked = dislikedComments.has(commentId);
-    
+
     const updatedLikes = new Set(likedComments);
     const updatedLikesCount = { ...commentLikesCount };
     const updatedDislikes = new Set(dislikedComments);
@@ -96,7 +98,7 @@ const PostsList = ({
   const onDislikeComment = async (commentId: string) => {
     const isDisliked = dislikedComments.has(commentId);
     const isLiked = likedComments.has(commentId);
-    
+
     const updatedDislikes = new Set(dislikedComments);
     const updatedDislikesCount = { ...commentDislikesCount };
     const updatedLikes = new Set(likedComments);
@@ -126,7 +128,7 @@ const PostsList = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ commentId, userId }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to update dislike.");
       }
@@ -152,6 +154,11 @@ const PostsList = ({
     return `${diffDays} days ago`;
   };
 
+  const handleProfileClick = (userId: string) => {
+    sessionStorage.setItem("selectedUserId", userId);
+    router.push(`/friendsProfile`)
+  }
+
   return (
     <div>
       {comments.length > 0 ? (
@@ -162,27 +169,32 @@ const PostsList = ({
             <div
               key={comment.id}
               className="bg-gray-500 shadow-md overflow-hidden cursor-pointer mb-4"
-              onClick={() => onSelectComment(comment)}
             >
-              <div className="bg-gray-700 px-4 py-2 flex items-center">
+              <div
+                className="bg-gray-700 px-4 py-2 flex items-center transition-all duration-200 hover:text-blue-400 hover:bg-gray-600"
+                onClick={() => handleProfileClick(comment.userId)}
+              >
                 {comment.user.image ? (
                   <Image
                     src={comment.user.image}
                     alt={comment.user.name}
                     width={24}
                     height={24}
-                    className="rounded-full mr-2"
+                    className="rounded-full mr-2 transition-all duration-200 hover:border-2 hover:border-blue-400"
                   />
                 ) : (
                   <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs mr-2">
                     {comment.user.name?.charAt(0).toUpperCase() || "U"}
                   </div>
                 )}
-                <span className="font-medium text-sm">{comment.user.name}</span>
+                <span className="font-medium text-sm transition-all duration-200 hover:text-blue-400">
+                  {comment.user.name}
+                </span>
                 <span className="text-gray-300 text-xs ml-2">
                   • {formatDate(comment.createdAt.toString())}
                 </span>
               </div>
+
 
               <div className="p-4">
                 <p className="text-gray-800">{comment.content}</p>
@@ -204,11 +216,10 @@ const PostsList = ({
                       e.stopPropagation();
                       onLikeComment(comment.id);
                     }}
-                    className={`flex items-center rounded-full px-2 py-1 transition ${
-                      hasUserLiked
+                    className={`flex items-center rounded-full px-2 py-1 transition ${hasUserLiked
                         ? "bg-blue-500 text-white"
                         : "hover:bg-gray-100 text-gray-800"
-                    }`}
+                      }`}
                   >
                     <ArrowUp
                       className={`w-4 h-4 mr-1 ${hasUserLiked ? "text-white" : ""}`}
@@ -220,11 +231,10 @@ const PostsList = ({
                       e.stopPropagation();
                       onDislikeComment(comment.id);
                     }}
-                    className={`flex items-center rounded-full px-2 py-1 ml-2 transition ${
-                      hasUserDisliked
+                    className={`flex items-center rounded-full px-2 py-1 ml-2 transition ${hasUserDisliked
                         ? "bg-red-500 text-white"
                         : "hover:bg-gray-100 text-gray-800"
-                    }`}
+                      }`}
                   >
                     <ArrowDown
                       className={`w-4 h-4 mr-1 ${hasUserDisliked ? "text-white" : ""}`}

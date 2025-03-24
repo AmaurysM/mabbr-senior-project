@@ -192,14 +192,31 @@ export type Comments = Prisma.CommentGetPayload<{
   include: {
     user: true,
     commentLikes: true, 
+    commentDislikes: true, 
     children: {
       include: {
-        user: true,
-        commentLikes: true, 
+        user: true, 
+        commentLikes: true,
+        commentDislikes: true, 
       },
     },
   },
 }>[];
+
+export type CommentWithChildren = Prisma.CommentGetPayload<{
+  include: {
+    user: true,
+    commentLikes: true, 
+    commentDislikes: true, 
+    children: {
+      include: {
+        user: true, 
+        commentLikes: true,
+        commentDislikes: true, 
+      },
+    },
+  },
+}>;
 
 export type Comment = Omit<
   Prisma.CommentGetPayload<{
@@ -219,25 +236,25 @@ export type Comment = Omit<
   "children"
 > & { children?: Comment[] };
 
-export type CommentWithChildren = Prisma.CommentGetPayload<{
-  include: {
-    user:true,
-    commentLikes: true, 
-    children: {
-      include: {
-        user: true,
-        commentLikes: true, 
-        children: {
-          include: {
-            user: true,
-            commentLikes: true, 
-            children: true
-          },
-        },
-      },
-    },
-  },
-}>;
+// export type CommentWithChildren = Prisma.CommentGetPayload<{
+//   include: {
+//     user:true,
+//     commentLikes: true, 
+//     children: {
+//       include: {
+//         user: true,
+//         commentLikes: true, 
+//         children: {
+//           include: {
+//             user: true,
+//             commentLikes: true, 
+//             children: true
+//           },
+//         },
+//       },
+//     },
+//   },
+// }>;
 
 export type NewRoomComent = Prisma.CommentGetPayload<object>;
 

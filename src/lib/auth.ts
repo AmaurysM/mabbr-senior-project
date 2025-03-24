@@ -58,16 +58,6 @@ export const auth = betterAuth({
   },
 } satisfies BetterAuthOptions);
 
-interface SessionData {
-  user?: {
-    id: string;
-    email: string;
-    [key: string]: any;
-  };
-  expires?: string;
-}
-type Session = typeof auth.$Infer.Session;
-
 export async function getSession() {
   try {
     const response = await auth.api.getSession({
