@@ -158,11 +158,11 @@ async function seedGlobalChat() {
         });
   
         if (foundUser) {
-          await prisma.chatMessage.create({
+          await prisma.comment.create({
             data: {
+              commentableType: "GLOBALCHAT",
               content: message.content,
               userId: foundUser.id,  
-              timestamp: message.timeStamp,  
             },
           });
         } else {
