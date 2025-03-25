@@ -1,15 +1,13 @@
 import React, { Suspense } from "react";
 import FeatureCard, { FeatureCardProps } from "../FeatureCardProps";
 
-
-
 const FeaturesSection = ({ features }: { features: FeatureCardProps[] }) => {
   return (
-    <div className="relative py-24 bg-gradient-to-br from-blue-950 to-blue-900">
+    <div className="relative py-24 bg-gradient-to-br from-blue-950 to-blue-900 overflow-hidden">
       {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute h-96 w-96 left-1/4 top-1/4 rounded-full bg-blue-500" />
-        <div className="absolute h-96 w-96 right-1/4 bottom-1/4 rounded-full bg-blue-400" />
+      <div className="absolute inset-0 opacity-5 overflow-hidden">
+        <div className="absolute h-96 w-96 left-1/4 top-1/4 rounded-full bg-blue-500 max-w-full" />
+        <div className="absolute h-96 w-96 right-1/4 bottom-1/4 rounded-full bg-blue-400 max-w-full" />
       </div>
 
       <div className="relative container mx-auto px-6">
@@ -18,7 +16,7 @@ const FeaturesSection = ({ features }: { features: FeatureCardProps[] }) => {
             Upcoming Features
           </h2>
           <p className="mt-4 text-lg text-blue-200">
-            Discover what's next for our trading platform
+            Discover what&apos;s next for our trading platform
           </p>
         </div>
 
