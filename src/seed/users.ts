@@ -79,15 +79,17 @@ const handleSignUp = async (values: z.infer<typeof signUpSchema>) => {
             },
             {
                 onError: (ctx: ErrorContext) => {
-                    throw new Error(`Could not create user ${values.email}: ${ctx}`);
+                    console.error(`Could not create user ${values.email}:`, ctx);
+                    throw new Error(`Could not create user ${values.email}: ${JSON.stringify(ctx, null, 2)}`);
                 },
             }
         );
         console.log(`User ${values.email} created successfully.`);
     } catch (error) {
-        console.error(error);
+        console.error("Sign-up error:", error);
     }
 };
+
 
 async function seedUsers() {
     try {

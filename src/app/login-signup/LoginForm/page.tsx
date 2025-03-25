@@ -74,7 +74,7 @@ const LoginForm: React.FC = () => {
                 onError: (ctx: ErrorContext) => {
                     toast({
                         title: "Something went wrong",
-                        description: ctx.error.message ?? "Something went wrong.",
+                        description: ctx.error.message ?? "Network Connection Issue.",
                     });
                 },
             }
@@ -102,7 +102,7 @@ const LoginForm: React.FC = () => {
                 onError: (ctx) => {
                     toast({
                         title: "Something went wrong",
-                        description: ctx.error.message ?? "Something went wrong.",
+                        description: ctx.error.message ?? "Network Connection Issue.",
                     });
                 },
             }

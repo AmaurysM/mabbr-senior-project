@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     // Fetch messages with user data
     const messages: globalPosts = await prisma.comment.findMany({
       where:{
-        commentableType: 'GLOBALCHAT'
+        commentableType: "GLOBALCHAT"
       },
       orderBy: {
         createdAt: 'asc'
