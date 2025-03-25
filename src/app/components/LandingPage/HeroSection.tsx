@@ -1,5 +1,5 @@
 "use client";
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { TrendingUp, Users, Shield } from 'lucide-react';
 import dynamic from 'next/dynamic';
