@@ -3,6 +3,7 @@ import { betterAuth, BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { openAPI } from "better-auth/plugins";
 import { headers } from "next/headers";
+import { admin } from "better-auth/plugins"
 
 const requiredEnvVars = {
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
@@ -30,7 +31,12 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [openAPI({})],
+  plugins: [
+    openAPI({}),        
+    admin({
+      adminUserIds: process.env.ADMIN_USER_IDS?.split(",") || [],
+    }) 
+  ],
 
   socialProviders: {
     github: {

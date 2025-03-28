@@ -1,7 +1,8 @@
 import { betterFetch } from '@better-fetch/fetch';
 import { type NextRequest, NextResponse } from 'next/server';
 
-import type { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 const PUBLIC_PATHS = [
   "/",
@@ -59,6 +60,15 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login-signup", request.nextUrl.origin);
     loginUrl.searchParams.set("returnTo", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname.startsWith("/admin")) {
+    const isAdmin = session.user?.role?.includes('admin') || 
+                    process.env.ADMIN_USER_IDS?.split(',').includes(session.user?.id || '');
+    
+    if (!isAdmin) {
+      return NextResponse.redirect(new URL("/", request.nextUrl.origin));
+    }
   }
 
   return NextResponse.next();

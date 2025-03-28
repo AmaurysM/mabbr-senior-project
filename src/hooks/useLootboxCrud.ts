@@ -53,24 +53,33 @@ export function useLootboxCrud() {
   };
   
   // Update a lootbox
-  const updateLootbox = async (id: string, data: Partial<LootboxInput>) => {
+  type LootUpdateboxInput = {
+    id: string;
+    name: string;
+    price: number;
+    description: string;
+    stocks: string[];
+  };
+
+  // Update a stock
+  const updateLootbox = async (id: string, data: Partial<LootUpdateboxInput>) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`/api/lootboxes/${id}`, {
+      const response = await fetch(`/api/lootboxes?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to update lootbox');
       }
-      
-      // Revalidate the lootboxes data
-      await mutate('/api/lootboxes');
+  
+      // Revalidate the lootbox data
+      await mutate('/api/lootbox');
       return await response.json();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

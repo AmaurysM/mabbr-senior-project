@@ -130,6 +130,7 @@ model LootBox {
   id            String         @id @default(cuid()) @map("_id")
   name          String
   price         Float
+  description   String?
   userLootBoxes UserLootBox[]
   lootBoxStocks LootBoxStock[]
 

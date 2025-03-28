@@ -100,6 +100,7 @@ export async function GET(request: Request) {
   }
 }
 
+
 // CREATE a new stock (keeping this for manual stock creation if needed)
 export async function POST(request: NextRequest) {
   try {
