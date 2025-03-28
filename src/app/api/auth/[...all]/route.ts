@@ -1,6 +1,5 @@
 import { auth } from "@/lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
-
 import arcjet, { protectSignup } from "@arcjet/next";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -27,38 +26,58 @@ const aj = arcjet({
 
 const betterAuthHandlers = toNextJsHandler(auth.handler);
 
-const ajProtectedPost = async (req: NextRequest) => {
-  const { email } = await req.clone().json();
-  const decision = await aj.protect(req, { email });
+export async function POST(req: NextRequest) {
+  const requestBody = await req.json();
+  const { email } = requestBody;
 
-  if (decision.isDenied()) {
-    if (decision.reason.isEmail()) {
-      let message = "";
-      if (decision.reason.emailTypes.includes("INVALID")) {
-        message = "email address format is invalid. Is there a typo?";
-      } else if (decision.reason.emailTypes.includes("DISPOSABLE")) {
-        message = "we do not allow disposable email addresses.";
-      } else if (decision.reason.emailTypes.includes("NO_MX_RECORDS")) {
-        message =
-          "your email domain does not have an MX record. Is there a typo?";
+  try {
+    const arcjetReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(requestBody)
+    });
+
+    const decision = await aj.protect(arcjetReq, { email });
+
+    if (decision.isDenied()) {
+      if (decision.reason.isEmail()) {
+        let message = "";
+        if (decision.reason.emailTypes.includes("INVALID")) {
+          message = "Email address format is invalid. Is there a typo?";
+        } else if (decision.reason.emailTypes.includes("DISPOSABLE")) {
+          message = "We do not allow disposable email addresses.";
+        } else if (decision.reason.emailTypes.includes("NO_MX_RECORDS")) {
+          message = "Your email domain does not have an MX record. Is there a typo?";
+        } else {
+          message = "Invalid email.";
+        }
+
+        return NextResponse.json(
+          {
+            message,
+            reason: decision.reason,
+          },
+          { status: 400 }
+        );
       } else {
-        message = "invalid email.";
+        return NextResponse.json({ message: "Forbidden" }, { status: 403 });
       }
-
-      return NextResponse.json(
-        {
-          message,
-          reason: decision.reason,
-        },
-        { status: 400 }
-      );
-    } else {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
+
+    const authReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(requestBody)
+    });
+
+    return betterAuthHandlers.POST(authReq);
+  } catch (error) {
+    console.error('Auth route error:', error);
+    return NextResponse.json(
+      { message: "Internal Server Error", details: error instanceof Error ? error.message : error }, 
+      { status: 500 }
+    );
   }
+}
 
-  return betterAuthHandlers.POST(req.clone());
-};
-
-export { ajProtectedPost as POST };
 export const { GET } = betterAuthHandlers;
