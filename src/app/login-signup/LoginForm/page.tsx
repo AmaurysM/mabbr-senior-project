@@ -124,7 +124,7 @@ const LoginForm: React.FC = () => {
             {/* Login Form */}
             <Toaster />
             <div
-                className={`absolute z-10 min-h-screen w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
+                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
                     isLogin
                         ? "translate-x-0 opacity-100 duration-700 right-0"
                         : "translate-x-[100vw] opacity-0 duration-200 right-0"
@@ -202,7 +202,7 @@ const LoginForm: React.FC = () => {
             </div>
             {/* Sign Up Form */}
             <div
-                className={`absolute z-10 min-h-screen w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
+                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
                     isLogin
                         ? "translate-x-[100vw] opacity-0 duration-200 right-0"
                         : "translate-x-0 opacity-100 duration-700 right-0"
