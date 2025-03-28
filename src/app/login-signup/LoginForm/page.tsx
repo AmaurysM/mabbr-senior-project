@@ -124,12 +124,13 @@ const LoginForm: React.FC = () => {
             {/* Login Form */}
             <Toaster />
             <div
-                className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin
+                className={`absolute z-10 min-h-screen w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
+                    isLogin
                         ? "translate-x-0 opacity-100 duration-700 right-0"
                         : "translate-x-[100vw] opacity-0 duration-200 right-0"
-                    }`}
+                }`}
             >
-                <Card className="w-full max-w-md">
+                <Card className="w-full">
                     <CardHeader>
                         <CardTitle className="text-3xl font-bold text-center text-gray-800">
                             Sign In
@@ -178,7 +179,7 @@ const LoginForm: React.FC = () => {
                                                 onClick={() => setShowPassword(prev => !prev)}
                                                 className="absolute right-3 top-8 text-gray-500 "
                                             >
-                                                {showPassword ? <MdVisibilityOff size={20}  /> : <MdVisibility size={20} />}
+                                                {showPassword ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
                                             </button>
                                             <FormMessage />
                                         </FormItem>
@@ -201,12 +202,13 @@ const LoginForm: React.FC = () => {
             </div>
             {/* Sign Up Form */}
             <div
-                className={`absolute z-10 min-h-screen w-full max-w-md bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin
-                        ? "-translate-x-[100vw] opacity-0 duration-200 left-0"
-                        : "translate-x-0 opacity-100 duration-700 left-0"
-                    }`}
+                className={`absolute z-10 min-h-screen w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
+                    isLogin
+                        ? "translate-x-[100vw] opacity-0 duration-200 right-0"
+                        : "translate-x-0 opacity-100 duration-700 right-0"
+                }`}
             >
-                <Card className="w-full max-w-md ">
+                <Card className="w-full">
                     <CardHeader>
                         <CardTitle className="text-3xl font-bold text-center text-gray-800">
                             Create Account
@@ -330,7 +332,7 @@ const LoginForm: React.FC = () => {
                         {/* Conditionally render login buttons only if not on a mobile device */}
                         {!isMobile && (
                             <>
-                                <div className="relative flex items-center w-full max-w-md my-4">
+                                <div className="relative flex items-center w-full my-4">
                                     <hr className="w-full border-gray-300" />
                                     <span className="absolute left-1/2 -translate-x-1/2 bg-white px-2 text-gray-500 text-sm">
                                         or continue with
