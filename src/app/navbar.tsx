@@ -135,7 +135,7 @@ const Navbar = () => {
 
                   {/* Profile Dropdown */}
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-[150]">
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-[150] overflow-hidden">
                       <Link
                         href="/profile"
                         className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
@@ -233,6 +233,25 @@ const Navbar = () => {
                       )}
                       Your Profile
                     </Link>
+                    {user.role === 'admin' && (
+                        <>
+                          <Link
+                            href="/admin/lootbox-manager"
+                            className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                            onClick={() => setProfileDropdownOpen(false)}
+                          >
+                            Manage Lootboxes
+                          </Link>
+
+                          <Link
+                            href="/admin/user-manager"
+                            className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                            onClick={() => setProfileDropdownOpen(false)}
+                          >
+                            Manage Users
+                          </Link>
+                        </>
+                      )}
                     <button
                       onClick={handleSignOut}
                       className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 font-medium"
