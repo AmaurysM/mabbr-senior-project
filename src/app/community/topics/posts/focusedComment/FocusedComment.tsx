@@ -41,7 +41,7 @@ const FocusedComment = ({ commentId, onClose, session }: {
 
       const commentWithChildrent: Comment[] = data;
       setComment(commentWithChildrent[0])
-      setReplies(commentWithChildrent);
+      setReplies(commentWithChildrent[0].children || []);
     } catch (error) {
       console.error(error);
     }

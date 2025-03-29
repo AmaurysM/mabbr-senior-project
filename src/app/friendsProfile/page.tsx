@@ -9,6 +9,7 @@ import Overview from "./components/overview";
 import NewsPosts from "./components/newsPosts";
 import Stocks from "./components/stocks";
 import Achievements from "./components/achievements";
+import { FaCheckCircle, FaUserShield } from "react-icons/fa"; // Importing the FaCheckCircle icon
 
 const FriendsProfilePage = () => {
     const router = useRouter();
@@ -86,6 +87,15 @@ const FriendsProfilePage = () => {
         return remainingMonths ? `${diffYears} years, ${remainingMonths} months` : `${diffYears} years`;
     };
 
+    const getUserRole = () => {
+        if (user.role === "admin") return { label: "Administrator", icon: <FaUserShield className="h-6 w-6 text-green-500 ml-2" />  };
+        if (user.premium) return { label: "Premium Member", icon: null };
+        if (user.role === "verified") return { label: "Verified", icon: <FaCheckCircle className="h-6 w-6 text-green-500 ml-2" /> };
+        return { label: "Member", icon: null };
+    };
+      
+    const { label, icon } = getUserRole();
+
     return (
         <div className="min-h-full bg-gray-50 relative">
             {/* Floating Back Button */}
@@ -108,7 +118,7 @@ const FriendsProfilePage = () => {
                             <div className="flex">
                                 <div className="relative h-36 w-36 rounded-full ring-4 ring-white bg-white overflow-hidden">
                                     <Image
-                                        src={user.image || "/default-avatar.png"}
+                                        src={user.image || "/default-profile.png"}
                                         alt={user.name || "User"}
                                         fill
                                         className="object-cover"
@@ -119,7 +129,10 @@ const FriendsProfilePage = () => {
                             <div className="mt-4 sm:mt-0 sm:mb-4 text-center sm:text-left">
                                 <h1 className="text-3xl font-bold text-white drop-shadow-lg">{user.name}</h1>
                                 <p className="text-blue-100 font-medium drop-shadow-md">
-                                    {user.role === "ADMIN" ? "Administrator" : (user.premium ? "Premium Member" : "Member")}
+                                    <span className="flex items-center">
+                                        {label}
+                                        {icon && icon}
+                                    </span>                                
                                     {user.badgeImage && (
                                         <span className="inline-block ml-2">
                                             <Image

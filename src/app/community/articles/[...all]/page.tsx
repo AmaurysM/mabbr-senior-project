@@ -5,9 +5,10 @@ import { formatDate } from "@/app/util/dateFormatter";
 import LoadingStateAnimation from "@/app/components/LoadingState";
 import { NewsItem } from "@/lib/prisma_types";
 import { ExternalLink } from "lucide-react";
-import useSWR, { mutate } from "swr"; // Import useSWR and mutate
+import useSWR, { mutate } from "swr"; 
 import { authClient } from "@/lib/auth-client";
 import Image from 'next/image';
+import UserVerificationIcon from "@/app/components/UserVerificationIcon/UserVerificationIcon";
 
 interface Comment {
   id: string;
@@ -17,6 +18,7 @@ interface Comment {
     id: string;
     name: string;
     image?: string;
+    role: string;
   };
 }
 
@@ -55,9 +57,9 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
     article?.url ? `/api/news/comments?newsUrl=${encodeURIComponent(article.url)}` : null,
     fetcher,
     {
-      refreshInterval: 10000, 
-      revalidateOnFocus: true, 
-      dedupingInterval: 2000, 
+      refreshInterval: 10000,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
     }
   );
 
@@ -242,14 +244,14 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
           ) : comments.length > 0 ? (
             comments.map((c) => (
               <div key={c.id} className="border-t border-gray-700 pt-3">
-                <div 
+                <div
                   className="flex items-center text-sm text-gray-400 mb-1 p-2 hover:text-blue-400 hover:bg-gray-600"
                   onClick={() => handleProfileClick(c.user.id)}
                 >
                   <div className="flex items-center">
                     {c.user.image && (
                       <Image
-                        src={c.user.image}
+                        src={c.user.image || '/default-profile.png'}
                         alt={c.user.name || 'User Avatar'}
                         width={24}
                         height={24}
@@ -260,6 +262,10 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
                       />
                     )}
                     <span className="font-medium">{c.user.name}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium text-sm transition-all duration-200 hover:text-blue-400">{c.user.name || "Unknown User"}</span>
+                      <UserVerificationIcon userRole={c.user.role} className="h-3 w-3 text-blue-500" />
+                    </div>
                   </div>
                   <span className="mx-2">•</span>
                   <span>{formatRelativeTime(c.createdAt)}</span>

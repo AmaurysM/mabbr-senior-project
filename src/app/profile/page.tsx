@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { toast } from '@/app/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Achievement, UserAchievement } from '@prisma/client';
+import { FaCheckCircle, FaUserShield } from 'react-icons/fa';
 
 interface Transaction {
     id: string;
@@ -160,6 +161,8 @@ const ProfilePage = () => {
     const [stockPositions, setStockPositions] = useState<Record<string, { shares: number; averagePrice: number }>>({});
     const [portfolioLoading, setPortfolioLoading] = useState<boolean>(true);
 
+    const [userRole, setUserRole] = useState<string>('user');
+
     // Helper function to format timestamps to relative time
     const formatRelativeTime = (dateString: string) => {
         const date = new Date(dateString);
@@ -205,15 +208,15 @@ const ProfilePage = () => {
             const response = await fetch('/api/user/portfolio');
             if (response.ok) {
                 const data = await response.json();
-                
+
                 // Calculate total portfolio value of stocks only (excluding balance)
                 let totalStockValue = 0;
-                
+
                 // Add value of all stock positions
                 Object.entries(data.positions).forEach(([symbol, position]: [string, any]) => {
                     totalStockValue += position.shares * position.averagePrice;
                 });
-                
+
                 setPortfolioValue(totalStockValue);
                 setStockPositions(data.positions);
             }
@@ -228,7 +231,7 @@ const ProfilePage = () => {
     const calculateProfit = () => {
         let buyTotal = 0;
         let sellTotal = 0;
-        
+
         transactions.forEach(transaction => {
             if (transaction.type === 'BUY') {
                 buyTotal += transaction.price * transaction.quantity;
@@ -236,7 +239,7 @@ const ProfilePage = () => {
                 sellTotal += transaction.price * transaction.quantity;
             }
         });
-        
+
         return sellTotal - buyTotal;
     };
 
@@ -244,7 +247,7 @@ const ProfilePage = () => {
         const stockTransactions: Record<string, Transaction[]> = {};
 
         const tradingTransactions = transactions.filter(t => t.type === 'BUY' || t.type === 'SELL');
-        
+
         if (tradingTransactions.length === 0) return 0;
 
         tradingTransactions.forEach(transaction => {
@@ -253,7 +256,7 @@ const ProfilePage = () => {
             }
             stockTransactions[transaction.stockSymbol].push(transaction);
         });
-        
+
         let winningTrades = 0;
         let totalCompletedTrades = 0;
 
@@ -266,7 +269,7 @@ const ProfilePage = () => {
             const totalBuyAmount = buys.reduce((sum, t) => sum + (t.price * t.quantity), 0);
             const totalBuyQuantity = buys.reduce((sum, t) => sum + t.quantity, 0);
             const avgBuyPrice = totalBuyAmount / totalBuyQuantity;
-            
+
             const totalSellAmount = sells.reduce((sum, t) => sum + (t.price * t.quantity), 0);
             const totalSellQuantity = sells.reduce((sum, t) => sum + t.quantity, 0);
             const avgSellPrice = totalSellAmount / totalSellQuantity;
@@ -277,7 +280,7 @@ const ProfilePage = () => {
                 winningTrades++;
             }
         });
-        
+
         // Calculate win rate percentage
         return totalCompletedTrades > 0 ? (winningTrades / totalCompletedTrades) * 100 : 0;
     };
@@ -359,6 +362,9 @@ const ProfilePage = () => {
                                 }
                                 if (userData.balance !== undefined) {
                                     setBalance(userData.balance);
+                                }
+                                if (userData.role) {
+                                    setUserRole(userData.role);
                                 }
                             } else {
                                 console.error('Failed to fetch user data:', await response.text());
@@ -552,6 +558,15 @@ const ProfilePage = () => {
         };
     }, [filterDropdownRef]);
 
+    const getUserRole = () => {
+        if (userRole === "admin") return { label: "Administrator", icon: <FaUserShield className="h-8 w-8 text-green-500 ml-2 pt-2" /> };
+        if (userRole) return { label: "Premium Member", icon: null };
+        if (userRole === "verified") return { label: "Verified", icon: <FaCheckCircle className="h-8 w-8 text-green-500 ml-2 pt-2" /> };
+        return { label: "Member", icon: null };
+    };
+
+    const { icon } = getUserRole();
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
@@ -596,7 +611,14 @@ const ProfilePage = () => {
                             className="hidden"
                         />
                     </div>
-                    <h1 className="text-5xl font-extrabold text-white mb-4">Your Profile</h1>
+                    <div className="flex items-center justify-center mb-4">
+                        <h1 className="text-5xl font-extrabold text-white tracking-tight mr-3">
+                            {name.toUpperCase()}&apos;s Profile
+                        </h1>
+                        <span className="flex items-center">
+                            {icon && icon}
+                        </span>
+                    </div>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -722,9 +744,9 @@ const ProfilePage = () => {
                                 ) : (
                                     <p className="text-2xl font-bold text-white">
                                         ${balance.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })}
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
                                     </p>
                                 )}
                             </div>
@@ -740,23 +762,23 @@ const ProfilePage = () => {
                                     {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
                                 </div>
                                 <div className="relative" ref={filterDropdownRef}>
-                                    <button 
+                                    <button
                                         onClick={() => setShowFilterDropdown(!showFilterDropdown)}
                                         className="p-1.5 text-gray-400 hover:text-white bg-gray-700/30 rounded border border-white/5 flex items-center gap-1"
                                     >
                                         <FunnelIcon className="h-4 w-4" />
                                         <span className="text-xs">
-                                            {transactionFilter === 'ALL' ? 'All' : 
-                                             transactionFilter === 'BUY' ? 'Buys' :
-                                             transactionFilter === 'SELL' ? 'Sells' :
-                                             transactionFilter === 'LOOTBOX' ? 'Purchases' :
-                                             transactionFilter === 'LOOTBOX_REDEEM' ? 'Redeems' : 'All'}
+                                            {transactionFilter === 'ALL' ? 'All' :
+                                                transactionFilter === 'BUY' ? 'Buys' :
+                                                    transactionFilter === 'SELL' ? 'Sells' :
+                                                        transactionFilter === 'LOOTBOX' ? 'Purchases' :
+                                                            transactionFilter === 'LOOTBOX_REDEEM' ? 'Redeems' : 'All'}
                                         </span>
                                     </button>
                                     {showFilterDropdown && (
                                         <div className="absolute right-0 mt-1 w-36 bg-gray-800 border border-white/10 rounded-md shadow-lg z-10">
                                             <ul className="py-1">
-                                                <li 
+                                                <li
                                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'ALL' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
                                                     onClick={() => {
                                                         setTransactionFilter('ALL');
@@ -765,7 +787,7 @@ const ProfilePage = () => {
                                                 >
                                                     All Transactions
                                                 </li>
-                                                <li 
+                                                <li
                                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'BUY' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
                                                     onClick={() => {
                                                         setTransactionFilter('BUY');
@@ -774,7 +796,7 @@ const ProfilePage = () => {
                                                 >
                                                     Stock Buys
                                                 </li>
-                                                <li 
+                                                <li
                                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'SELL' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
                                                     onClick={() => {
                                                         setTransactionFilter('SELL');
@@ -783,7 +805,7 @@ const ProfilePage = () => {
                                                 >
                                                     Stock Sells
                                                 </li>
-                                                <li 
+                                                <li
                                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'LOOTBOX' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
                                                     onClick={() => {
                                                         setTransactionFilter('LOOTBOX');
@@ -792,7 +814,7 @@ const ProfilePage = () => {
                                                 >
                                                     Lootbox Purchases
                                                 </li>
-                                                <li 
+                                                <li
                                                     className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-700 ${transactionFilter === 'LOOTBOX_REDEEM' ? 'bg-blue-900/50 text-white' : 'text-gray-300'}`}
                                                     onClick={() => {
                                                         setTransactionFilter('LOOTBOX_REDEEM');
@@ -819,12 +841,12 @@ const ProfilePage = () => {
                                                             ? 'Bought'
                                                             : transaction.type === 'SELL'
                                                                 ? 'Sold'
-                                                            : transaction.type === 'LOOTBOX'
-                                                                ? 'Purchased'
-                                                                : transaction.type === 'LOOTBOX_REDEEM'
-                                                                    ? 'Redeemed'
-                                                                    : 'Traded'}{' '}
-                                                        {transaction.type === 'LOOTBOX' 
+                                                                : transaction.type === 'LOOTBOX'
+                                                                    ? 'Purchased'
+                                                                    : transaction.type === 'LOOTBOX_REDEEM'
+                                                                        ? 'Redeemed'
+                                                                        : 'Traded'}{' '}
+                                                        {transaction.type === 'LOOTBOX'
                                                             ? 'Lootbox'
                                                             : transaction.type === 'LOOTBOX_REDEEM'
                                                                 ? `${transaction.stockSymbol} from Lootbox`
@@ -849,8 +871,8 @@ const ProfilePage = () => {
                         ) : (
                             <div className="h-96 flex items-center justify-center text-gray-400 bg-gray-800/30 rounded-lg border border-white/5">
                                 <p>
-                                    {transactions.length === 0 
-                                        ? "No recent activity" 
+                                    {transactions.length === 0
+                                        ? "No recent activity"
                                         : transactionFilter === 'BUY'
                                             ? "No stock purchases found"
                                             : transactionFilter === 'SELL'

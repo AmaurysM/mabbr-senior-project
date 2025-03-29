@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
 import { Comment } from "@/lib/prisma_types";
 import { useRouter } from 'next/navigation'
+import UserVerificationIcon from "@/app/components/UserVerificationIcon/UserVerificationIcon";
 
 const PostsList = ({
   comments,
@@ -187,9 +188,12 @@ const PostsList = ({
                     {comment.user.name?.charAt(0).toUpperCase() || "U"}
                   </div>
                 )}
-                <span className="font-medium text-sm transition-all duration-200 hover:text-blue-400">
-                  {comment.user.name}
-                </span>
+
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-sm transition-all duration-200 hover:text-blue-400">{comment.user.name || "Unknown User"}</span>
+                  <UserVerificationIcon userRole={comment.user.role} className="h-3 w-3 text-blue-500" />
+                </div>
+
                 <span className="text-gray-300 text-xs ml-2">
                   • {formatDate(comment.createdAt.toString())}
                 </span>
@@ -217,8 +221,8 @@ const PostsList = ({
                       onLikeComment(comment.id);
                     }}
                     className={`flex items-center rounded-full px-2 py-1 transition ${hasUserLiked
-                        ? "bg-blue-500 text-white"
-                        : "hover:bg-gray-100 text-gray-800"
+                      ? "bg-blue-500 text-white"
+                      : "hover:bg-gray-100 text-gray-800"
                       }`}
                   >
                     <ArrowUp
@@ -232,8 +236,8 @@ const PostsList = ({
                       onDislikeComment(comment.id);
                     }}
                     className={`flex items-center rounded-full px-2 py-1 ml-2 transition ${hasUserDisliked
-                        ? "bg-red-500 text-white"
-                        : "hover:bg-gray-100 text-gray-800"
+                      ? "bg-red-500 text-white"
+                      : "hover:bg-gray-100 text-gray-800"
                       }`}
                   >
                     <ArrowDown
