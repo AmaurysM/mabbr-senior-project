@@ -5,6 +5,8 @@ import { UserCircleIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { Comment } from '@prisma/client'
+import UserVerificationIcon from './UserVerificationIcon/UserVerificationIcon'
+import { User } from '@/lib/prisma_types'
 
 // Add a new interface for stock data
 interface StockSymbolData {
@@ -88,9 +90,10 @@ const StockTooltip = ({ symbol, data }: { symbol: string, data: StockSymbolData 
 
 const GlobalCommentCard = ({ message }: { message: Comment }) => {
   const { data: session } = authClient.useSession()
-  const [poster, setPoster] = useState<{ name: string; image: string | null } | null>(null);
+  const [poster, setPoster] = useState<User | null>(null);
   const [stockData, setStockData] = useState<Record<string, StockSymbolData>>({});
   const router = useRouter();
+
 
   const fetchStockData = async (symbols: string[]): Promise<void> => {
     try {
@@ -205,8 +208,8 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
             <div key={`stock-${i}`} className="inline-block relative group">
               <span
                 className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${isPositive
-                    ? 'bg-green-900/20 text-green-300 border border-green-700/30'
-                    : 'bg-red-900/20 text-red-300 border border-red-700/30'
+                  ? 'bg-green-900/20 text-green-300 border border-green-700/30'
+                  : 'bg-red-900/20 text-red-300 border border-red-700/30'
                   } cursor-pointer`}
               >
                 {symbol}
@@ -289,7 +292,10 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
             className="font-semibold text-white cursor-pointer hover:underline"
             onClick={handleProfileClick}
           >
-            {poster?.name || 'Unknown User'}
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold text-gray-200">{poster?.name || "Unknown User"}</span>
+              <UserVerificationIcon userRole={poster?.role} className="h-3 w-3 text-blue-500" />
+            </div>
           </span>
           <span className="text-xs text-gray-400">{formatTimestamp(message.createdAt)}</span>
         </div>

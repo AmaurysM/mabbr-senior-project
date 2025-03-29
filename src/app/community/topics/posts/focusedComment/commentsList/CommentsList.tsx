@@ -5,6 +5,7 @@ import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
 import { Comment, SessionType } from "@/lib/prisma_types";
 import CommentReplyForm from "./commentReplyForm/commentReplyForm";
 import { useRouter } from "next/navigation";
+import UserVerificationIcon from "@/app/components/UserVerificationIcon/UserVerificationIcon";
 
 const CommentsList = ({
   comments,
@@ -207,9 +208,10 @@ const CommentsList = ({
                     {comment.user.name?.charAt(0).toUpperCase() || "U"}
                   </div>
                 )}
-                <span className="font-medium text-sm transition-all duration-200 hover:text-blue-400">
-                  {comment.user.name}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-sm transition-all duration-200 hover:text-blue-400">{comment.user.name || "Unknown User"}</span>
+                  <UserVerificationIcon userRole={comment.user.role} className="h-3 w-3 text-blue-500" />
+                </div>
                 <span className="text-xs ml-2 transition-all duration-200 hover:text-blue-400">
                   • {formatDate(comment.createdAt.toString())}
                 </span>
