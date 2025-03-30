@@ -2,6 +2,7 @@
 
 import LoadingStateAnimation from '@/app/components/LoadingState';
 import { NewsItem, Ticker } from '@/lib/prisma_types';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 
@@ -152,7 +153,7 @@ const Articles = () => {
                     }
 
                     return (
-                      <span
+                      <Link href={`/stock/${ticker.ticker}`}
                         key={i}
                         className={`text-xs px-2 py-1 rounded-md border ${bgColor} ${textColor} ${borderColor} font-medium`}
                       >
@@ -161,7 +162,7 @@ const Articles = () => {
                           {sentiment > 0 ? '↑' : sentiment < 0 ? '↓' : '–'}
                           {Math.abs(sentiment).toFixed(2)}
                         </span>
-                      </span>
+                      </Link>
                     );
                   })}
                 </div>

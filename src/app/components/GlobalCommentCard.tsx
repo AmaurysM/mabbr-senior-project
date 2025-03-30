@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Comment } from '@prisma/client'
 import UserVerificationIcon from './UserVerificationIcon/UserVerificationIcon'
 import { User } from '@/lib/prisma_types'
+import Link from 'next/link'
 
 // Add a new interface for stock data
 interface StockSymbolData {
@@ -205,7 +206,8 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
           const isPositive = data?.isPositive ?? true;
 
           formattedContent.push(
-            <div key={`stock-${i}`} className="inline-block relative group">
+            <Link href={`/stock/${symbol}`} key={`stock-${i}`} className="inline-block relative group">
+            
               <span
                 className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${isPositive
                   ? 'bg-green-900/20 text-green-300 border border-green-700/30'
@@ -228,7 +230,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
                 }}>
                 <StockTooltip symbol={symbol} data={data || null} />
               </div>
-            </div>
+            </Link>
           );
         }
         i += 2; // Skip the symbol part
