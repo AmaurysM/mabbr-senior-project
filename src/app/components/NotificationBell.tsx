@@ -86,7 +86,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   );
 };
 
-const NotificationBell: React.FC = () => {
+const NotificationBell = ({ refreshKey,onBellClick  }) => {
+  //const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +131,7 @@ const NotificationBell: React.FC = () => {
     const intervalId = setInterval(fetchRequests, 60000);
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, [refreshKey]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -242,7 +243,7 @@ const NotificationBell: React.FC = () => {
     <>
       <button
         ref={bellRef}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {setIsOpen(!isOpen); onBellClick()}}
         className="relative p-2 text-gray-400 hover:text-white transition-colors"
       >
         <svg
