@@ -16,6 +16,7 @@ const CommentReplyForm = ({ parentComment, session, onNewReply }: {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  
   const handleReplySubmit = async () => {
     if (!replyText.trim() && !image) return;
     setIsSubmitting(true);
