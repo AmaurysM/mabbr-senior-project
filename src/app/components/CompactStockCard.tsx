@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip, AreaChart, Area, XAxis } from 'recharts';
 import { Star } from 'lucide-react';
+import Link from 'next/link';
+import { FaChevronRight } from 'react-icons/fa';
 
 interface CompactStockCardProps {
   symbol: string;
@@ -336,6 +338,12 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                     >
                       Close
                     </button>
+                    <Link href={`/stock/${symbol}`} className="ml-4 flex items-center group">
+                      <span className="ml-2 text-blue-500 opacity-0 group-hover:opacity-100 group-hover:ml-2 transition-all duration-200">
+                        View Stock
+                      </span>
+                      <FaChevronRight size={20} className="text-blue-500 group-hover:text-blue-600" />
+                    </Link>
                   </div>
               )}
 

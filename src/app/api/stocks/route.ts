@@ -39,7 +39,7 @@ export async function GET(request: Request) {
           const startDate = new Date();
           startDate.setDate(startDate.getDate() - 5);
           
-          let chartData = [];
+          let chartData: { time: string; price: number; }[] = [];
           try {
             const chartResult = await yahooFinance.chart(symbol, {
               period1: startDate,
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
               date.setHours(date.getHours() + i);
               return {
                 time: date.toISOString(),
-                price: result.regularMarketPrice + (Math.random() * 2 - 1) * (result.regularMarketPrice * 0.01)
+                price: (result.fiftyDayAverage ?? 0) + (Math.random() * 2 - 1) * ((result.fiftyDayAverage ?? 0) * 0.01)
               };
             });
           }
