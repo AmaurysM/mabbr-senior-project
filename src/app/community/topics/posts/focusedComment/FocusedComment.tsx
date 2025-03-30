@@ -6,6 +6,7 @@ import { Comment, CommentWithChildren, SessionType } from "@/lib/prisma_types";
 import CommentsList from "./commentsList/CommentsList";
 import ReplyForm from "./replyForm/ReplyForm";
 import { FaDumpsterFire } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 
 const FocusedComment = ({ commentId, onClose, session }: {
@@ -13,6 +14,7 @@ const FocusedComment = ({ commentId, onClose, session }: {
   onClose: () => void,
   session: SessionType,
 }) => {
+  const router = useRouter();
   const [comment, setComment] = useState<CommentWithChildren>();
   const [replies, setReplies] = useState<Comment[]>([]);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
@@ -89,6 +91,11 @@ const FocusedComment = ({ commentId, onClose, session }: {
     }
   });
 
+  const handleProfileClick = (userId: string) => {
+    sessionStorage.setItem("selectedUserId", userId);
+    router.push(`/friendsProfile`)
+  }
+
   return (
     <div className="border-b border-white/10 text-gray-50">
       <button onClick={onClose} className="flex items-center text-gray-500 hover:text-blue-500">
@@ -98,7 +105,9 @@ const FocusedComment = ({ commentId, onClose, session }: {
         (
           <>
             <div className="bg-gray-500 shadow-md overflow-hidden mt-2">
-              <div className="bg-gray-700 px-4 py-2 flex items-center">
+              <div className="bg-gray-700 px-4 py-2 flex items-center transition-all duration-200 hover:text-blue-400 hover:bg-gray-600 cursor-pointer"
+                onClick={() => handleProfileClick(comment.userId)}
+              >
                 {comment.user.image ? (
                   <Image
                     src={comment.user.image}

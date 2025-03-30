@@ -88,12 +88,12 @@ const FriendsProfilePage = () => {
     };
 
     const getUserRole = () => {
-        if (user.role === "admin") return { label: "Administrator", icon: <FaUserShield className="h-6 w-6 text-green-500 ml-2" />  };
+        if (user.role === "admin") return { label: "Administrator", icon: <FaUserShield className="h-6 w-6 text-green-500 ml-2" /> };
         if (user.premium) return { label: "Premium Member", icon: null };
         if (user.role === "verified") return { label: "Verified", icon: <FaCheckCircle className="h-6 w-6 text-green-500 ml-2" /> };
         return { label: "Member", icon: null };
     };
-      
+
     const { label, icon } = getUserRole();
 
     return (
@@ -118,8 +118,8 @@ const FriendsProfilePage = () => {
                             <div className="flex">
                                 <div className="relative h-36 w-36 rounded-full ring-4 ring-white bg-white overflow-hidden">
                                     <Image
-                                        src={user.image || "/default-profile.png"}
-                                        alt={user.name || "User"}
+                                        src={user.image ?? "/default-profile.png"}
+                                        alt={user.name ?? "User"}
                                         fill
                                         className="object-cover"
                                         loading="lazy"
@@ -132,7 +132,7 @@ const FriendsProfilePage = () => {
                                     <span className="flex items-center">
                                         {label}
                                         {icon && icon}
-                                    </span>                                
+                                    </span>
                                     {user.badgeImage && (
                                         <span className="inline-block ml-2">
                                             <Image

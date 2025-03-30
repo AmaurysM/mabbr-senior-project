@@ -33,6 +33,11 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState<boolean>(false);
 
+  const [notificationRefreshKey, setNotificationRefreshKey] = useState(0);
+
+  const refreshNotifications = () => {
+    setNotificationRefreshKey((prev) => prev + 1);
+  };
   // Fetch the user's current profile image from the database
   useEffect(() => {
     const fetchUserData = async () => {
@@ -103,7 +108,7 @@ const Navbar = () => {
                   <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-200" />
                 </Link>
               ))}
-              <NotificationBell />
+              <NotificationBell refreshKey={notificationRefreshKey} onBellClick={refreshNotifications}/>
               {user && (
                 <div className="relative ml-2">
 
@@ -234,24 +239,24 @@ const Navbar = () => {
                       Your Profile
                     </Link>
                     {user.role === 'admin' && (
-                        <>
-                          <Link
-                            href="/admin/lootbox-manager"
-                            className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                            onClick={() => setProfileDropdownOpen(false)}
-                          >
-                            Manage Lootboxes
-                          </Link>
+                      <>
+                        <Link
+                          href="/admin/lootbox-manager"
+                          className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                          onClick={() => setProfileDropdownOpen(false)}
+                        >
+                          Manage Lootboxes
+                        </Link>
 
-                          <Link
-                            href="/admin/user-manager"
-                            className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                            onClick={() => setProfileDropdownOpen(false)}
-                          >
-                            Manage Users
-                          </Link>
-                        </>
-                      )}
+                        <Link
+                          href="/admin/user-manager"
+                          className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                          onClick={() => setProfileDropdownOpen(false)}
+                        >
+                          Manage Users
+                        </Link>
+                      </>
+                    )}
                     <button
                       onClick={handleSignOut}
                       className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 font-medium"
