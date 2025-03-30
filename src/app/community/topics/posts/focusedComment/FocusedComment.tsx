@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Clock, MessageSquare, TrendingUp } from "lucide-react";
-import { Comment, SessionType } from "@/lib/prisma_types";
+import { Comment, CommentWithChildren, SessionType } from "@/lib/prisma_types";
 import CommentsList from "./commentsList/CommentsList";
 import ReplyForm from "./replyForm/ReplyForm";
 import { FaDumpsterFire } from "react-icons/fa";
@@ -13,7 +13,7 @@ const FocusedComment = ({ commentId, onClose, session }: {
   onClose: () => void,
   session: SessionType,
 }) => {
-  const [comment, setComment] = useState<Comment>();
+  const [comment, setComment] = useState<CommentWithChildren>();
   const [replies, setReplies] = useState<Comment[]>([]);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
@@ -37,11 +37,11 @@ const FocusedComment = ({ commentId, onClose, session }: {
         }),
       });
       if (!response.ok) throw new Error("Failed to fetch comments");
-      const data: Comment[] = await response.json();
+      const data: CommentWithChildren = await response.json();
 
-      const commentWithChildrent: Comment[] = data;
-      setComment(commentWithChildrent[0])
-      setReplies(commentWithChildrent[0].children || []);
+      const commentWithChildrent: CommentWithChildren = data;
+      setComment(commentWithChildrent)
+      setReplies(commentWithChildrent.children || []);
     } catch (error) {
       console.error(error);
     }

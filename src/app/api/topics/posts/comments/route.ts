@@ -1,12 +1,12 @@
 import prisma from "@/lib/prisma";
-import { Comments } from "@/lib/prisma_types";
+import { Comments, CommentWithChildren } from "@/lib/prisma_types";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const { commentId } = await req.json();
 
-    const comments: Comments  = await prisma.comment.findMany({
+    const comments: CommentWithChildren | null  = await prisma.comment.findUnique({
       where: { 
         id:commentId,
       },
