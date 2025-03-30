@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
-import { Comment, SessionType } from "@/lib/prisma_types";
+import { Comment, CommentWithChildren, SessionType } from "@/lib/prisma_types";
 import CommentReplyForm from "./commentReplyForm/commentReplyForm";
 import { useRouter } from "next/navigation";
 import UserVerificationIcon from "@/app/components/UserVerificationIcon/UserVerificationIcon";
@@ -29,6 +29,7 @@ const CommentsList = ({
   const [commentLikesCount, setCommentLikesCount] = useState<{ [key: string]: number }>({});
   const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set());
   const [commentDislikesCount, setCommentDislikesCount] = useState<{ [key: string]: number }>({});
+  const [replies, setReplies] = useState<{ [key: string]: Comment[] }>({});
 
   useEffect(() => {
     const likedSet = new Set<string>();
@@ -56,7 +57,55 @@ const CommentsList = ({
     setCommentLikesCount(likesCount);
     setDislikedComments(dislikedSet);
     setCommentDislikesCount(dislikesCount);
+
+    comments.forEach((comment) => {
+      fetchReplies(comment.id);
+    });
   }, [comments, session]);
+
+  const handleNewReply = (newComment: Comment) => {
+    // First, notify the parent component about the new reply
+    onNewReply(newComment);
+    
+    // Then update the local state to show the new reply immediately
+    if (newComment.parentId) {
+      setReplies((prevReplies) => {
+        const existingReplies = prevReplies[newComment.parentId || ""] || [];
+        
+        // Check if the comment already exists to avoid duplicates
+        if (!existingReplies.some(reply => reply.id === newComment.id)) {
+          return {
+            ...prevReplies,
+            [newComment.parentId || ""]: [...existingReplies, newComment]
+          };
+        }
+        return prevReplies;
+      });
+    }
+  };
+
+  const fetchReplies = async (commentId: string) => {
+    if (replies[commentId]) return; // Avoid refetching replies for the same comment
+
+    try {
+      const response = await fetch("/api/topics/posts/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commentId,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to fetch comments");
+      const data: CommentWithChildren = await response.json();
+
+      setReplies((prevReplies) => ({
+        ...prevReplies,
+        [commentId]: data.children || [],
+      }));
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -217,7 +266,6 @@ const CommentsList = ({
                 </span>
               </div>
 
-
               <div className="p-4">
                 <p className="text-gray-800">{comment.content}</p>
                 {comment.image && (
@@ -239,8 +287,8 @@ const CommentsList = ({
                       onLikeComment(comment.id);
                     }}
                     className={`flex items-center rounded-full px-2 py-1 transition ${hasUserLiked
-                        ? "bg-blue-500 text-white"
-                        : "hover:bg-gray-700 text-gray-100"
+                      ? "bg-blue-500 text-white"
+                      : "hover:bg-gray-700 text-gray-100"
                       }`}
                   >
                     <ArrowUp className="w-4 h-4 mr-1" />
@@ -252,22 +300,25 @@ const CommentsList = ({
                       onDislikeComment(comment.id);
                     }}
                     className={`flex items-center rounded-full px-2 py-1 ml-2 transition ${hasUserDisliked
-                        ? "bg-red-500 text-white"
-                        : "hover:bg-gray-700 text-gray-100"
+                      ? "bg-red-500 text-white"
+                      : "hover:bg-gray-700 text-gray-100"
                       }`}
                   >
                     <ArrowDown className="w-4 h-4 mr-1" />
                     <span>{commentDislikesCount[comment.id] || 0}</span>
                   </button>
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectComment(comment);
                     }}
-                    className="flex items-center hover:bg-gray-700 rounded-full px-2 py-1 ml-2"
+                    className="ml-2 text-gray-100 flex items-center"
                   >
                     <MessageSquare className="w-4 h-4 mr-1" />
-                    Reply
+                    {comment.children && comment.children.length > 0
+                      ? `${comment.children.length} replies`
+                      : "Reply"}
                   </button>
                 </div>
               </div>
@@ -278,7 +329,7 @@ const CommentsList = ({
                   <CommentReplyForm
                     parentComment={comment}
                     session={session}
-                    onNewReply={onNewReply}
+                    onNewReply={handleNewReply}
                   />
                   {!session && (
                     <p className="text-sm text-gray-500 mt-2">You need to be logged in to reply</p>
@@ -287,14 +338,13 @@ const CommentsList = ({
               )}
             </div>
 
-            {/* Render nested comments recursively */}
-            {comment.children && comment.children.length > 0 && (
+            {replies[comment.id]?.length > 0 && (
               <CommentsList
-                comments={comment.children}
+                comments={replies[comment.id]}
                 onSelectComment={onSelectComment}
                 selectedComment={selectedComment}
                 session={session}
-                onNewReply={onNewReply}
+                onNewReply={handleNewReply}
                 sortBy={sortBy}
                 level={level + 1}
               />

@@ -1,69 +1,77 @@
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { headers } from "next/headers";
 
-export async function POST(req: Request) {
+const s3 = new S3Client({
+  region: process.env.AWS_REGION || 'us-east-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+
+export async function POST(req: NextRequest) {
   try {
-    const { commentableId, parentId, userId, content, image } = await req.json();
-    // Validate required fields
-    if (!userId || !content) {
-      return NextResponse.json({ message: "User ID and content are required" }, { status: 400 });
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.log("Session user ID:", session.user.id);
+    const formData = await req.formData();
+    const content = formData.get("content") as string;
+    const commentableId = formData.get("commentableId") as string;
+    const parentId = formData.get("parentId") as string;
+    const image = formData.get("image") as File | null;
+
+    if (!content) {
+      return NextResponse.json(
+        { message: "Content is required" },
+        { status: 400 }
+      );
     }
 
+    let imageUrl = null;
+    if (image && image.size > 0) {
+      const arrayBuffer = await image.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-    // Check if parent comment exists when parentId is provided
-    if (parentId) {
-      const parentComment = await prisma.comment.findUnique({
-        where: { id: parentId }
+      const key = `comment-images/${session.user.id}_${Date.now()}_${image.name}`;
+      const command = new PutObjectCommand({
+        Bucket: 'mabbr-profile-pics',
+        Key: key,
+        Body: buffer,
+        ContentType: image.type,
+        ACL: "public-read",
       });
 
-      if (!parentComment) {
-        return NextResponse.json({ message: "Parent comment not found" }, { status: 404 });
-      }
-    }
-
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
+      await s3.send(command);
+      imageUrl = `https://mabbr-profile-pics.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
     }
 
     const newComment = await prisma.comment.create({
-        data: {
-          content,
-          image,
-          commentableId: commentableId,
-          commentableType: "COMMENT",
-          parentId: parentId,
-          userId,
-        },
-        include: {
-          user: true,
-          commentLikes: true,
-          children: {
-            include: {
-              user: true,
-              commentLikes: true,
-            },
-          },
-        },
-      });
+      data: {
+        content,
+        image: imageUrl,
+        commentableId,
+        commentableType: "COMMENT",
+        parentId: parentId || null,
+        userId: session.user.id,
+      },
+      include: {
+        user: true,
+        commentLikes: true,
+        children: { include: { user: true, commentLikes: true } },
+      },
+    });
 
     return NextResponse.json(newComment, { status: 201 });
   } catch (error) {
     console.error("Error creating comment:", error);
-    
-    // Provide more specific error messages
-    if (error instanceof Error) {
-      return NextResponse.json({ 
-        message: "Failed to create comment", 
-        details: error.message 
-      }, { status: 500 });
-    }
-    
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

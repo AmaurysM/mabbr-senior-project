@@ -20,31 +20,32 @@ const CommentReplyForm = ({ parentComment, session, onNewReply }: {
     if (!replyText.trim() && !image) return;
     setIsSubmitting(true);
     setError(null);
+  
     try {
-      let imageUrl = null;
+      const formData = new FormData();
+      formData.append('content', replyText);
+      formData.append('commentableId', parentComment.commentableId || "");
+      formData.append('parentId', parentComment.id);
       if (image) {
-        imageUrl = URL.createObjectURL(image);
+        formData.append('image', image);
       }
+  
       const response = await fetch("/api/topics/posts/comments/reply/new", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: session?.user.id,
-          content: replyText,
-          image: imageUrl,
-          commentableId: parentComment.commentableId,
-          parentId: parentComment.id
-        }),
+        body: formData,
       });
+  
       if (!response.ok) throw new Error("Failed to submit reply");
       const newReply = await response.json();
       onNewReply(newReply);
       setReplyText("");
       setImage(null);
       setImagePreview(null);
-      setIsSubmitting(false);
     } catch (error) {
       console.error("Error submitting reply:", error);
+      setError("Failed to submit reply. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
