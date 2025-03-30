@@ -11,7 +11,7 @@ import {
   FaExchangeAlt, 
   FaDollarSign, 
   FaDollarSign as FaDollar, 
-  FaArrowDown
+  FaArrowDown 
 } from "react-icons/fa";
 import { TransformedStockData } from "@/app/api/stocks/live/route";
 
@@ -45,12 +45,10 @@ const StockPage = () => {
   const [series, setSeries] = useState<SeriesData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // Default values; feel free to change as needed.
   const [period, setPeriod] = useState("2025-01-01");
   const [interval, setInterval] = useState("1d");
   const [stockData, setStockData] = useState<TransformedStockData>(null);
 
-  // Fetch chart and stock data whenever symbol, period or interval change.
   useEffect(() => {
     const fetchStockData = async () => {
       setLoading(true);
@@ -95,12 +93,10 @@ const StockPage = () => {
     fetchStockData();
   }, [symbol, period, interval]);
 
-  // Compute day range from the candlestick series, using the latest data point.
   const candlestickSeries = series.find((s) => s.type === "candlestick");
   let dayRange = "N/A";
   if (candlestickSeries && candlestickSeries.data.length) {
     const lastData = candlestickSeries.data[candlestickSeries.data.length - 1];
-    // d.y is [open, high, low, close]
     dayRange = `$${Number(lastData.y[2]).toFixed(2)} - $${Number(
       lastData.y[1]
     ).toFixed(2)}`;
@@ -193,19 +189,39 @@ const StockPage = () => {
     },
   };
 
-  // Format numbers for display
   const formatNumber = (num: number | undefined) =>
     num ? num.toLocaleString() : "N/A";
 
-  // Handle settings form submission (prevent default since state updates trigger re-fetch)
   const handleSettingsSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+      <div className="min-h-screen bg-slate-900 p-6">
+        <div className="max-w-7xl mx-auto space-y-8 animate-pulse">
+          {/* Header Skeleton */}
+          <div className="space-y-4">
+            <div className="h-8 bg-slate-700 rounded w-1/3"></div>
+            <div className="h-4 bg-slate-700 rounded w-1/4"></div>
+          </div>
+          {/* Chart Skeleton */}
+          <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
+            <div className="h-64 bg-slate-700 rounded"></div>
+          </div>
+          {/* Key Metrics Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="bg-slate-800 p-6 rounded-xl flex items-center">
+                <div className="bg-slate-700 p-4 rounded-lg mr-4 w-12 h-12"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-slate-700 rounded w-1/2"></div>
+                  <div className="h-6 bg-slate-700 rounded w-3/4"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -235,13 +251,13 @@ const StockPage = () => {
               <FaChartLine className="mr-3 text-teal-500" />
               {symbol}
               <span className="ml-4 text-teal-500 text-xl font-normal">
-                { (stockData?.regularMarketChangePercent ?? 0) > 0 ? (
-                  <div className=" flex items-center mr-1 text-teal-500">
-                    <FaArrowUp  />
+                {(stockData?.regularMarketChangePercent ?? 0) > 0 ? (
+                  <div className="flex items-center mr-1 text-teal-500">
+                    <FaArrowUp />
                     {stockData.regularMarketChangePercent?.toFixed(2) || "N/A"}% Regular Market Change Percent
                   </div>
                 ) : (
-                  <div className=" flex items-center mr-1 text-red-500">
+                  <div className="flex items-center mr-1 text-red-500">
                     <FaArrowDown />
                     {stockData.regularMarketChangePercent?.toFixed(2) || "N/A"}% Regular Market Change Percent
                   </div>
@@ -249,7 +265,7 @@ const StockPage = () => {
               </span>
             </h1>
             <p className="text-slate-400 mt-2">
-            {stockData?.shortName} • {stockData?.industry}  
+              {stockData?.shortName} • {stockData?.industry}
             </p>
           </div>
           <button
@@ -260,41 +276,6 @@ const StockPage = () => {
             Go Back
           </button>
         </div>
-
-        {/* Settings Form
-        <div className="bg-slate-800 rounded-xl p-6 shadow-xl mb-8">
-          <form onSubmit={handleSettingsSubmit} className="flex flex-col md:flex-row items-center gap-4">
-            <div className="flex flex-col">
-              <label className="text-slate-400 text-sm mb-1">Period</label>
-              <input
-                type="date"
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-                className="p-2 rounded bg-slate-700 text-slate-100"
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-slate-400 text-sm mb-1">Interval</label>
-              <select
-                value={interval}
-                onChange={(e) => setInterval(e.target.value)}
-                className="p-2 rounded bg-slate-700 text-slate-100"
-              >
-                {validIntervals.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 transition"
-            >
-              Update
-            </button>
-          </form>
-        </div> */}
 
         {/* Chart Section */}
         <div className="bg-slate-800 rounded-xl p-6 shadow-xl mb-8">
