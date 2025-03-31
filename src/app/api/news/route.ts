@@ -9,7 +9,7 @@ const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get('page') || '1', 10);
-  const pageSize = 5;
+  const pageSize = 15;
   const tickers = 'NVDA';
 
   if (page < 1) {

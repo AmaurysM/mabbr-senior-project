@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import StockCard from '@/app/components/StockCard';
 import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
@@ -143,6 +143,10 @@ const HomePage = () => {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [searchedSymbols, setSearchedSymbols] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [newsPage, setNewsPage] = useState<number>(1);
+  const [hasMoreNews, setHasMoreNews] = useState<boolean>(true);
+  const [isLoadingMoreNews, setIsLoadingMoreNews] = useState<boolean>(false);
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -342,11 +346,12 @@ const HomePage = () => {
     };
   }, [user]);
 
+  // Fetch initial news
   useEffect(() => {
     const fetchNews = async () => {
       try {
         setIsLoadingNews(true);
-        const response = await fetch('/api/news');
+        const response = await fetch(`/api/news?page=1`);
         if (!response.ok) {
           console.error('News response not OK:', response.status);
           setNewsError('Failed to fetch news. Please try again later.');
@@ -359,6 +364,7 @@ const HomePage = () => {
           return;
         }
         setNewsItems(data.news || []);
+        setHasMoreNews(data.hasMore || false);
       } catch (err) {
         console.error('Error fetching news:', err);
         setNewsError('Failed to fetch news. Please try again later.');
@@ -368,6 +374,54 @@ const HomePage = () => {
     };
     fetchNews();
   }, []);
+
+  // Function to load more news
+  const loadMoreNews = async () => {
+    if (!hasMoreNews || isLoadingMoreNews) return;
+    
+    try {
+      setIsLoadingMoreNews(true);
+      const nextPage = newsPage + 1;
+      const response = await fetch(`/api/news?page=${nextPage}`);
+      
+      if (!response.ok) {
+        console.error('Failed to fetch more news:', response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.news && data.news.length > 0) {
+        setNewsItems(prev => [...prev, ...data.news]);
+        setNewsPage(nextPage);
+        setHasMoreNews(data.hasMore || false);
+      } else {
+        setHasMoreNews(false);
+      }
+    } catch (error) {
+      console.error('Error loading more news:', error);
+    } finally {
+      setIsLoadingMoreNews(false);
+    }
+  };
+
+  // Modify the scroll handling to use window scroll instead of container scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!hasMoreNews || isLoadingMoreNews) return;
+      
+      // Check if we've scrolled near the bottom of the page
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
+        hasMoreNews
+      ) {
+        loadMoreNews();
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMoreNews, isLoadingMoreNews]);
 
   // Trade execution function with optimistic updates
   const executeTrade = useCallback(
@@ -647,7 +701,7 @@ const HomePage = () => {
                             );
                           })}
                         </div>
-                        <p className="text-xs text-gray-400 mt-2">
+                        <p className="text-xs text-gray-400 mt-2 mb-8">
                           {(() => {
                             let date;
                             if (typeof item.time === 'string' && /^\d{8}T\d{6}$/.test(item.time)) {
@@ -703,6 +757,26 @@ const HomePage = () => {
                         </div>
                       </div>
                   ))}
+                  
+                  {/* Loading indicator for more articles */}
+                  {isLoadingMoreNews && (
+                    <div className="py-4 text-center">
+                      <div className="inline-block w-6 h-6 border-t-2 border-blue-500 border-solid rounded-full animate-spin"></div>
+                      <p className="text-sm text-gray-400 mt-2">Loading more articles...</p>
+                    </div>
+                  )}
+                  
+                  {/* Load More button at the bottom of the news section */}
+                  {hasMoreNews && !isLoadingMoreNews && (
+                    <div className="mt-4 text-center">
+                      <button 
+                        onClick={loadMoreNews} 
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors rounded-lg text-white w-full"
+                      >
+                        Load More Articles
+                      </button>
+                    </div>
+                  )}
                 </div>
             ) : (
                 <div className="text-gray-400 text-center py-4">No news available at the moment</div>
