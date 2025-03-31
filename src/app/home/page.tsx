@@ -6,6 +6,9 @@ import StockCard from '@/app/components/StockCard';
 import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
 import CompactStockCard from '../components/CompactStockCard';
 import TransactionCard from '@/app/components/TransactionCard';
+import NewsFullscreenModal from '@/app/components/NewsFullscreenModal';
+import NewsAIAnalysis from '@/app/components/NewsAIAnalysis';
+import { FaBrain } from 'react-icons/fa';
 import useSWR from 'swr';
 // @ts-ignore
 import { debounce } from 'lodash';
@@ -110,6 +113,10 @@ const HomePage = () => {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
+  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
+  const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
+  const [aiAnalysisCache, setAiAnalysisCache] = useState<Record<string, any>>({});
   const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [stocks, setStocks] = useState<any[]>([]);
   const [friendEmail, setFriendEmail] = useState('');
@@ -487,6 +494,22 @@ const HomePage = () => {
 
   return (
       <div className="px-8 py-6 w-full h-full">
+        <NewsFullscreenModal 
+          newsItem={selectedNewsItem}
+          isOpen={isNewsModalOpen}
+          onClose={() => setIsNewsModalOpen(false)}
+          analysisCache={aiAnalysisCache}
+          setAnalysisCache={setAiAnalysisCache}
+        />
+        
+        <NewsAIAnalysis 
+          newsItem={selectedNewsItem!}
+          isOpen={isAIAnalysisOpen}
+          onClose={() => setIsAIAnalysisOpen(false)}
+          analysisCache={aiAnalysisCache}
+          setAnalysisCache={setAiAnalysisCache}
+        />
+        
         {/* Header and Account Info */}
         <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
           <h2 className="text-2xl font-bold text-white mb-3">Paper Trading Account</h2>
@@ -593,7 +616,7 @@ const HomePage = () => {
                   {newsItems.map((item, index) => (
                       <div
                           key={index}
-                          className="bg-gray-700/30 rounded-xl p-4 hover:bg-gray-700/50 transition-all duration-200 border border-white/5"
+                          className="bg-gray-700/30 rounded-xl p-4 hover:bg-gray-700/50 transition-all duration-200 border border-white/5 relative"
                       >
                         <a
                             href={item.url}
@@ -618,9 +641,9 @@ const HomePage = () => {
                                                 : 'text-gray-400 bg-gray-500/10'
                                     }`}
                                 >
-                          {ticker.ticker}
-                                  <span className="ml-1 font-mono">{sentiment > 0 ? '↑' : sentiment < 0 ? '↓' : '–'}</span>
-                        </span>
+                                    {ticker.ticker}
+                                    <span className="ml-1 font-mono">{sentiment > 0 ? '↑' : sentiment < 0 ? '↓' : '–'}</span>
+                                </span>
                             );
                           })}
                         </div>
@@ -650,6 +673,34 @@ const HomePage = () => {
                                 });
                           })()}
                         </p>
+                        <div className="absolute bottom-3 right-3 flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedNewsItem(item);
+                              setIsAIAnalysisOpen(true);
+                            }}
+                            className="p-1.5 bg-blue-500/70 hover:bg-blue-500 rounded-md transition-colors text-white"
+                            aria-label="AI Analysis"
+                          >
+                            <FaBrain size={16} />
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              setSelectedNewsItem(item);
+                              setIsNewsModalOpen(true);
+                            }}
+                            className="p-1.5 bg-gray-600/50 hover:bg-gray-600 rounded-md transition-colors text-gray-300 hover:text-white"
+                            aria-label="View fullscreen"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M15 3h6v6"></path>
+                              <path d="M9 21H3v-6"></path>
+                              <path d="M21 3l-7 7"></path>
+                              <path d="M3 21l7-7"></path>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                   ))}
                 </div>
