@@ -9,6 +9,7 @@ import { toast } from '@/app/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Achievement, UserAchievement } from '@prisma/client';
 import { FaCheckCircle, FaUserShield } from 'react-icons/fa';
+import FriendsList from '../components/FriendsList';
 
 interface Transaction {
     id: string;
@@ -886,6 +887,10 @@ const ProfilePage = () => {
                             </div>
                         )}
                     </section>
+                    {/* Friends List Section */}
+                    
+                        <FriendsList />
+                    
                 </div>
             </div>
         </div>
