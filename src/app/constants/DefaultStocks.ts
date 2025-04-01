@@ -73,5 +73,80 @@ export const DEFAULT_STOCKS = [
     symbol: "CRM",
     name: "Salesforce Inc.",
     description: "Cloud-based software services",
+  },
+  {
+    symbol: "INTC",
+    name: "Intel Corporation",
+    description: "Semiconductor manufacturing",
+  },
+  {
+    symbol: "KO",
+    name: "The Coca-Cola Company",
+    description: "Beverage manufacturing",
+  },
+  {
+    symbol: "WMT",
+    name: "Walmart Inc.",
+    description: "Retail and e-commerce",
+  },
+  {
+    symbol: "JNJ",
+    name: "Johnson & Johnson",
+    description: "Pharmaceuticals and consumer goods",
+  },
+  {
+    symbol: "COST",
+    name: "Costco Wholesale Corporation",
+    description: "Membership warehouse retailer",
+  },
+  {
+    symbol: "MCD",
+    name: "McDonald's Corporation",
+    description: "Fast food restaurant chain",
+  },
+  {
+    symbol: "SBUX",
+    name: "Starbucks Corporation",
+    description: "Coffee chain and roastery",
+  },
+  {
+    symbol: "NKE",
+    name: "Nike Inc.",
+    description: "Athletic footwear and apparel",
+  },
+  {
+    symbol: "XOM",
+    name: "Exxon Mobil Corporation",
+    description: "Oil and gas production",
+  },
+  {
+    symbol: "CVX",
+    name: "Chevron Corporation",
+    description: "Energy and petroleum",
+  },
+  {
+    symbol: "CSCO",
+    name: "Cisco Systems Inc.",
+    description: "Networking hardware and telecommunications",
+  },
+  {
+    symbol: "ABNB",
+    name: "Airbnb Inc.",
+    description: "Online marketplace for lodging",
+  },
+  {
+    symbol: "UBER",
+    name: "Uber Technologies Inc.",
+    description: "Mobility as a service",
+  },
+  {
+    symbol: "ORCL",
+    name: "Oracle Corporation",
+    description: "Enterprise software and cloud computing",
+  },
+  {
+    symbol: "BA",
+    name: "Boeing Company",
+    description: "Aerospace and defense",
   }
 ]; 

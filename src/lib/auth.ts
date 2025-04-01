@@ -1,15 +1,14 @@
 import prisma from "@/lib/prisma";
-import { authPlugin } from "@/middlewarePlugin";
 import { betterAuth, BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { openAPI } from "better-auth/plugins";
-import { authClient } from "./auth-client";
 import { headers } from "next/headers";
+import { admin } from "better-auth/plugins"
 
 const requiredEnvVars = {
-  NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-  NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL:
-    process.env.NEXT_PUBLIC_EMAIL_VERIFICATION_CALLBACK_URL,
+  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+  EMAIL_VERIFICATION_CALLBACK_URL:
+    process.env.EMAIL_VERIFICATION_CALLBACK_URL,
 } as const;
 
 Object.entries(requiredEnvVars).forEach(([key, value]) => {
@@ -32,7 +31,12 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [openAPI({})],
+  plugins: [
+    openAPI({}),        
+    admin({
+      adminUserIds: process.env.ADMIN_USER_IDS?.split(",") || [],
+    }) 
+  ],
 
   socialProviders: {
     github: {
@@ -60,19 +64,10 @@ export const auth = betterAuth({
   },
 } satisfies BetterAuthOptions);
 
-interface SessionData {
-  user?: {
-    id: string;
-    email: string;
-    [key: string]: any;
-  };
-  expires?: string;
-}
-
 export async function getSession() {
   try {
     const response = await auth.api.getSession({
-      headers: await headers(), // you need to pass the headers object.
+      headers: await headers(),
     });
 
     if (!response) {

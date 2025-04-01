@@ -24,7 +24,9 @@ const StockNotesList = (
                     <div className="text-sm text-gray-500">
                         {new Date(transaction.timestamp).toLocaleDateString()}
                     </div>
-                    <div className="text-sm mt-1 text-gray-700">{getNotePreview(transaction)}</div>
+                    <div className="text-sm mt-1 text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {getNotePreview(transaction)}
+                    </div>
                 </li>
             ))}
         </ul>

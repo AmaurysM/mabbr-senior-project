@@ -10,6 +10,10 @@ type StockInput = {
   price: number;
 };
 
+type StocksResponse = {
+  stocks: Stock[];
+};
+
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export function useStockCrud() {
@@ -17,9 +21,12 @@ export function useStockCrud() {
   const [error, setError] = useState<string | null>(null);
   
   // Get all stocks with SWR
-  const { data: stocks } = useSWR<Stock[]>('/api/stocks', fetcher, {
+  const { data } = useSWR<StocksResponse>('/api/stocks/all', fetcher, {
     refreshInterval: 3000
   });
+  
+  // Extract the stocks array, or default to an empty array if data is undefined.
+  const stocks: Stock[] = data?.stocks ?? [];
   
   // Create a new stock
   const createStock = async (data: StockInput) => {
@@ -111,4 +118,4 @@ export function useStockCrud() {
     isLoading,
     error
   };
-} 
+}

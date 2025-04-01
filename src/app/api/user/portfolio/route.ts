@@ -45,7 +45,6 @@ export async function GET(req: NextRequest) {
         averagePrice: userStock.stock.price
       };
     });
-
     return NextResponse.json({
       balance: user.balance,
       positions: positions

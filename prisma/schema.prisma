@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  url      = env("NEXT_PUBLIC_DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -16,39 +16,121 @@ model User {
   email          String        @unique
   emailVerified  Boolean       @default(false)
   image          String?
-  badgeImage     String? // New field for the badge image
+  backgroundImage String?
+  badgeImage     String?
   premium        Boolean       @default(false)
   role           String        @default("user")
   banned         Boolean       @default(false)
   banReason      String?
-  banExpires     Int? // Unix timestamp for ban expiration
+  banExpires     Int?
   balance        Float         @default(100000.0)
-  bio            String?       @default("No bio yet.") // Added bio field
-  chatMessages   ChatMessage[]
+  bio            String?       @default("No bio yet.") 
+
   votes          UserVote[]
   favoriteStocks String[]      @default([])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  sessions     Session[]
-  accounts     Account[]
-  transactions Transaction[]
-  following    Friendship[]  @relation(name: "FollowerRelation")
-  followers    Friendship[]  @relation(name: "FollowingRelation")
+  sessions       Session[]
+  accounts       Account[]
+  transactions   Transaction[]
+  following      Friendship[]  @relation(name: "FollowerRelation")
+  followers      Friendship[]  @relation(name: "FollowingRelation")
 
-  userStocks    UserStock[]
-  userLootBoxes UserLootBox[]
+  userStocks     UserStock[]
+  userLootBoxes  UserLootBox[]
+  achievements   UserAchievement[]
 
-  achievements UserAchievement[] // Relation to UserAchievement
+  likes          UserLike[]    
+  comments       Comment[]
+  commentLike    CommentLike[]
+  commentDislike CommentDislike[]
 
   @@map("user")
+}
+
+model Comment {
+  id              String   @id @default(cuid()) @map("_id")
+  content         String
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  commentableId   String?   // Can be postId, newsUrl, or chatId
+  commentableType CommentableType
+  commentDescription String?
+
+  parentId        String?  
+  parent          Comment? @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children        Comment[] @relation("CommentThread")
+
+  commentLikes    CommentLike[]
+  commentDislikes  CommentDislike[]
+
+  image           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([commentableId, commentableType])
+}
+
+enum CommentableType {
+  TOPIC
+  ROOM
+  POST
+  COMMENT
+  NEWS
+  GLOBALCHAT
+  FEED
+}
+
+
+model CommentLike {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  commentId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@map("comment_like")
+}
+
+model CommentDislike {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  commentId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@map("comment_dislike")
+}
+
+model UserLike {
+  id              String   @id @default(cuid()) @map("_id")
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  likeableId      String   // Can be postId or commentId
+  likeableType    LikeableType
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, likeableId, likeableType]) 
+}
+
+enum LikeableType {
+  POST
+  COMMENT
 }
 
 model LootBox {
   id            String         @id @default(cuid()) @map("_id")
   name          String
   price         Float
+  description   String?
   userLootBoxes UserLootBox[]
   lootBoxStocks LootBoxStock[]
 
@@ -80,7 +162,7 @@ model UserLootBox {
 
 model Stock {
   id            String         @id @default(cuid()) @map("_id")
-  name          String
+  name          String         @unique
   price         Float          @default(0)
   userStocks    UserStock[]
   lootBoxStocks LootBoxStock[]
@@ -201,27 +283,17 @@ model AlphaVantageNews {
   @@map("alphavantage_news")
 }
 
-model ChatMessage {
-  id        String   @id @default(cuid()) @map("_id")
-  content   String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timestamp DateTime @default(now())
 
-  @@index([userId])
-  @@index([timestamp])
-  @@map("chat_message")
-}
 
 model MarketSentiment {
   id            String   @id @default(cuid()) @map("_id")
   bullishCount  Int      @default(0)
   bearishCount  Int      @default(0)
   timestamp     DateTime @default(now())
-  mostDiscussed Json // Array of most discussed stocks
-  topPicks      Json // Array of stocks voted as top picks
-  marketTrend   Json // Market trend predictions (sectors, volatility, etc)
-  date          String   @unique // YYYY-MM-DD format to track daily sentiment
+  mostDiscussed Json 
+  topPicks      Json 
+  marketTrend   Json 
+  date          String   @unique 
 
   @@index([timestamp])
   @@map("market_sentiment")
@@ -230,10 +302,10 @@ model MarketSentiment {
 model UserVote {
   id          String   @id @default(cuid()) @map("_id")
   userId      String
-  date        String // YYYY-MM-DD format
-  sentiment   String // "bullish" or "bearish"
-  topPick     String? // Stock symbol user picked to perform best
-  marketTrend String? // User's market trend prediction
+  date        String 
+  sentiment   String 
+  topPick     String? 
+  marketTrend String? 
   timestamp   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -266,3 +338,5 @@ model UserAchievement {
   @@unique([userId, achievementId])
   @@map("user_achievement")
 }
+
+
