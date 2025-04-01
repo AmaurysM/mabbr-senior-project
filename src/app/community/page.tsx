@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-
 import { Toaster } from "@/app/components/ui/sonner";
 import { FaBell, FaHashtag, FaUser, FaUsers } from "react-icons/fa";
 import { IoIosDocument } from "react-icons/io";
@@ -24,9 +23,9 @@ const CommunityPage = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const storedActive = localStorage.getItem("activeComponent") as Tab;
-    if (storedActive) {
-      setActiveComponent(storedActive);
+    const storedActive = localStorage.getItem("activeComponent");
+    if (storedActive && storedActive in Tab) {
+      setActiveComponent(storedActive as Tab);
     }
   }, []);
 
@@ -38,14 +37,31 @@ const CommunityPage = () => {
     scrollRef.current?.scrollTo(0, 0);
   }, [activeComponent]);
 
+  const getDisplayName = (tab: Tab) => {
+    switch (tab) {
+      case Tab.globalFeed:
+        return "Global Feed";
+      case Tab.topics:
+        return "Topics";
+      case Tab.articles:
+        return "Articles";
+      case Tab.notifications:
+        return "Notifications";
+      case Tab.myPage:
+        return "My Page";
+      default:
+        return tab; // Fallback, though this won't occur with the enum
+    }
+  };
+
   return (
     <div className="flex h-full">
       {/* Left Sidebar (Fixed) */}
       <div className="w-64 h-full flex-shrink-0 bg-gray-800 p-4 border-r border-gray-700">
         <nav className="space-y-2 sticky top-0">
-          {Object.entries(Tab).map(([key, value]) => (
+          {Object.values(Tab).map((value) => (
             <button
-              key={key}
+              key={value}
               onClick={() => setActiveComponent(value)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
                 activeComponent === value
@@ -58,7 +74,7 @@ const CommunityPage = () => {
               {value === Tab.articles && <IoIosDocument className="w-5 h-5" />}
               {value === Tab.notifications && <FaBell className="w-5 h-5" />}
               {value === Tab.myPage && <FaUser className="w-5 h-5" />}
-              <span>{key}</span>
+              <span>{getDisplayName(value)}</span>
             </button>
           ))}
         </nav>
