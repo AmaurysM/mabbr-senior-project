@@ -1,19 +1,17 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import StockCard from '@/app/components/StockCard';
-import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
 import CompactStockCard from '../components/CompactStockCard';
 import TransactionCard from '@/app/components/TransactionCard';
 import NewsFullscreenModal from '@/app/components/NewsFullscreenModal';
 import NewsAIAnalysis from '@/app/components/NewsAIAnalysis';
-import { FaBrain } from 'react-icons/fa';
+import { FaSearch } from 'react-icons/fa';
 import useSWR from 'swr';
-// @ts-ignore
 import { debounce } from 'lodash';
+import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
 
-// Interfaces remain unchanged
+// Interfaces
 interface Trade {
   id: string;
   userId: string;
@@ -26,12 +24,6 @@ interface Trade {
   type: string;
   timestamp: string | Date;
   isCurrentUser?: boolean;
-}
-
-interface Friend {
-  email: string;
-  userId: string;
-  name?: string;
 }
 
 interface StockData {
@@ -55,12 +47,6 @@ interface UserPortfolio {
   };
 }
 
-interface TradeInput {
-  amount: number;
-  publicNote: string;
-  privateNote: string;
-}
-
 interface NewsItem {
   title: string;
   url: string;
@@ -79,11 +65,7 @@ const useStockData = (symbols: string[], searchTerm: string) => {
   const { data, error, mutate } = useSWR<{ stocks: StockData[] }>(
     symbols.length > 0 ? `/api/stocks?symbols=${symbols.join(',')}` : null,
     fetcher,
-    {
-      refreshInterval: 10000,
-      revalidateOnFocus: true,
-      dedupingInterval: 5000,
-    }
+    { refreshInterval: 10000, revalidateOnFocus: true, dedupingInterval: 5000 }
   );
 
   const filteredStocks = React.useMemo(() => {
@@ -107,6 +89,63 @@ const useStockData = (symbols: string[], searchTerm: string) => {
   };
 };
 
+// Extracted Portfolio Summary Component
+const PortfolioSummary = ({ portfolio, swrStocks, user, router }: { portfolio: UserPortfolio; swrStocks: StockData[]; user: any; router: any }) => {
+  const holdingsValue = React.useMemo(() =>
+    Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
+      const stock = swrStocks.find(s => s.symbol === symbol);
+      return total + (stock ? position.shares * stock.price : 0);
+    }, 0),
+    [portfolio.positions, swrStocks]
+  );
+
+  const netWorth = portfolio.balance + holdingsValue;
+  const percentChange = ((netWorth - 100000) / 100000) * 100;
+
+  return (
+    <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
+      <h2 className="text-xl font-bold text-white mb-3">Paper Trading Account</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gray-700/40 rounded-lg p-3 border border-white/5">
+          <h3 className="text-base font-medium text-gray-300">Cash</h3>
+          <p className="text-xl font-semibold text-green-400">
+            ${portfolio.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </div>
+        <div className="bg-gray-700/40 rounded-lg p-3 border border-white/5">
+          <h3 className="text-base font-medium text-gray-300">Holdings</h3>
+          <p className={`text-xl font-semibold ${holdingsValue > 0 ? 'text-blue-400' : 'text-gray-400'}`}>
+            ${holdingsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </div>
+        <div className="bg-gray-700/40 rounded-lg p-3 border border-white/5">
+          <h3 className="text-base font-medium text-gray-300">Net Worth</h3>
+          <p className={`text-xl font-semibold ${percentChange > 0 ? 'text-green-400' : percentChange < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+            ${netWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </div>
+      </div>
+      {!user && (
+        <button
+          onClick={() => router.push('/login-signup')}
+          className="w-full mt-3 px-4 py-2 bg-blue-600 rounded-lg text-white text-base font-medium hover:bg-blue-700 transition-colors"
+        >
+          Login to Trade
+        </button>
+      )}
+    </div>
+  );
+};
+
+// Extracted Loading Placeholder Component
+const LoadingPlaceholder = ({ count, height }: { count: number; height: string }) => (
+  <div className="space-y-2 animate-pulse">
+    {Array(count).fill(0).map((_, i) => (
+      <div key={i} className={`h-${height} bg-gray-800/50 rounded-lg`} />
+    ))}
+  </div>
+);
+
 const HomePage = () => {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -116,24 +155,12 @@ const HomePage = () => {
   const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
   const [aiAnalysisCache, setAiAnalysisCache] = useState<Record<string, any>>({});
   const [isLoadingNews, setIsLoadingNews] = useState(true);
-  const [stocks, setStocks] = useState<any[]>([]);
   const [friendEmail, setFriendEmail] = useState('');
-  const [friends, setFriends] = useState<Friend[]>([]);
   const [transactions, setTransactions] = useState<Trade[]>([]);
   const [newsError, setNewsError] = useState<string>('');
   const [friendError, setFriendError] = useState<string>('');
-  const [portfolio, setPortfolio] = useState<UserPortfolio>({
-    balance: 0,
-    positions: {},
-  });
+  const [portfolio, setPortfolio] = useState<UserPortfolio>({ balance: 0, positions: {} });
   const [isTrading, setIsTrading] = useState(false);
-  const [tradeInputs, setTradeInputs] = useState<Record<string, TradeInput>>({
-    NVDA: { amount: 0, publicNote: '', privateNote: '' },
-    AAPL: { amount: 0, publicNote: '', privateNote: '' },
-    GOOGL: { amount: 0, publicNote: '', privateNote: '' },
-  });
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -148,13 +175,9 @@ const HomePage = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedFavorites = localStorage.getItem('stockFavorites');
-      if (savedFavorites) {
-        setFavorites(new Set(JSON.parse(savedFavorites)));
-      }
+      if (savedFavorites) setFavorites(new Set(JSON.parse(savedFavorites)));
       const savedSearched = localStorage.getItem('searchedStocks');
-      if (savedSearched) {
-        setSearchedSymbols(new Set(JSON.parse(savedSearched)));
-      }
+      if (savedSearched) setSearchedSymbols(new Set(JSON.parse(savedSearched)));
     }
   }, []);
 
@@ -229,18 +252,19 @@ const HomePage = () => {
     [user, favorites]
   );
 
-  const symbolsToFetch = Array.from(new Set([
-    ...DEFAULT_STOCKS.map(stock => stock.symbol),
-    ...(user ? Object.keys(portfolio?.positions || {}) : []),
-    ...Array.from(searchedSymbols)
-  ]));
+  const symbolsToFetch = React.useMemo(() =>
+    Array.from(new Set([
+      ...DEFAULT_STOCKS.map(stock => stock.symbol),
+      ...(user ? Object.keys(portfolio?.positions || {}) : []),
+      ...Array.from(searchedSymbols)
+    ])),
+    [user, portfolio.positions, searchedSymbols]
+  );
 
-  const { stocks: swrStocks, filteredStocks, isLoading: isLoadingStocks, isError, mutate: mutateStocks } =
-    useStockData(symbolsToFetch, searchQuery);
+  const { stocks: swrStocks, filteredStocks, isLoading: isLoadingStocks, mutate: mutateStocks } = useStockData(symbolsToFetch, searchQuery);
 
   useEffect(() => {
     setMounted(true);
-
     const checkAuth = async () => {
       try {
         const res = await fetch('/api/auth/get-session');
@@ -250,12 +274,7 @@ const HomePage = () => {
           return;
         }
         const data = await res.json();
-
-        if (!data){
-          ;
-        }else if (data.user) {
-          setUser(data.user);
-        }
+        if (data?.user) setUser(data.user);
         setLoading(false);
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -274,9 +293,7 @@ const HomePage = () => {
         }
       });
       const data = await res.json();
-      if (data.success) {
-        setTransactions(data.transactions);
-      }
+      if (data.success) setTransactions(data.transactions);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
@@ -285,18 +302,12 @@ const HomePage = () => {
   useEffect(() => {
     if (user) {
       fetchTransactions();
-      
-      const intervalId = setInterval(() => {
-        fetchTransactions();
-      }, 30000);
-      
+      const intervalId = setInterval(fetchTransactions, 30000);
       const handleFriendAccepted = () => {
         console.log('Friend request accepted, refreshing transactions');
         fetchTransactions();
       };
-      
       window.addEventListener('friendRequestAccepted', handleFriendAccepted);
-      
       return () => {
         clearInterval(intervalId);
         window.removeEventListener('friendRequestAccepted', handleFriendAccepted);
@@ -310,14 +321,9 @@ const HomePage = () => {
         if (user) {
           const res = await fetch('/api/user/portfolio');
           const data = await res.json();
-          if (!data.error) {
-            setPortfolio(data);
-          }
+          if (!data.error) setPortfolio(data);
         } else {
-          setPortfolio({
-            balance: 100000,
-            positions: {},
-          });
+          setPortfolio({ balance: 100000, positions: {} });
         }
       } catch (error) {
         console.error('Error fetching portfolio:', error);
@@ -340,20 +346,20 @@ const HomePage = () => {
         const response = await fetch(`/api/news?page=1`);
         if (!response.ok) {
           console.error('News response not OK:', response.status);
-          setNewsError('Failed to fetch news. Please try again later.');
+          setNewsError('Failed to fetch insights. Please try again later.');
           setIsLoadingNews(false);
           return;
         }
         const data = await response.json();
         if (data.error) {
-          setNewsError('Failed to fetch news. Please try again later.');
+          setNewsError('Failed to fetch insights. Please try again later.');
           return;
         }
         setNewsItems(data.news || []);
         setHasMoreNews(data.hasMore || false);
       } catch (err) {
-        console.error('Error fetching news:', err);
-        setNewsError('Failed to fetch news. Please try again later.');
+        console.error('Error fetching insights:', err);
+        setNewsError('Failed to fetch insights. Please try again later.');
       } finally {
         setIsLoadingNews(false);
       }
@@ -363,19 +369,15 @@ const HomePage = () => {
 
   const loadMoreNews = async () => {
     if (!hasMoreNews || isLoadingMoreNews) return;
-    
     try {
       setIsLoadingMoreNews(true);
       const nextPage = newsPage + 1;
       const response = await fetch(`/api/news?page=${nextPage}`);
-      
       if (!response.ok) {
-        console.error('Failed to fetch more news:', response.status);
+        console.error('Failed to fetch more insights:', response.status);
         return;
       }
-      
       const data = await response.json();
-      
       if (data.news && data.news.length > 0) {
         setNewsItems(prev => [...prev, ...data.news]);
         setNewsPage(nextPage);
@@ -384,7 +386,7 @@ const HomePage = () => {
         setHasMoreNews(false);
       }
     } catch (error) {
-      console.error('Error loading more news:', error);
+      console.error('Error loading more insights:', error);
     } finally {
       setIsLoadingMoreNews(false);
     }
@@ -393,59 +395,32 @@ const HomePage = () => {
   useEffect(() => {
     const handleScroll = () => {
       if (!hasMoreNews || isLoadingMoreNews) return;
-      
-      if (
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
-        hasMoreNews
-      ) {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 && hasMoreNews) {
         loadMoreNews();
       }
     };
-    
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [hasMoreNews, isLoadingMoreNews]);
 
   const executeTrade = useCallback(
     async (symbol: string, type: 'BUY' | 'SELL', amount: number, publicNote: string, privateNote: string) => {
-      if (!user) {
-        setSearchError('');
-        router.push('/login-signup');
-        return;
-      }
+      if (!user) { router.push('/login-signup'); return; }
       try {
         setIsTrading(true);
-        const optimisticData = swrStocks.map((stock) => {
-          if (stock.symbol === symbol) {
-            const newShares =
-              type === 'BUY'
-                ? (portfolio?.positions?.[symbol]?.shares || 0) + amount
-                : (portfolio?.positions?.[symbol]?.shares || 0) - amount;
-            return { ...stock, shares: newShares };
-          }
-          return stock;
-        });
+        const stock = swrStocks.find(s => s.symbol === symbol);
+        if (!stock) throw new Error('Stock not found');
+        const newShares = type === 'BUY'
+          ? (portfolio?.positions?.[symbol]?.shares || 0) + amount
+          : (portfolio?.positions?.[symbol]?.shares || 0) - amount;
+        const optimisticData = swrStocks.map(s => s.symbol === symbol ? { ...s, shares: newShares } : s);
         mutateStocks({ stocks: optimisticData }, false);
-        const stock = swrStocks.find((s) => s.symbol === symbol);
-        if (!stock) {
-          throw new Error('Stock not found');
-        }
         const response = await fetch('/api/user/trade', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            symbol,
-            type,
-            quantity: amount,
-            price: stock.price,
-            publicNote,
-            privateNote,
-          }),
+          body: JSON.stringify({ symbol, type, quantity: amount, price: stock.price, publicNote, privateNote }),
         });
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || 'Trade failed');
-        }
+        if (!response.ok) throw new Error((await response.json()).error || 'Trade failed');
         await Promise.all([fetchTransactions(), mutateStocks()]);
       } catch (error) {
         console.error('Trade failed:', error);
@@ -458,49 +433,36 @@ const HomePage = () => {
     [user, router, swrStocks, portfolio, mutateStocks]
   );
 
-  const debouncedSearch = useCallback(
-    debounce(async (query: string) => {
-      if (!query) {
-        setIsSearching(false);
-        return;
+  const debouncedSearch = useCallback(debounce(async (query: string) => {
+    if (!query) return;
+    const symbol = query.toUpperCase().trim();
+    try {
+      const res = await fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}`);
+      if (res.ok && !(await res.json()).error) {
+        setSearchedSymbols(prev => new Set(prev).add(symbol));
       }
-
-      const symbol = query.toUpperCase().trim();
-      setIsSearching(true);
-      try {
-        const res = await fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (!data.error) {
-            setSearchedSymbols(prev => {
-              const newSymbols = new Set(prev);
-              newSymbols.add(symbol);
-              return newSymbols;
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error searching stocks:', error);
-      }
-      setIsSearching(false);
-    }, 300),
-    []
-  );
+    } catch (error) {
+      console.error('Error searching stocks:', error);
+    }
+  }, 300), []);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
     if (!query.trim()) {
       setSearchedSymbols(new Set());
       localStorage.removeItem('searchedStocks');
-    } else {
-      debouncedSearch(query);
     }
   };
 
+  const handleSearchSubmit = () => { if (searchQuery.trim()) debouncedSearch(searchQuery); };
+
   const handleAddFriend = async () => {
-    if (!user || !friendEmail) return;
+    if (!user) {
+      router.push('/login-signup');
+      return;
+    }
+    if (!friendEmail) return;
     try {
       const res = await fetch('/api/user/add-friend', {
         method: 'POST',
@@ -519,106 +481,88 @@ const HomePage = () => {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  const favoriteStocks = React.useMemo(() => swrStocks.filter(stock => favorites.has(stock.symbol)), [swrStocks, favorites]);
 
-  const favoriteStocks = swrStocks.filter((stock) => favorites.has(stock.symbol));
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="px-4 py-4 w-full min-h-screen">
-      <NewsFullscreenModal 
-        newsItem={selectedNewsItem}
-        isOpen={isNewsModalOpen}
-        onClose={() => setIsNewsModalOpen(false)}
-        analysisCache={aiAnalysisCache}
-        setAnalysisCache={setAiAnalysisCache}
-      />
-      
-      <NewsAIAnalysis 
-        newsItem={selectedNewsItem!}
-        isOpen={isAIAnalysisOpen}
-        onClose={() => setIsAIAnalysisOpen(false)}
-        analysisCache={aiAnalysisCache}
-        setAnalysisCache={setAiAnalysisCache}
-      />
-      
-      <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
-        <h2 className="text-xl font-bold text-white mb-3">Paper Trading Account</h2>
-        <div className={isMobile ? "space-y-3" : "grid grid-cols-1 md:grid-cols-3 gap-4"}>
-          <div className="bg-gray-700/40 rounded-lg p-3 border border-white/5">
-            <h3 className="text-base font-medium text-gray-300">Cash</h3>
-            <p className="text-xl font-semibold text-green-400">
-              ${portfolio.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="bg-gray-700/40 rounded-lg p-3 border border-white/5">
-            <h3 className="text-base font-medium text-gray-300">Holdings</h3>
-            {(() => {
-              const holdingsValue = Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
-                const stock = swrStocks.find(s => s.symbol === symbol);
-                const value = stock ? position.shares * stock.price : 0;
-                return total + value;
-              }, 0);
-              const color = holdingsValue > 0 ? 'text-blue-400' : 'text-gray-400';
-              return (
-                <p className={`text-xl font-semibold ${color}`}>
-                  ${holdingsValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                </p>
-              );
-            })()}
-          </div>
-          <div className="bg-gray-700/40 rounded-lg p-3 border border-white/5">
-            <h3 className="text-base font-medium text-gray-300">Net Worth</h3>
-            {(() => {
-              const holdingsValue = Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
-                const stock = swrStocks.find(s => s.symbol === symbol);
-                const value = stock ? position.shares * stock.price : 0;
-                return total + value;
-              }, 0);
-              const netWorth = portfolio.balance + holdingsValue;
-              const percentChange = ((netWorth - 100000) / 100000) * 100;
-              const color = percentChange > 0 ? 'text-green-400' : percentChange < 0 ? 'text-red-400' : 'text-gray-400';
-              return (
-                <p className={`text-xl font-semibold ${color}`}>
-                  ${netWorth.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                </p>
-              );
-            })()}
-          </div>
-        </div>
-        {!user && (
-          <button
-            onClick={() => router.push('/login-signup')}
-            className="w-full mt-3 px-4 py-2 bg-blue-600 rounded-lg text-white text-base font-medium hover:bg-blue-700 transition-colors"
-          >
-            Login to Trade
+      <NewsFullscreenModal newsItem={selectedNewsItem} isOpen={isNewsModalOpen} onClose={() => setIsNewsModalOpen(false)} analysisCache={aiAnalysisCache} setAnalysisCache={setAiAnalysisCache} />
+      <NewsAIAnalysis newsItem={selectedNewsItem!} isOpen={isAIAnalysisOpen} onClose={() => setIsAIAnalysisOpen(false)} analysisCache={aiAnalysisCache} setAnalysisCache={setAiAnalysisCache} />
+
+      <PortfolioSummary portfolio={portfolio} swrStocks={swrStocks} user={user} router={router} />
+
+      {isMobile && (
+        <div className="mb-4 bg-gray-800/50 rounded-lg p-3 border border-white/10">
+          <h2 className="text-lg font-bold text-white mb-2">Add Friend</h2>
+          <input
+            type="email"
+            value={friendEmail}
+            onChange={(e) => setFriendEmail(e.target.value)}
+            placeholder="Add Friend by Email"
+            className="w-full p-2 mb-2 rounded-lg bg-gray-700/50 border border-white/5 text-sm text-white"
+          />
+          <button onClick={handleAddFriend} className="w-full py-2 bg-blue-600 rounded-lg text-white text-sm mb-2">
+            {user ? 'Add Friend' : 'Login to Add Friends'}
           </button>
+          {friendError && <div className="text-red-400 mb-2 text-sm">{friendError}</div>}
+        </div>
+      )}
+
+      <div className={`mb-4 ${isMobile ? '' : 'grid grid-cols-2 gap-4'}`}>
+        {isMobile ? (
+          <div className="bg-gray-800/50 rounded-lg p-2 border border-white/10">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder="Search stocks..."
+              className="w-full px-3 py-2 rounded-lg bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none text-white text-sm"
+            />
+            {searchError && <p className="text-red-400 text-sm mt-2 px-2">{searchError}</p>}
+          </div>
+        ) : (
+          <>
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 flex flex-col justify-between">
+              <h2 className="text-lg font-bold text-white mb-2">Search Stocks</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  placeholder="Enter stock symbol or name"
+                  className="flex-grow px-3 py-2 rounded-lg bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none text-white text-sm"
+                />
+                <button onClick={handleSearchSubmit} className="p-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors"><FaSearch /></button>
+              </div>
+              {searchError && <p className="text-red-400 text-sm mt-2">{searchError}</p>}
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 flex flex-col justify-between">
+              <h2 className="text-lg font-bold text-white mb-2">Add Friend</h2>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="email"
+                  value={friendEmail}
+                  onChange={(e) => setFriendEmail(e.target.value)}
+                  placeholder="Add Friend by Email"
+                  className="w-full p-2 rounded-lg bg-gray-700/50 border border-white/5 text-sm text-white"
+                />
+                <button onClick={handleAddFriend} className="w-full py-2 bg-blue-600 rounded-lg text-white text-sm">
+                  {user ? 'Add Friend' : 'Login to Add Friends'}
+                </button>
+              </div>
+              {friendError && <div className="text-red-400 text-sm mt-2">{friendError}</div>}
+            </div>
+          </>
         )}
       </div>
 
-      <div className="mb-4 bg-gray-800/50 rounded-lg p-2 border border-white/10">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder="Search stocks..."
-          className="w-full px-3 py-2 rounded-lg bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none text-white text-sm"
-        />
-        {searchError && <p className="text-red-400 text-sm mt-2 px-2">{searchError}</p>}
-      </div>
-
       {isMobile ? (
-        // Mobile layout: single column
         <div className="space-y-4">
           {favorites.size > 0 && (
             <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
               <h2 className="text-lg font-bold text-white mb-2">Favorite Stocks</h2>
-              {isLoadingStocks ? (
-                <div className="space-y-2 animate-pulse">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-20 bg-gray-800/50 rounded-lg" />
-                  ))}
-                </div>
-              ) : favoriteStocks.length === 0 ? (
+              {isLoadingStocks ? <LoadingPlaceholder count={3} height="20" /> : favoriteStocks.length === 0 ? (
                 <p className="text-gray-400 text-sm">No favorite stocks</p>
               ) : (
                 <div className="space-y-2">
@@ -633,12 +577,8 @@ const HomePage = () => {
                       chartData={stock.chartData || []}
                       shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
                       averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
-                      onBuy={(amount, publicNote, privateNote) =>
-                        executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)
-                      }
-                      onSell={(amount, publicNote, privateNote) =>
-                        executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)
-                      }
+                      onBuy={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)}
+                      onSell={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)}
                       isLoggedIn={!!user}
                       isFavorite={favorites.has(stock.symbol)}
                       onToggleFavorite={toggleFavorite}
@@ -651,13 +591,7 @@ const HomePage = () => {
 
           <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
             <h2 className="text-lg font-bold text-white mb-2">Portfolio & Market</h2>
-            {isLoadingStocks ? (
-              <div className="space-y-2 animate-pulse">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-20 bg-gray-800/50 rounded-lg" />
-                ))}
-              </div>
-            ) : filteredStocks.length === 0 ? (
+            {isLoadingStocks ? <LoadingPlaceholder count={3} height="20" /> : filteredStocks.length === 0 ? (
               <p className="text-gray-400 text-sm">No stocks found</p>
             ) : (
               <div className="space-y-2">
@@ -672,12 +606,8 @@ const HomePage = () => {
                     chartData={stock.chartData || []}
                     shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
                     averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
-                    onBuy={(amount, publicNote, privateNote) =>
-                      executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)
-                    }
-                    onSell={(amount, publicNote, privateNote) =>
-                      executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)
-                    }
+                    onBuy={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)}
+                    onSell={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)}
                     isLoggedIn={!!user}
                     isFavorite={favorites.has(stock.symbol)}
                     onToggleFavorite={toggleFavorite}
@@ -686,81 +616,6 @@ const HomePage = () => {
               </div>
             )}
           </div>
-
-          <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
-            <h2 className="text-lg font-bold text-white mb-2">Market News</h2>
-            {isLoadingNews ? (
-              <div className="space-y-2 animate-pulse">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 bg-gray-700/50 rounded-lg" />
-                ))}
-              </div>
-            ) : newsError ? (
-              <div className="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/20">
-                {newsError}
-              </div>
-            ) : newsItems.length > 0 ? (
-              <div className="space-y-2">
-                {newsItems.map((item, index) => (
-                  <div key={index} className="bg-gray-700/30 rounded-lg p-3 border border-white/10">
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 text-sm font-semibold"
-                    >
-                      {item.title}
-                    </a>
-                    <p className="text-xs text-gray-300 mt-1 line-clamp-2">{item.summary}</p>
-                    <div className="flex justify-between mt-2">
-                      <span className="text-xs text-gray-400">
-                        {new Date(item.time).toLocaleDateString()}
-                      </span>
-                      <button
-                        onClick={() => {
-                          setSelectedNewsItem(item);
-                          setIsNewsModalOpen(true);
-                        }}
-                        className="text-blue-400 text-xs"
-                      >
-                        Read More
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {hasMoreNews && (
-                  <button
-                    onClick={loadMoreNews}
-                    className="w-full mt-2 py-2 bg-blue-600 rounded-lg text-white text-sm"
-                  >
-                    Load More
-                  </button>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-400 text-sm">No news available</p>
-            )}
-          </div>
-
-          {user && (
-            <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
-              <h2 className="text-lg font-bold text-white mb-2">Add Friend</h2>
-              <input
-                type="email"
-                value={friendEmail}
-                onChange={(e) => setFriendEmail(e.target.value)}
-                placeholder="Add Friend by Email"
-                className="w-full p-2 mb-2 rounded-lg bg-gray-700/50 border border-white/5 text-sm text-white"
-              />
-              <button
-                onClick={handleAddFriend}
-                className="w-full py-2 bg-blue-600 rounded-lg text-white text-sm mb-2"
-              >
-                Add Friend
-              </button>
-              {friendError && <div className="text-red-400 mb-2 text-sm">{friendError}</div>}
-            </div>
-          )}
 
           {user && (
             <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
@@ -776,20 +631,36 @@ const HomePage = () => {
               )}
             </div>
           )}
+
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
+            <h2 className="text-lg font-bold text-white mb-2">Market Insights</h2>
+            {isLoadingNews ? <LoadingPlaceholder count={3} height="24" /> : newsError ? (
+              <div className="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/20">{newsError}</div>
+            ) : newsItems.length > 0 ? (
+              <div className="space-y-2">
+                {newsItems.map((item, index) => (
+                  <div key={index} className="bg-gray-700/30 rounded-lg p-3 border border-white/10">
+                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-sm font-semibold">{item.title}</a>
+                    <p className="text-xs text-gray-300 mt-1 line-clamp-2">{item.summary}</p>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-xs text-gray-400">{new Date(item.time).toLocaleDateString()}</span>
+                      <button onClick={() => { setSelectedNewsItem(item); setIsNewsModalOpen(true); }} className="text-blue-400 text-xs">Read More</button>
+                    </div>
+                  </div>
+                ))}
+                {hasMoreNews && <button onClick={loadMoreNews} className="w-full mt-2 py-2 bg-blue-600 rounded-lg text-white text-sm">Load More</button>}
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">No insights available</p>
+            )}
+          </div>
         </div>
       ) : (
-        // Desktop layout: two vertical containers side by side
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-4">
             <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
               <h2 className="text-lg font-bold text-white mb-2">Favorite Stocks</h2>
-              {isLoadingStocks ? (
-                <div className="space-y-2 animate-pulse">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-20 bg-gray-800/50 rounded-lg" />
-                  ))}
-                </div>
-              ) : favoriteStocks.length === 0 ? (
+              {isLoadingStocks ? <LoadingPlaceholder count={3} height="20" /> : favoriteStocks.length === 0 ? (
                 <p className="text-gray-400 text-sm">No favorite stocks</p>
               ) : (
                 <div className="space-y-2">
@@ -804,12 +675,8 @@ const HomePage = () => {
                       chartData={stock.chartData || []}
                       shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
                       averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
-                      onBuy={(amount, publicNote, privateNote) =>
-                        executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)
-                      }
-                      onSell={(amount, publicNote, privateNote) =>
-                        executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)
-                      }
+                      onBuy={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)}
+                      onSell={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)}
                       isLoggedIn={!!user}
                       isFavorite={favorites.has(stock.symbol)}
                       onToggleFavorite={toggleFavorite}
@@ -821,13 +688,7 @@ const HomePage = () => {
 
             <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
               <h2 className="text-lg font-bold text-white mb-2">Portfolio & Market</h2>
-              {isLoadingStocks ? (
-                <div className="space-y-2 animate-pulse">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-20 bg-gray-800/50 rounded-lg" />
-                  ))}
-                </div>
-              ) : filteredStocks.length === 0 ? (
+              {isLoadingStocks ? <LoadingPlaceholder count={3} height="20" /> : filteredStocks.length === 0 ? (
                 <p className="text-gray-400 text-sm">No stocks found</p>
               ) : (
                 <div className="space-y-2">
@@ -842,12 +703,8 @@ const HomePage = () => {
                       chartData={stock.chartData || []}
                       shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
                       averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
-                      onBuy={(amount, publicNote, privateNote) =>
-                        executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)
-                      }
-                      onSell={(amount, publicNote, privateNote) =>
-                        executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)
-                      }
+                      onBuy={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)}
+                      onSell={(amount, publicNote, privateNote) => executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)}
                       isLoggedIn={!!user}
                       isFavorite={favorites.has(stock.symbol)}
                       onToggleFavorite={toggleFavorite}
@@ -859,26 +716,6 @@ const HomePage = () => {
           </div>
 
           <div className="flex flex-col gap-4">
-            {user && (
-              <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
-                <h2 className="text-lg font-bold text-white mb-2">Add Friend</h2>
-                <input
-                  type="email"
-                  value={friendEmail}
-                  onChange={(e) => setFriendEmail(e.target.value)}
-                  placeholder="Add Friend by Email"
-                  className="w-full p-2 mb-2 rounded-lg bg-gray-700/50 border border-white/5 text-sm text-white"
-                />
-                <button
-                  onClick={handleAddFriend}
-                  className="w-full py-2 bg-blue-600 rounded-lg text-white text-sm mb-2"
-                >
-                  Add Friend
-                </button>
-                {friendError && <div className="text-red-400 mb-2 text-sm">{friendError}</div>}
-              </div>
-            )}
-
             {user && (
               <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
                 <h2 className="text-lg font-bold text-white mb-2">Trade Activity</h2>
@@ -895,57 +732,25 @@ const HomePage = () => {
             )}
 
             <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10">
-              <h2 className="text-lg font-bold text-white mb-2">Market News</h2>
-              {isLoadingNews ? (
-                <div className="space-y-2 animate-pulse">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-24 bg-gray-700/50 rounded-lg" />
-                  ))}
-                </div>
-              ) : newsError ? (
-                <div className="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/20">
-                  {newsError}
-                </div>
+              <h2 className="text-lg font-bold text-white mb-2">Market Insights</h2>
+              {isLoadingNews ? <LoadingPlaceholder count={3} height="24" /> : newsError ? (
+                <div className="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/20">{newsError}</div>
               ) : newsItems.length > 0 ? (
                 <div className="space-y-2">
                   {newsItems.map((item, index) => (
                     <div key={index} className="bg-gray-700/30 rounded-lg p-3 border border-white/10">
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 text-sm font-semibold"
-                      >
-                        {item.title}
-                      </a>
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-sm font-semibold">{item.title}</a>
                       <p className="text-xs text-gray-300 mt-1 line-clamp-2">{item.summary}</p>
                       <div className="flex justify-between mt-2">
-                        <span className="text-xs text-gray-400">
-                          {new Date(item.time).toLocaleDateString()}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setSelectedNewsItem(item);
-                            setIsNewsModalOpen(true);
-                          }}
-                          className="text-blue-400 text-xs"
-                        >
-                          Read More
-                        </button>
+                        <span className="text-xs text-gray-400">{new Date(item.time).toLocaleDateString()}</span>
+                        <button onClick={() => { setSelectedNewsItem(item); setIsNewsModalOpen(true); }} className="text-blue-400 text-xs">Read More</button>
                       </div>
                     </div>
                   ))}
-                  {hasMoreNews && (
-                    <button
-                      onClick={loadMoreNews}
-                      className="w-full mt-2 py-2 bg-blue-600 rounded-lg text-white text-sm"
-                    >
-                      Load More
-                    </button>
-                  )}
+                  {hasMoreNews && <button onClick={loadMoreNews} className="w-full mt-2 py-2 bg-blue-600 rounded-lg text-white text-sm">Load More</button>}
                 </div>
               ) : (
-                <p className="text-gray-400 text-sm">No news available</p>
+                <p className="text-gray-400 text-sm">No insights available</p>
               )}
             </div>
           </div>
