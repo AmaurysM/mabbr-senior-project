@@ -8,7 +8,6 @@ import NewsFullscreenModal from '@/app/components/NewsFullscreenModal';
 import NewsAIAnalysis from '@/app/components/NewsAIAnalysis';
 import { FaSearch } from 'react-icons/fa';
 import useSWR from 'swr';
-import { debounce } from 'lodash';
 import { DEFAULT_STOCKS } from '../constants/DefaultStocks';
 
 // Interfaces
@@ -433,19 +432,6 @@ const HomePage = () => {
     [user, router, swrStocks, portfolio, mutateStocks]
   );
 
-  const debouncedSearch = useCallback(debounce(async (query: string) => {
-    if (!query) return;
-    const symbol = query.toUpperCase().trim();
-    try {
-      const res = await fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}`);
-      if (res.ok && !(await res.json()).error) {
-        setSearchedSymbols(prev => new Set(prev).add(symbol));
-      }
-    } catch (error) {
-      console.error('Error searching stocks:', error);
-    }
-  }, 300), []);
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
@@ -455,7 +441,12 @@ const HomePage = () => {
     }
   };
 
-  const handleSearchSubmit = () => { if (searchQuery.trim()) debouncedSearch(searchQuery); };
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      const symbol = searchQuery.toUpperCase().trim();
+      router.push(`/stock/${encodeURIComponent(symbol)}`); // Redirect to stock detail page
+    }
+  };
 
   const handleAddFriend = async () => {
     if (!user) {
@@ -519,6 +510,9 @@ const HomePage = () => {
               placeholder="Search stocks..."
               className="w-full px-3 py-2 rounded-lg bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none text-white text-sm"
             />
+            <button onClick={handleSearchSubmit} className="w-full mt-2 p-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors">
+              <FaSearch className="inline mr-2" /> Go to Stock
+            </button>
             {searchError && <p className="text-red-400 text-sm mt-2 px-2">{searchError}</p>}
           </div>
         ) : (
