@@ -49,6 +49,9 @@ export type UserLootBox = Prisma.UserLootBoxGetPayload<{
   };
 }>;
 
+export type Friendship = Prisma.FriendshipGetPayload<object>;
+
+
 export type FriendRequests = Prisma.FriendshipGetPayload<{
   include: {
     requester: {

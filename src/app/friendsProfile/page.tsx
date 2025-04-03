@@ -9,9 +9,14 @@ import Overview from "./components/overview";
 import NewsPosts from "./components/newsPosts";
 import Stocks from "./components/stocks";
 import Achievements from "./components/achievements";
-import { FaCheckCircle, FaUserShield } from "react-icons/fa"; // Importing the FaCheckCircle icon
+import { FaCheckCircle, FaUserShield, FaUserPlus, FaUserCheck } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+
+type FriendStatus = "mutual" | "following" | "followingYou" | "notFollowing";
 
 const FriendsProfilePage = () => {
+    const [friendStatus, setFriendStatus] = useState<FriendStatus>("notFollowing");
+    const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
     const router = useRouter();
     const [user, setUser] = useState<User | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
@@ -46,6 +51,134 @@ const FriendsProfilePage = () => {
             });
     }, []);
 
+    useEffect(() => {
+        const checkFollowStatus = async () => {
+            if (!user?.id) return;
+
+            try {
+                const res = await fetch(`/api/user/check-follow?friendID=${user.id}`);
+
+                const data = await res.json();
+                if (res.ok) {
+                    const { isFollowing, isFollowedBy } = data;
+                    if (isFollowing && isFollowedBy) {
+                        setFriendStatus("mutual");
+                    } else if (!isFollowing && isFollowedBy) {
+                        setFriendStatus("followingYou");
+                    } else if (isFollowing) {
+                        setFriendStatus("following");
+                    } else {
+                        setFriendStatus("notFollowing");
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking follow status:", error);
+            }
+        };
+
+        checkFollowStatus();
+    }, [user?.id]);
+
+    const handleFollow = async () => {
+        if (!user?.id || isFollowLoading) return;
+
+        setIsFollowLoading(true);
+        const previousStatus = friendStatus;
+        let optimisticStatus: FriendStatus = previousStatus;
+
+        const isCurrentlyFollowing = previousStatus === "following" || previousStatus === "mutual";
+
+        if (isCurrentlyFollowing) {
+            optimisticStatus = previousStatus === "mutual" ? "followingYou" : "notFollowing";
+        } else {
+            optimisticStatus = previousStatus === "followingYou" ? "mutual" : "following";
+        }
+        setFriendStatus(optimisticStatus);
+
+        try {
+            const response = await fetch("/api/user/follow", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    friendID: user.id,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(isCurrentlyFollowing ? "Failed to unfollow" : "Failed to follow");
+            }
+
+            toast.success(isCurrentlyFollowing ? "Successfully unfollowed!" : "Successfully followed!");
+        } catch (error) {
+            console.error("Follow error:", error);
+            setFriendStatus(previousStatus);
+            const errorMessage = error instanceof Error ? error.message : "An error occurred. Please try again.";
+            toast.error(errorMessage);
+        } finally {
+            setIsFollowLoading(false);
+        }
+    };
+
+    const getMemberDuration = () => {
+        const joinDate = new Date(user!.createdAt);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - joinDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 30) return `${diffDays} days`;
+        const diffMonths = Math.floor(diffDays / 30);
+        if (diffMonths < 12) return `${diffMonths} months`;
+        const diffYears = Math.floor(diffMonths / 12);
+        const remainingMonths = diffMonths % 12;
+        return remainingMonths ? `${diffYears} years, ${remainingMonths} months` : `${diffYears} years`;
+    };
+
+    const getUserRole = () => {
+        if (user?.role === "admin")
+            return { label: "Administrator", icon: <FaUserShield className="h-6 w-6 text-green-500 ml-2" /> };
+        if (user?.premium) return { label: "Premium Member", icon: null };
+        if (user?.role === "verified")
+            return { label: "Verified", icon: <FaCheckCircle className="h-6 w-6 text-green-500 ml-2" /> };
+        return { label: "Member", icon: null };
+    };
+
+    const { label, icon } = getUserRole();
+
+    const renderFollowButtonContent = () => {
+        switch (friendStatus) {
+            case "mutual":
+                return (
+                    <>
+                        <FaUserCheck className="w-5 h-5" />
+                        <span>Mutual Friends</span>
+                    </>
+                );
+            case "following":
+                return (
+                    <>
+                        <FaUserCheck className="w-5 h-5" />
+                        <span>Following</span>
+                    </>
+                );
+            case "followingYou":
+                return (
+                    <>
+                        <FaUserPlus className="w-5 h-5" />
+                        <span>Follow Back</span>
+                    </>
+                );
+            default:
+                return (
+                    <>
+                        <FaUserPlus className="w-5 h-5" />
+                        <span>Follow</span>
+                    </>
+                );
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -62,8 +195,19 @@ const FriendsProfilePage = () => {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
                 <div className="p-8 bg-white shadow-lg rounded-lg text-center">
-                    <svg className="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <svg
+                        className="w-16 h-16 mx-auto text-red-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ></path>
                     </svg>
                     <h1 className="mt-4 text-xl font-bold text-gray-800">User Not Found</h1>
                     <p className="mt-2 text-gray-600">We couldn&apos;t find the user you&apos;re looking for.</p>
@@ -71,30 +215,6 @@ const FriendsProfilePage = () => {
             </div>
         );
     }
-
-    // Get member duration
-    const getMemberDuration = () => {
-        const joinDate = new Date(user.createdAt);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - joinDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 30) return `${diffDays} days`;
-        const diffMonths = Math.floor(diffDays / 30);
-        if (diffMonths < 12) return `${diffMonths} months`;
-        const diffYears = Math.floor(diffMonths / 12);
-        const remainingMonths = diffMonths % 12;
-        return remainingMonths ? `${diffYears} years, ${remainingMonths} months` : `${diffYears} years`;
-    };
-
-    const getUserRole = () => {
-        if (user.role === "admin") return { label: "Administrator", icon: <FaUserShield className="h-6 w-6 text-green-500 ml-2" /> };
-        if (user.premium) return { label: "Premium Member", icon: null };
-        if (user.role === "verified") return { label: "Verified", icon: <FaCheckCircle className="h-6 w-6 text-green-500 ml-2" /> };
-        return { label: "Member", icon: null };
-    };
-
-    const { label, icon } = getUserRole();
 
     return (
         <div className="min-h-full bg-gray-50 relative">
@@ -104,7 +224,13 @@ const FriendsProfilePage = () => {
                 className="fixed z-50 bg-white shadow rounded-full p-2 m-5 hover:bg-gray-100 transition"
                 aria-label="Go Back"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-gray-800"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
             </button>
@@ -147,6 +273,27 @@ const FriendsProfilePage = () => {
                                     )}
                                 </p>
                                 <p className="text-blue-100 text-sm drop-shadow-md">Member for {getMemberDuration()}</p>
+                                <div className="mt-3">
+                                    <button
+                                        onClick={handleFollow}
+                                        disabled={isFollowLoading}
+                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isFollowLoading ? "opacity-75 cursor-not-allowed" : ""
+                                            } ${friendStatus === "mutual"
+                                                ? "bg-green-600 hover:bg-green-700 text-white"
+                                                : friendStatus === "following"
+                                                    ? "bg-blue-100 text-blue-800 border border-blue-600 hover:bg-blue-200"
+                                                    : friendStatus === "followingYou"
+                                                        ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                                            }`}
+                                    >
+                                        {isFollowLoading ? (
+                                            <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            renderFollowButtonContent()
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -186,21 +333,10 @@ const FriendsProfilePage = () => {
 
                 {/* Tab Content */}
                 <div className="space-y-6">
-                    {activeTab === "overview" && (
-                        <Overview userId={user.id} />
-                    )}
-
-                    {activeTab === "newsPosts" && (
-                        <NewsPosts userId={user.id} />
-                    )}
-
-                    {activeTab === "portfolio" && (
-                        <Stocks userId={user.id} />
-                    )}
-
-                    {activeTab === "achievements" && (
-                        <Achievements userId={user.id} />
-                    )}
+                    {activeTab === "overview" && <Overview userId={user.id} />}
+                    {activeTab === "newsPosts" && <NewsPosts userId={user.id} />}
+                    {activeTab === "portfolio" && <Stocks userId={user.id} />}
+                    {activeTab === "achievements" && <Achievements userId={user.id} />}
                 </div>
             </div>
         </div>
