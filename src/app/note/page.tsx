@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy, useRef } from "react";
-import { ArrowBigRight, FileTextIcon, MenuIcon, XIcon } from "lucide-react";
+import { FileTextIcon } from "lucide-react";
 import { UserTransactions } from "@/lib/prisma_types";
 import LoadingStateAnimation from "../components/LoadingState";
 import StockNotesList from "../components/NotesPage/StockNotesList";
