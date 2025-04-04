@@ -5,7 +5,7 @@ const StockNotesList = (
         : {
             transactions: UserTransactions,
             selectedTransactionId: string | null,
-            setSelectedTransactionId: React.Dispatch<React.SetStateAction<string | null>>,
+            setSelectedTransactionId: (id: string) => void,
             getNotePreview: (transaction: UserTransaction) => string
         }
 ) => {
