@@ -26,7 +26,7 @@ const HomePage = () => {
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
   const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
   const [aiAnalysisCache, setAiAnalysisCache] = useState<Record<string, any>>({});
-  
+
   const [isNewsColumnOpen, setIsNewsColumnOpen] = useState(true);
   const [isStockListOpen, setIsStockListOpen] = useState(true);
   const [isFriendActivityOpen, setIsFriendActivityOpen] = useState(true);
@@ -59,14 +59,18 @@ const HomePage = () => {
       />
       <PaperTradingAccountHeader />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_2.6fr_1.2fr] lg:grid-cols-[1fr_2fr_1fr] gap-3 w-full">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_2.6fr_1.2fr] lg:grid-cols-[1fr_2fr_1fr] gap-2 w-full">
 
         {/* Left Column - Market Insights (News) */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full items-center justify-center">
           {isNewsColumnOpen && (
-            <NewsColumn setSelectedNewsItem={setSelectedNewsItem} setIsNewsModalOpen={setIsNewsModalOpen} setIsAIAnalysisOpen={setIsAIAnalysisOpen} />
+            <NewsColumn
+              setSelectedNewsItem={setSelectedNewsItem}
+              setIsNewsModalOpen={setIsNewsModalOpen}
+              setIsAIAnalysisOpen={setIsAIAnalysisOpen}
+            />
           )}
-          <button 
+          <button
             onClick={() => setIsNewsColumnOpen(!isNewsColumnOpen)}
             className={`mt-auto px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isNewsColumnOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
@@ -74,19 +78,21 @@ const HomePage = () => {
           </button>
         </div>
 
+
         {/* Middle Column - Stock Dashboard */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full items-center justify-center">
           {isStockListOpen && <StockList />}
-          <button 
-            onClick={() => setIsStockListOpen(!isStockListOpen)} 
+          <button
+            onClick={() => setIsStockListOpen(!isStockListOpen)}
             className={`mt-auto px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isStockListOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             {isStockListOpen ? 'Hide Stocks' : 'Show Stocks'}
           </button>
         </div>
 
+
         {/* Right Column - Friend Activity & Add Friend */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full items-center justify-center">
           <div className="flex-grow">
             {user ? (
               isFriendActivityOpen && (
@@ -108,8 +114,8 @@ const HomePage = () => {
               </div>
             )}
           </div>
-          <button 
-            onClick={() => setIsFriendActivityOpen(!isFriendActivityOpen)} 
+          <button
+            onClick={() => setIsFriendActivityOpen(!isFriendActivityOpen)}
             className={`mt-auto px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isFriendActivityOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             {isFriendActivityOpen ? 'Hide Friend Activity' : 'Show Friend Activity'}
