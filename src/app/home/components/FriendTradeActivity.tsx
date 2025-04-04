@@ -71,17 +71,19 @@ const FriendTradeActivity = () => {
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
             <h2 className="text-xl font-bold text-white mb-4">Trade Activity</h2>
-            {transactions.length === 0 ? (
-                <div className="text-gray-400 text-center py-8">
-                    No trading activity yet. Make a trade or add friends to see their activity here.
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {transactions.map((transaction) => (
-                        <TransactionCard key={transaction.id} transaction={transaction} />
-                    ))}
-                </div>
-            )}
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 gap-2">
+                {transactions.length === 0 ? (
+                    <div className="text-gray-400 text-center py-8">
+                        No trading activity yet. Make a trade or add friends to see their activity here.
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {transactions.map((transaction) => (
+                            <TransactionCard key={transaction.id} transaction={transaction} />
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
