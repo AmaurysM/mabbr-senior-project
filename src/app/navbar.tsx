@@ -19,7 +19,6 @@ const navigationItems: NavItem[] = [
   { name: "Community", href: "/community" },
   { name: "Notes", href: "/note" },
   { name: "Loot Box", href: "/lootbox" },
-  { name: "Portfolio", href: "/portfolio" },
 ];
 
 const Navbar = () => {

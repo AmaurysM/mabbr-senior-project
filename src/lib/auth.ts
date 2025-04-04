@@ -3,12 +3,11 @@ import { betterAuth, BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { openAPI } from "better-auth/plugins";
 import { headers } from "next/headers";
-import { admin } from "better-auth/plugins"
+import { admin } from "better-auth/plugins";
 
 const requiredEnvVars = {
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
-  EMAIL_VERIFICATION_CALLBACK_URL:
-    process.env.EMAIL_VERIFICATION_CALLBACK_URL,
+  EMAIL_VERIFICATION_CALLBACK_URL: process.env.EMAIL_VERIFICATION_CALLBACK_URL,
 } as const;
 
 Object.entries(requiredEnvVars).forEach(([key, value]) => {
@@ -18,6 +17,27 @@ Object.entries(requiredEnvVars).forEach(([key, value]) => {
 });
 
 export const auth = betterAuth({
+  user: {
+    deleteUser: {
+      enabled: true,
+    },
+    changeEmail: {
+      enabled: true,
+      // This function sends a verification email when the user changes their email.
+      sendChangeEmailVerification: async ({ user, newEmail, url, token }, request) => {
+        console.log(
+          `Send verification email to ${user.email} to approve change to ${newEmail}. Verification link: ${url}`
+        );
+        // Uncomment and integrate with your email service:
+        // await sendEmail({
+        //   to: user.email, // The email must be sent to the current email for approval.
+        //   subject: 'Approve Email Change',
+        //   text: `Click the link to approve your email change: ${url}`,
+        // });
+      },
+    },
+  },
+
   database: prismaAdapter(prisma, {
     provider: "mongodb",
   }),
@@ -32,10 +52,10 @@ export const auth = betterAuth({
   },
 
   plugins: [
-    openAPI({}),        
+    openAPI({}),
     admin({
       adminUserIds: process.env.ADMIN_USER_IDS?.split(",") || [],
-    }) 
+    }),
   ],
 
   socialProviders: {
