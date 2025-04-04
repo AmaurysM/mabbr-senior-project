@@ -216,4 +216,4 @@ const NewsColumn = ({setSelectedNewsItem,setIsNewsModalOpen,setIsAIAnalysisOpen}
     )
 }
 
-export default NewsColumn
+export default NewsColumn;
