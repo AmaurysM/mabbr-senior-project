@@ -69,9 +69,9 @@ const FriendTradeActivity = () => {
     }, [user]);
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 w-full">
-            <h2 className="text-xl font-bold text-white mb-3">Trade Activity</h2>
-            <div className="bg-gray-800/50 rounded-lg p-3 gap-2">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
+            <h2 className="text-xl font-bold text-white mb-4">Trade Activity</h2>
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 gap-2">
                 {transactions.length === 0 ? (
                     <div className="text-gray-400 text-center py-8">
                         No trading activity yet. Make a trade or add friends to see their activity here.
