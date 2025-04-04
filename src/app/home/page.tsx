@@ -27,6 +27,10 @@ const HomePage = () => {
   const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
   const [aiAnalysisCache, setAiAnalysisCache] = useState<Record<string, any>>({});
 
+  const [isNewsColumnOpen, setIsNewsColumnOpen] = useState(true);
+  const [isStockListOpen, setIsStockListOpen] = useState(true);
+  const [isFriendActivityOpen, setIsFriendActivityOpen] = useState(true);
+
   const {
     data: session,
   } = authClient.useSession();
@@ -52,31 +56,66 @@ const HomePage = () => {
       <PaperTradingAccountHeader />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_2.6fr_1.2fr] lg:grid-cols-[1fr_2fr_1fr] gap-2 w-full">
+
         {/* Left Column - Market Insights (News) */}
-        < NewsColumn setSelectedNewsItem={setSelectedNewsItem} setIsNewsModalOpen={setIsNewsModalOpen} setIsAIAnalysisOpen={setIsAIAnalysisOpen} />
+        <div className="flex flex-col h-full items-center justify-center">
+          {isNewsColumnOpen && (
+            <NewsColumn
+              setSelectedNewsItem={setSelectedNewsItem}
+              setIsNewsModalOpen={setIsNewsModalOpen}
+              setIsAIAnalysisOpen={setIsAIAnalysisOpen}
+            />
+          )}
+          <button
+            onClick={() => setIsNewsColumnOpen(!isNewsColumnOpen)}
+            className={`mt-auto px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isNewsColumnOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+          >
+            {isNewsColumnOpen ? 'Hide News' : 'Show News'}
+          </button>
+        </div>
+
 
         {/* Middle Column - Stock Dashboard */}
-        <StockList />
+        <div className="flex flex-col h-full items-center justify-center">
+          {isStockListOpen && <StockList />}
+          <button
+            onClick={() => setIsStockListOpen(!isStockListOpen)}
+            className={`mt-auto px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isStockListOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+          >
+            {isStockListOpen ? 'Hide Stocks' : 'Show Stocks'}
+          </button>
+        </div>
+
 
         {/* Right Column - Friend Activity & Add Friend */}
-        <div className="flex flex-col gap-2">
-          {user ? (
-            <>
-              <AddFriendCard />
-              <FriendTradeActivity />
-            </>
-          ) : (
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10 h-full flex flex-col justify-center items-center text-center">
-              <h2 className="text-xl font-bold text-white mb-4">Social Trading</h2>
-              <p className="text-gray-400 mb-6">Login to connect with friends and see their trading activity</p>
-              <button
-                onClick={() => router.push('/login-signup')}
-                className="px-6 py-3 bg-blue-600 rounded-xl text-white font-medium hover:bg-blue-700 transition-colors"
-              >
-                Login to Get Started
-              </button>
-            </div>
-          )}
+        <div className="flex flex-col h-full items-center justify-center">
+          <div className="flex-grow">
+            {user ? (
+              isFriendActivityOpen && (
+                <>
+                  <AddFriendCard />
+                  <FriendTradeActivity />
+                </>
+              )
+            ) : (
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10 h-full flex flex-col justify-center items-center text-center">
+                <h2 className="text-xl font-bold text-white mb-4">Social Trading</h2>
+                <p className="text-gray-400 mb-6">Login to connect with friends and see their trading activity</p>
+                <button
+                  onClick={() => router.push('/login-signup')}
+                  className="px-6 py-3 bg-blue-600 rounded-xl text-white font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Login to Get Started
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setIsFriendActivityOpen(!isFriendActivityOpen)}
+            className={`mt-auto px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isFriendActivityOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+          >
+            {isFriendActivityOpen ? 'Hide Friend Activity' : 'Show Friend Activity'}
+          </button>
         </div>
       </div>
     </div>

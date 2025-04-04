@@ -534,5 +534,3 @@ const CombinedProfilePage = () => {
     );
 }
 export default CombinedProfilePage;
-
-
