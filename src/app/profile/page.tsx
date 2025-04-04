@@ -697,11 +697,6 @@ const ProfilePage = () => {
                         <h2 className="text-2xl font-bold text-white mb-4">Trading Statistics</h2>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-sm text-gray-400">Total Trades</p>
-                                {/* Use transactions.length to dynamically show the total trades */}
-                                <p className="text-2xl font-bold text-white">{transactions.length}</p>
-                            </div>
-                            <div>
                                 <p className="text-sm text-gray-400">Win Rate</p>
                                 {portfolioLoading ? (
                                     <div className="h-8 w-20 bg-gray-700/50 animate-pulse rounded"></div>
@@ -759,9 +754,6 @@ const ProfilePage = () => {
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-2xl font-bold text-white">Recent Activity</h2>
                             <div className="flex items-center gap-2">
-                                <div className="text-sm text-gray-400">
-                                    {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
-                                </div>
                                 <div className="relative" ref={filterDropdownRef}>
                                     <button
                                         onClick={() => setShowFilterDropdown(!showFilterDropdown)}
