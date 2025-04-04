@@ -1,13 +1,13 @@
 'use client';
 
-import React, {useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NewsFullscreenModal from '@/app/components/NewsFullscreenModal';
 import NewsAIAnalysis from '@/app/components/NewsAIAnalysis';
 import PaperTradingAccountHeader from './components/PaperTradingAccountHeader';
 import NewsColumn from './components/NewsColumn';
 import StockList from './components/StockList';
-import AddFriendCard from './components/AddFriendCard';
+import AddFriendCard from '../components/AddFriendCard';
 import FriendTradeActivity from './components/FriendTradeActivity';
 import { authClient } from '@/lib/auth-client';
 

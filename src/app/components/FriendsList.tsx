@@ -53,6 +53,8 @@ const FriendsList: React.FC = () => {
                 <Image
                   src={friend.image}
                   alt={friend.name || friend.email}
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-full object-cover"
                 />
               ) : (
