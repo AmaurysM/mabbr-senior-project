@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { User } from "@prisma/client";
+import { authClient } from "@/lib/auth-client"; // Adjust the import path based on your setup
 import CommunityStats from "./components/communityStats";
 import Overview from "./components/overview";
 import NewsPosts from "./components/newsPosts";
@@ -17,10 +18,28 @@ type FriendStatus = "mutual" | "following" | "followingYou" | "notFollowing";
 const FriendsProfilePage = () => {
     const [friendStatus, setFriendStatus] = useState<FriendStatus>("notFollowing");
     const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const router = useRouter();
     const [user, setUser] = useState<User | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
     const [activeTab, setActiveTab] = useState<string>("overview");
+
+    // Fetch current user's session
+    useEffect(() => {
+        const fetchCurrentUser = async () => {
+            try {
+                const { data: session, error } = await authClient.getSession();
+                if (error) {
+                    console.error("Error fetching session:", error);
+                    return;
+                }
+                setCurrentUserId(session?.user?.id || null);
+            } catch (error) {
+                console.error("Error in session fetch:", error);
+            }
+        };
+        fetchCurrentUser();
+    }, []);
 
     useEffect(() => {
         const userId = sessionStorage.getItem("selectedUserId");
@@ -53,11 +72,10 @@ const FriendsProfilePage = () => {
 
     useEffect(() => {
         const checkFollowStatus = async () => {
-            if (!user?.id) return;
+            if (!user?.id || user.id === currentUserId) return;
 
             try {
                 const res = await fetch(`/api/user/check-follow?friendID=${user.id}`);
-
                 const data = await res.json();
                 if (res.ok) {
                     const { isFollowing, isFollowedBy } = data;
@@ -76,11 +94,13 @@ const FriendsProfilePage = () => {
             }
         };
 
-        checkFollowStatus();
-    }, [user?.id]);
+        if (currentUserId !== null) { // Only run when we have the current user's ID
+            checkFollowStatus();
+        }
+    }, [user?.id, currentUserId]);
 
     const handleFollow = async () => {
-        if (!user?.id || isFollowLoading) return;
+        if (!user?.id || isFollowLoading || user.id === currentUserId) return;
 
         setIsFollowLoading(true);
         const previousStatus = friendStatus;
@@ -145,8 +165,18 @@ const FriendsProfilePage = () => {
     };
 
     const { label, icon } = getUserRole();
+    const isOwnProfile = user?.id === currentUserId;
 
     const renderFollowButtonContent = () => {
+        if (isOwnProfile) {
+            return (
+                <>
+                    <FaUserCheck className="w-5 h-5" />
+                    <span>Your Profile</span>
+                </>
+            );
+        }
+
         switch (friendStatus) {
             case "mutual":
                 return (
@@ -179,7 +209,7 @@ const FriendsProfilePage = () => {
         }
     };
 
-    if (loading) {
+    if (loading || currentUserId === null) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="animate-pulse flex flex-col items-center gap-4">
@@ -210,7 +240,7 @@ const FriendsProfilePage = () => {
                         ></path>
                     </svg>
                     <h1 className="mt-4 text-xl font-bold text-gray-800">User Not Found</h1>
-                    <p className="mt-2 text-gray-600">We couldn&apos;t find the user you&apos;re looking for.</p>
+                    <p className="mt-2 text-gray-600">We couldn't find the user you're looking for.</p>
                 </div>
             </div>
         );
@@ -276,16 +306,20 @@ const FriendsProfilePage = () => {
                                 <div className="mt-3">
                                     <button
                                         onClick={handleFollow}
-                                        disabled={isFollowLoading}
-                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isFollowLoading ? "opacity-75 cursor-not-allowed" : ""
-                                            } ${friendStatus === "mutual"
+                                        disabled={isFollowLoading || isOwnProfile}
+                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                            isFollowLoading || isOwnProfile ? "opacity-75 cursor-not-allowed" : ""
+                                        } ${
+                                            isOwnProfile
+                                                ? "bg-gray-400 text-white"
+                                                : friendStatus === "mutual"
                                                 ? "bg-green-600 hover:bg-green-700 text-white"
                                                 : friendStatus === "following"
-                                                    ? "bg-blue-100 text-blue-800 border border-blue-600 hover:bg-blue-200"
-                                                    : friendStatus === "followingYou"
-                                                        ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                                                        : "bg-blue-600 hover:bg-blue-700 text-white"
-                                            }`}
+                                                ? "bg-blue-100 text-blue-800 border border-blue-600 hover:bg-blue-200"
+                                                : friendStatus === "followingYou"
+                                                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                : "bg-blue-600 hover:bg-blue-700 text-white"
+                                        }`}
                                     >
                                         {isFollowLoading ? (
                                             <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin"></div>
@@ -316,7 +350,7 @@ const FriendsProfilePage = () => {
                 {/* Tabs */}
                 <div className="mb-6 border-b border-gray-200">
                     <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
-                        {["overview", "newsPosts", "portfolio", "achievements"].map((tab) => (
+                        {["overview", "News Posts", "portfolio", "achievements"].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
