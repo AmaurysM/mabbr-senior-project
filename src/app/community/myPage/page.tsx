@@ -113,20 +113,20 @@ const MyPage = () => {
 
         {/* Add Friend Section */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10 mb-6">
-          <h3 className="text-lg font-bold text-white mb-4">Add Friend</h3>
+          <h3 className="text-lg font-bold text-white mb-4">Add Friends</h3>
           <div className="flex flex-col gap-2">
             <input
               type="email"
               value={friendEmail}
               onChange={(e) => setFriendEmail(e.target.value)}
-              placeholder="Friend's Email"
+              placeholder="Enter your friend's email..."
               className="w-full p-2 rounded-lg bg-gray-700/50 text-white border border-gray-600/50 focus:outline-none focus:border-blue-500"
             />
             <button
               onClick={handleAddFriend}
               className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Add Friend
+              Send Friend Request
             </button>
             {friendError && <div className="text-red-400 mt-2">{friendError}</div>}
           </div>
