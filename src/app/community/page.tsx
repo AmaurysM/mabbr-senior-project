@@ -15,7 +15,7 @@ enum Tab {
   topics = "topics",
   articles = "articles",
   notifications = "notifications",
-  myPage = "myPage",
+  //myPage = "myPage",
 }
 
 const CommunityPage = () => {
