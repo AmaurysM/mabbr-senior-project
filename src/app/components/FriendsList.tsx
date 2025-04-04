@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 
 interface Friend {
@@ -49,7 +50,7 @@ const FriendsList: React.FC = () => {
           {friends.map((friend) => (
             <li key={friend.id} className="flex items-center space-x-4">
               {friend.image ? (
-                <img
+                <Image
                   src={friend.image}
                   alt={friend.name || friend.email}
                   className="w-12 h-12 rounded-full object-cover"
