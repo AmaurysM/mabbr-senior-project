@@ -2,6 +2,19 @@
 import { UserCommunityStats } from '@/lib/prisma_types';
 import React, { useEffect, useState } from 'react';
 
+const SkeletonLoader = () => {
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow overflow-hidden animate-pulse">
+                    <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                    <div className="h-6 bg-gray-400 rounded w-1/2"></div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const CommunityStats = ({ userId }: { userId: string }) => {
     const [user, setUser] = useState<UserCommunityStats>();
     const [loading, setLoading] = useState<boolean>(true);
@@ -25,11 +38,10 @@ const CommunityStats = ({ userId }: { userId: string }) => {
                     let totalStockValue = 0;
 
                     data?.userStocks?.forEach((userStock: { stock: { price: number }; quantity: number }) => {
-                        console.log(userStock)
                         totalStockValue += userStock.stock.price * userStock.quantity;
                     });
 
-                    setPortfolioValue(totalStockValue)
+                    setPortfolioValue(totalStockValue);
                 }
                 setLoading(false);
             })
@@ -39,11 +51,9 @@ const CommunityStats = ({ userId }: { userId: string }) => {
             });
     }, [userId]);
 
-
-
     return (
         <div>
-            {loading ? <p>Loading...</p> :
+            {loading ? <SkeletonLoader /> :
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white p-4 rounded-lg shadow overflow-hidden">
                         <p className="text-sm text-gray-500">Portfolio Value</p>

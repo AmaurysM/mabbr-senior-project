@@ -33,7 +33,6 @@ const Overview = ({ userId }: { userId: string }) => {
         return new Date(dateStr).toLocaleString();
     };
 
-    // Handle loading state
     if (loading) {
         return (
             <div className="bg-white p-6 rounded-lg shadow">

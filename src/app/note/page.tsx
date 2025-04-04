@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from "react";
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy, useRef } from "react";
 import { FileTextIcon } from "lucide-react";
 import { UserTransactions } from "@/lib/prisma_types";
 import LoadingStateAnimation from "../components/LoadingState";
 import StockNotesList from "../components/NotesPage/StockNotesList";
 import TransactionHeader from "../components/NotesPage/TransactionHeader";
 import TransactionDetails from "../components/NotesPage/TransactionDetails";
+import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
 
 const NoteSection = lazy(() => import("../components/NotesPage/NoteSection"));
 
@@ -20,6 +21,77 @@ const StockNotes = () => {
   const [publicNoteText, setPublicNoteText] = useState("");
   const [privateNoteText, setPrivateNoteText] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const selectedTransaction = useMemo(() => {
+    return transactions.find((t) => t.id === selectedTransactionId);
+  }, [selectedTransactionId, transactions]);
+
+  const handleSelectTransaction = useCallback((id: string) => {
+    setSelectedTransactionId(id);
+    setIsSidebarOpen(false);
+  }, []);
+
+  const toggleSidebar = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering handleClickOutside
+    setIsSidebarOpen(prev => !prev);
+  }, []);
+
+  const handleSaveNote = useCallback(async (type: "public" | "private") => {
+    if (!selectedTransactionId) return;
+
+    try {
+      setSaveLoading(true);
+      const updatedNote = type === "public"
+        ? { publicNote: publicNoteText }
+        : { privateNote: privateNoteText };
+
+      const response = await fetch(`/api/user/note?id=${selectedTransactionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedNote),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update ${type} note`);
+      }
+
+      setTransactions((prev) =>
+        prev.map((transaction) =>
+          transaction.id === selectedTransactionId
+            ? { ...transaction, ...updatedNote }
+            : transaction
+        )
+      );
+
+      if (type === "public") {
+        setEditingPublicNote(false);
+      } else {
+        setEditingPrivateNote(false);
+      }
+    } catch (err) {
+      console.error(`Error updating ${type} note:`, err);
+      alert(`Failed to save ${type} note. Please try again.`);
+    } finally {
+      setSaveLoading(false);
+    }
+  }, [selectedTransactionId, publicNoteText, privateNoteText]);
+
+  const handleCancelEdit = useCallback(
+    (type: "public" | "private") => {
+      if (selectedTransaction) {
+        if (type === "public") {
+          setPublicNoteText(selectedTransaction.publicNote || "");
+          setEditingPublicNote(false);
+        } else {
+          setPrivateNoteText(selectedTransaction.privateNote || "");
+          setEditingPrivateNote(false);
+        }
+      }
+    },
+    [selectedTransaction]
+  );
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -49,9 +121,26 @@ const StockNotes = () => {
     fetchTransactions();
   }, []);
 
-  const selectedTransaction = useMemo(() => {
-    return transactions.find((t) => t.id === selectedTransactionId);
-  }, [selectedTransactionId, transactions]);
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    // Close sidebar if click is outside both sidebar and menu button
+    if (
+      sidebarRef.current &&
+      !sidebarRef.current.contains(event.target as Node) &&
+      menuButtonRef.current &&
+      !menuButtonRef.current.contains(event.target as Node)
+    ) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.addEventListener('click', handleClickOutside);
+    } else {
+      document.removeEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isSidebarOpen, handleClickOutside]);
 
   useEffect(() => {
     if (selectedTransaction) {
@@ -61,75 +150,39 @@ const StockNotes = () => {
     setEditingPublicNote(false);
     setEditingPrivateNote(false);
   }, [selectedTransaction]);
-  
-  const handleSaveNote = useCallback(async (type: "public" | "private") => {
-    if (!selectedTransactionId) return;
-  
-    try {
-      setSaveLoading(true);
-      const updatedNote = type === "public"
-        ? { publicNote: publicNoteText }
-        : { privateNote: privateNoteText };
-  
-      const response = await fetch(`/api/user/note?id=${selectedTransactionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedNote),
-      });
-  
-      if (!response.ok) {
-        throw new Error(`Failed to update ${type} note`);
-      }
-  
-      setTransactions((prev) =>
-        prev.map((transaction) =>
-          transaction.id === selectedTransactionId
-            ? { ...transaction, ...updatedNote }
-            : transaction
-        )
-      );
-  
-      if (type === "public") {
-        setEditingPublicNote(false);
-      } else {
-        setEditingPrivateNote(false);
-      }
-    } catch (err) {
-      console.error(`Error updating ${type} note:`, err);
-      alert(`Failed to save ${type} note. Please try again.`);
-    } finally {
-      setSaveLoading(false);
-    }
-  }, [selectedTransactionId, publicNoteText, privateNoteText]);
-  
 
-  const handleCancelEdit = useCallback(
-    (type: "public" | "private") => {
-      if (selectedTransaction) {
-        if (type === "public") {
-          setPublicNoteText(selectedTransaction.publicNote || "");
-          setEditingPublicNote(false);
-        } else {
-          setPrivateNoteText(selectedTransaction.privateNote || "");
-          setEditingPrivateNote(false);
-        }
-      }
-    },
-    [selectedTransaction]
-  );
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setIsSidebarOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen"><LoadingStateAnimation /></div>;
+    return <div className="flex items-center justify-center h-full"><LoadingStateAnimation /></div>;
   }
 
   if (error) {
-    return <div className="flex items-center justify-center h-screen text-red-500">Error: {error}</div>;
+    return <div className="flex items-center justify-center h-full text-red-500">Error: {error}</div>;
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-full relative">
+      {/* Mobile backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Left sidebar - Transactions list */}
-      <div className="w-1/4 min-w-64 border-r overflow-y-auto">
+      <div
+        ref={sidebarRef}
+        className={`fixed lg:relative inset-y-0 left-0 w-64 lg:w-1/4 min-w-64 border-r overflow-y-auto bg-white z-50 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+      >
         <div className="p-4 border-b sticky top-0 bg-white z-10 shadow-sm">
           <h1 className="text-xl font-bold">Stock Notes</h1>
           <p className="text-sm text-gray-500">{transactions.length} Notes</p>
@@ -138,15 +191,34 @@ const StockNotes = () => {
         <StockNotesList
           transactions={transactions}
           selectedTransactionId={selectedTransactionId}
-          setSelectedTransactionId={setSelectedTransactionId}
-          getNotePreview={(t) => (t.publicNote || t.privateNote || "")}
+          setSelectedTransactionId={handleSelectTransaction}
+          getNotePreview={(t) => t.publicNote || t.privateNote || ""}
         />
       </div>
 
+      {/* Tab-style floating menu button */}
+      <button
+        ref={menuButtonRef}
+        onClick={toggleSidebar}
+        className={`lg:hidden fixed top-30 left-0 z-50 shadow-md transition-all duration-300 ${
+          isSidebarOpen 
+            ? "bg-white text-gray-800 translate-x-64" 
+            : "bg-blue-600 text-white"
+        } py-3 pl-2 pr-3 rounded-r-lg flex items-center justify-center`}
+        aria-label={isSidebarOpen ? "Close notes list" : "Open notes list"}
+        aria-expanded={isSidebarOpen}
+      >
+        {isSidebarOpen ? (
+          <FaAngleLeft className="w-5 h-5" />
+        ) : (
+          <FaAngleRight className="w-5 h-5" />
+        )}
+      </button>
+
       {/* Right content area - Transaction details */}
-      <div className="w-3/4 p-6 overflow-y-auto bg-gray-200">
+      <div className="flex-1 p-6 overflow-y-auto bg-gray-200">
         {selectedTransaction ? (
-          <div>
+          <div className="max-w-3xl mx-auto lg:mx-0">
             <TransactionHeader transaction={selectedTransaction} />
             <TransactionDetails transaction={selectedTransaction} />
 

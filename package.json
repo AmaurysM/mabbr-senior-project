@@ -63,6 +63,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/aws-sdk": "^0.0.42",
+    "@types/lodash": "^4.17.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
