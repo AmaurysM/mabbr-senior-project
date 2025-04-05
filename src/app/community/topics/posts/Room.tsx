@@ -35,46 +35,6 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
     fetchComments();
   }, [topic.id, sortBy]);
 
-  const getSortedComments = useCallback(() => {
-    return [...comments].sort((a, b) => {
-      if (sortBy === "new") {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else {
-        const aLikes = a.commentLikes?.length || 0;
-        const bLikes = b.commentLikes?.length || 0;
-        return bLikes - aLikes;
-      }
-    });
-  }, [comments, sortBy]);
-
-  useEffect(() => {
-    if (!comments.length) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    const sortedComments = getSortedComments();
-
-    const timeoutId = setTimeout(() => {
-      if (!searchQuery.trim()) {
-        setSearchResults(sortedComments);
-        setIsSearching(false);
-        return;
-      }
-
-      const normalizedQuery = searchQuery.toLowerCase().trim();
-      const results = sortedComments.filter(comment =>
-        comment.content?.toLowerCase().includes(normalizedQuery) ||
-        comment.user?.name?.toLowerCase().includes(normalizedQuery)
-      );
-
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, comments, getSortedComments]);
 
   const handleNewComment = (newComment: Comment) => {
     setComments((prev) => [newComment, ...prev]);
@@ -106,7 +66,7 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
         setFocusedComment(comment);
       }
     }
-  }, [comments]);
+  }, [comments, sortBy]);
 
   const handleSelectComment = (comment: Comment | null) => {
     setFocusedComment(comment);
@@ -162,7 +122,7 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
             />
           ) : (
             topic.content.charAt(0).toUpperCase()
-          )}
+          )}        
         </div>
         <div className="ml-4">
           <h1 className="text-2xl font-bold">{topic.content}</h1>
