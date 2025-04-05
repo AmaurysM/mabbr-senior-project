@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Topic, Topics } from "@/lib/prisma_types";
 import { Plus, Loader2, Search, TrendingUp, Clock } from "lucide-react";
 import useSWRInfinite from "swr/infinite";
 import Room from "./posts/Room";
+import Image from "next/image";
+import TopicsForm from "./topicsForm/TopicsForm";
 
 const PAGE_SIZE = 10;
 
 const TopicsPage = () => {
     const [error, setError] = useState<string | null>(null);
-    const [creating, setCreating] = useState(false);
-    const [roomName, setRoomName] = useState("");
-    const [roomDescription, setRoomDescription] = useState("");
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<"new" | "top">("new");
@@ -24,20 +23,20 @@ const TopicsPage = () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ limit: PAGE_SIZE, cursor }),
         });
-        
+
         if (!res.ok) {
             const errorData = await res.json();
             throw new Error(errorData.error || "Failed to fetch topics");
         }
-        
+
         return res.json();
     };
 
     const getKey = (pageIndex: number, previousPageData: { hasMore: boolean; nextCursor: string } | null) => {
         if (previousPageData && !previousPageData.hasMore) return null;
-        
+
         if (pageIndex === 0) return ["/api/topics", null];
-        
+
         return ["/api/topics", previousPageData?.nextCursor || null];
     };
 
@@ -65,46 +64,9 @@ const TopicsPage = () => {
         }
     }, [swrError]);
 
-    const topics = data ? data.flatMap(pageData => pageData.topics) : [];
+    const topics = useMemo(() => (data ? data.flatMap(pageData => pageData.topics) : []), [data]);
     const isReachingEnd = data && data[data.length - 1]?.hasMore === false;
     const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
-
-    const createTopic = async () => {
-        if (!roomName.trim()) {
-            setError("Room name cannot be empty");
-            return;
-        }
-
-        try {
-            setCreating(true);
-            setError(null);
-
-            const response = await fetch("/api/topics/new", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    content: roomName,
-                    commentDescription: roomDescription
-                }),
-            });
-
-            const newTopic = await response.json();
-
-            if (!response.ok) {
-                throw new Error(newTopic.error || "Failed to create topic");
-            }
-
-            mutate();
-            
-            setRoomName("");
-            setRoomDescription("");
-            setShowCreateForm(false);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "An unknown error occurred");
-        } finally {
-            setCreating(false);
-        }
-    };
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -140,7 +102,7 @@ const TopicsPage = () => {
 
     const loadMoreRef = (node: HTMLDivElement) => {
         if (!node) return;
-        
+
         const observer = new IntersectionObserver(
             entries => {
                 if (entries[0].isIntersecting && !isReachingEnd && !isLoadingMore) {
@@ -149,15 +111,15 @@ const TopicsPage = () => {
             },
             { threshold: 0.5 }
         );
-        
+
         observer.observe(node);
-        
+
         return () => observer.disconnect();
     };
 
     useEffect(() => {
         const savedTopicId = localStorage.getItem("selectedTopicId");
-        
+
         if (savedTopicId && topics.length > 0) {
             const topic = topics.find(t => t.id === savedTopicId);
             if (topic) {
@@ -165,8 +127,8 @@ const TopicsPage = () => {
             }
         }
     }, [topics]);
-    
-    const handleSelectTopic = (topic:Topic|null) => {
+
+    const handleSelectTopic = (topic: Topic | null) => {
         setSelectedTopic(topic);
 
         if (topic) {
@@ -206,56 +168,10 @@ const TopicsPage = () => {
 
                 {/* Create Topic Form */}
                 {showCreateForm && (
-                    <div className="mt-4 border border-white/10 rounded-md p-4 bg-gray-700">
-                        <h3 className="font-medium mb-3 text-blue-500">Create New Topic</h3>
-
-                        <div className="mb-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Topic Name</label>
-                            <input
-                                type="text"
-                                value={roomName}
-                                onChange={(e) => setRoomName(e.target.value)}
-                                placeholder="Enter a name for your topic..."
-                                className="w-full p-2 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            />
-                        </div>
-
-                        <div className="mb-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
-                            <textarea
-                                value={roomDescription}
-                                onChange={(e) => setRoomDescription(e.target.value)}
-                                placeholder="Describe what this topic is about..."
-                                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-24"
-                            />
-                        </div>
-
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setShowCreateForm(false)}
-                                className="px-4 py-2 border border-white/10 rounded-md hover:bg-gray-100"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={createTopic}
-                                disabled={creating || !roomName.trim()}
-                                className={`px-4 py-2 text-white rounded-md ${creating || !roomName.trim()
-                                    ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-blue-500 hover:bg-blue-600"
-                                    }`}
-                            >
-                                {creating ? (
-                                    <span className="flex items-center">
-                                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                                        Creating...
-                                    </span>
-                                ) : (
-                                    "Create Topic"
-                                )}
-                            </button>
-                        </div>
-                    </div>
+                    < TopicsForm setShowCreateForm={setShowCreateForm} 
+                        onTopicCreated={() => {
+                        mutate()
+                      }}/>
                 )}
             </div>
 
@@ -301,10 +217,20 @@ const TopicsPage = () => {
                             className="bg-gray-700 rounded-md shadow-md border-2 border-white/10 hover:border-blue-500 transition-all cursor-pointer overflow-hidden"
                         >
                             <div className="flex p-3">
-                                {/* Topic icon */}
+                                {/* Topic icon - show image if available */}
                                 <div className="mr-3">
-                                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white text-xl font-bold">
-                                        {topic.content.charAt(0).toUpperCase()}
+                                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white text-xl font-bold overflow-hidden">
+                                        {topic.image ? (
+                                            <Image
+                                                src={topic.image}
+                                                width={48}
+                                                height={48}
+                                                alt={topic.content}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            topic.content.charAt(0).toUpperCase()
+                                        )}
                                     </div>
                                 </div>
 
