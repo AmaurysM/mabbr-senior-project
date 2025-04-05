@@ -6,7 +6,7 @@ import { Topic, Comment } from "@/lib/prisma_types";
 import PostForm from "./postForm/PostForm";
 import PostsList from "./postsList/PostsList";
 import FocusedComment from "./focusedComment/FocusedComment";
-
+import Image from "next/image";
 
 
 const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
@@ -16,7 +16,6 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
   const [focusedComment, setFocusedComment] = useState<Comment | null>(null);
   const { data: session } = authClient.useSession();
 
-  // Fetch comments whenever topic changes or sortBy is updated
   useEffect(() => {
     const fetchComments = async () => {
       try {
@@ -35,7 +34,7 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
     fetchComments();
   }, [topic.id, sortBy]); // Re-fetch comments when either topic or sortBy changes
 
-  
+
 
   const handleNewComment = (newComment: Comment) => {
     setComments((prev) => [newComment, ...prev]);
@@ -77,7 +76,7 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
         setFocusedComment(topic);
       }
     }
-  }, [comments,sortBy]);
+  }, [comments, sortBy]);
 
   const handleSelectComment = (topic: Comment | null) => {
     setFocusedComment(topic);
@@ -90,7 +89,7 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
   };
 
   if (!session) return null;
-  
+
   if (focusedComment) {
     return (
       <FocusedComment
@@ -105,8 +104,18 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
     <div className="w-full overflow-auto text-white">
       {/* Header */}
       <div className="bg-blue-600 h-36 w-full relative rounded-t-lg flex items-end p-4">
-        <div className="bg-white text-blue-600 font-bold rounded-full h-16 w-16 flex items-center justify-center text-2xl border-4 border-white shadow-md">
-          {topic.content.charAt(0).toUpperCase()}
+        <div className="bg-white text-blue-600 font-bold rounded-full h-16 w-16 flex items-center justify-center text-2xl border-2 border-white shadow-md overflow-hidden">
+          {topic.image ? (
+            <Image
+              src={topic.image}
+              width={48}
+              height={48}
+              alt={topic.content}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            topic.content.charAt(0).toUpperCase()
+          )}        
         </div>
         <div className="ml-4">
           <h1 className="text-2xl font-bold">{topic.content}</h1>
