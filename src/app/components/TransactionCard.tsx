@@ -105,7 +105,11 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
           </div>
         </div>
         <div className={`text-right ${getCostColor()}`}>
-          <div className="font-bold">${totalCost.toFixed(2)}</div>
+          {isLootboxRedeem ? (
+            <div className="font-bold">Lootbox Redeemed</div>
+          ) : (
+            <div className="font-bold">${totalCost.toFixed(2)}</div>
+          )}
         </div>
       </div>
 
