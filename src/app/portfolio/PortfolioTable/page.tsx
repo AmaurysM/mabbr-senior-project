@@ -19,20 +19,20 @@ const PortfolioTable = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchHoldings = async () => {
-      try {
-        const res = await fetch("/api/user/portfolio", {
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch portfolio");
-        }
-
-        const data: PortfolioResponse = await res.json();
-        
-        // Transform the positions into UserStocks format
-        const transformedHoldings: UserStocks = Object.entries(data.positions).map(([symbol, position]) => ({
+  const fetchHoldings = async () => {
+    try {
+      const res = await fetch("/api/user/portfolio", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch portfolio");
+      }
+      const data: PortfolioResponse = await res.json();
+      
+      // Only include positions with more than 0 shares.
+      const transformedHoldings: UserStocks = Object.entries(data.positions)
+        .filter(([symbol, position]) => position.shares > 0)
+        .map(([symbol, position]) => ({
           id: symbol, // Using symbol as the id since we don't have the actual id
           userId: "", // This field isn't used in the display
           stockId: "", // This field isn't used in the display
@@ -40,21 +40,22 @@ const PortfolioTable = () => {
           stock: {
             id: "", // This field isn't used in the display
             name: symbol,
-            price: position.averagePrice
-          }
+            price: position.averagePrice,
+          },
         }));
+      
+      setHoldings(transformedHoldings);
+    } catch (error) {
+      console.error("Error loading portfolio:", error);
+      setError("Failed to load portfolio.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        setHoldings(transformedHoldings);
-      } catch (error) {
-        console.error("Error loading portfolio:", error);
-        setError("Failed to load portfolio.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  fetchHoldings();
+}, []);
 
-    fetchHoldings();
-  }, []);
 
   useEffect(() => {
     const addCostToStock = async () => {
