@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { 
   FaArrowLeft, 
@@ -19,6 +19,7 @@ import StockDetails from "@/app/components/StockDetails";
 import StockChat from "@/app/components/StockChat";
 import StockAbout from "@/app/components/StockAbout";
 import StockKeyInsights from "@/app/components/StockKeyInsights";
+import { authClient } from "@/lib/auth-client";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -44,9 +45,23 @@ const validIntervals = [
   "3mo",
 ];
 
+interface UserPortfolio {
+  balance: number;
+  positions: {
+    [symbol: string]: {
+      shares: number;
+      averagePrice: number;
+    };
+  };
+}
+
 const StockPage = () => {
   const { symbol } = useParams();
   const router = useRouter();
+  const {
+    data: session,
+  } = authClient.useSession();
+  const user = session?.user;
   const [series, setSeries] = useState<SeriesData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -63,6 +78,12 @@ const StockPage = () => {
 
   // Modal state for full-screen summary
   const [isFullScreenSummary, setIsFullScreenSummary] = useState(false);
+
+  // Add portfolio state
+  const [portfolio, setPortfolio] = useState<UserPortfolio>({ balance: 0, positions: {} });
+  const [tradeError, setTradeError] = useState("");
+  const [estimatedShares, setEstimatedShares] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchStockData = async () => {
@@ -107,6 +128,109 @@ const StockPage = () => {
 
     fetchStockData();
   }, [symbol, period, interval]);
+
+  // Add portfolio fetching
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      if (!user) return;
+      try {
+        const res = await fetch('/api/user/portfolio');
+        const data = await res.json();
+        if (!data.error) {
+          setPortfolio(data);
+        }
+      } catch (error) {
+        console.error('Error fetching portfolio:', error);
+      }
+    };
+    fetchPortfolio();
+    const intervalId = user ? setInterval(() => fetchPortfolio(), 30000) : null;
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user]);
+
+  // Add trade execution
+  const executeTrade = async () => {
+    if (!user) {
+      router.push('/login-signup');
+      return;
+    }
+    if (!amount) {
+      setTradeError("Please enter an amount");
+      return;
+    }
+    try {
+      const quantity = isDollarAmount 
+        ? Number(estimatedShares) 
+        : Number(amount);
+        
+      if (isNaN(quantity) || quantity <= 0) {
+        setTradeError("Invalid quantity");
+        return;
+      }
+
+      const response = await fetch('/api/user/trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol,
+          type: tradeType.toUpperCase(),
+          quantity,
+          price: stockData?.regularMarketPrice,
+          publicNote,
+          privateNote,
+        }),
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Trade failed');
+      }
+
+      // Reset form after successful trade
+      setAmount('');
+      setPublicNote('');
+      setPrivateNote('');
+      setTradeError('');
+      
+      // Refresh portfolio data
+      const portfolioRes = await fetch('/api/user/portfolio');
+      const portfolioData = await portfolioRes.json();
+      if (!portfolioData.error) {
+        setPortfolio(portfolioData);
+      }
+    } catch (error) {
+      console.error('Trade failed:', error);
+      setTradeError(error instanceof Error ? error.message : 'Trade failed');
+    }
+  };
+
+  // Add amount calculation effect
+  useEffect(() => {
+    if (!amount || !stockData?.regularMarketPrice) {
+      setEstimatedShares(null);
+      setEstimatedCost(null);
+      return;
+    }
+
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setEstimatedShares(null);
+      setEstimatedCost(null);
+      return;
+    }
+
+    if (isDollarAmount) {
+      const shares = numAmount / stockData.regularMarketPrice;
+      setEstimatedShares(Number(shares.toFixed(4)));
+      setEstimatedCost(numAmount);
+    } else {
+      const cost = numAmount * stockData.regularMarketPrice;
+      setEstimatedShares(numAmount);
+      setEstimatedCost(Number(cost.toFixed(2)));
+    }
+  }, [amount, isDollarAmount, stockData?.regularMarketPrice]);
 
   const candlestickSeries = series.find((s) => s.type === "candlestick");
   let dayRange = "N/A";
@@ -208,17 +332,7 @@ const StockPage = () => {
     num ? num.toLocaleString() : "N/A";
 
   const handleTrade = () => {
-    if (!amount) return;
-    console.log(`${tradeType === 'buy' ? 'Buying' : 'Selling'} ${symbol}`, {
-      amount,
-      isDollarAmount,
-      publicNote,
-      privateNote
-    });
-    // Reset form after trade
-    setAmount('');
-    setPublicNote('');
-    setPrivateNote('');
+    executeTrade();
   };
 
   if (loading) {
@@ -366,6 +480,18 @@ const StockPage = () => {
                 placeholder={isDollarAmount ? "Enter dollar amount..." : "Enter number of shares..."}
                 className="w-full px-4 py-3 bg-gray-800/30 rounded-lg border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white placeholder-gray-500"
               />
+              {estimatedShares !== null && estimatedCost !== null && (
+                <div className="text-sm text-gray-400">
+                  {isDollarAmount ? (
+                    <>≈ {estimatedShares.toFixed(4)} shares at ${stockData?.regularMarketPrice?.toFixed(2)}/share</>
+                  ) : (
+                    <>≈ ${estimatedCost.toFixed(2)} total at ${stockData?.regularMarketPrice?.toFixed(2)}/share</>
+                  )}
+                </div>
+              )}
+              {tradeError && (
+                <div className="text-red-500 text-sm">{tradeError}</div>
+              )}
               <input
                 type="text"
                 value={publicNote}
@@ -419,30 +545,67 @@ const StockPage = () => {
             <div className="pt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <h3 className="text-gray-400 text-sm mb-1">Current Price</h3>
-                <p className="text-xl font-bold text-white">$181.46</p>
+                <p className="text-xl font-bold text-white">${stockData.regularMarketPrice?.toFixed(2) || "N/A"}</p>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <h3 className="text-gray-400 text-sm mb-1">Day Range</h3>
-                <p className="text-md text-white">$174.62 - $194.14</p>
+                <p className="text-md text-white">${stockData.regularMarketDayLow?.toFixed(2) || "N/A"} - ${stockData.regularMarketDayHigh?.toFixed(2) || "N/A"}</p>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <h3 className="text-gray-400 text-sm mb-1">Volume</h3>
-                <p className="text-md text-white">157,350,538</p>
+                <p className="text-md text-white">{formatNumber(stockData.regularMarketVolume)}</p>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <h3 className="text-gray-400 text-sm mb-1">Market Cap</h3>
-                <p className="text-md text-white">$2,725,910,413,312</p>
+                <p className="text-md text-white">${formatNumber(stockData.marketCap)}</p>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <h3 className="text-gray-400 text-sm mb-1">52 Week High</h3>
-                <p className="text-md text-white">$N/A</p>
+                <p className="text-md text-white">${stockData.fiftyTwoWeekHigh?.toFixed(2) || "N/A"}</p>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <h3 className="text-gray-400 text-sm mb-1">52 Week Low</h3>
-                <p className="text-md text-white">$N/A</p>
+                <p className="text-md text-white">${stockData.fiftyTwoWeekLow?.toFixed(2) || "N/A"}</p>
               </div>
             </div>
           </div>
+          {portfolio.positions[symbol as string] && (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
+              <h2 className="text-xl font-bold text-white mb-3">Your Position</h2>
+              <div className="pt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <h3 className="text-gray-400 text-sm mb-1">Shares Owned</h3>
+                  <p className="text-xl font-bold text-white">{portfolio.positions[symbol as string].shares.toFixed(4)}</p>
+                </div>
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <h3 className="text-gray-400 text-sm mb-1">Average Cost</h3>
+                  <p className="text-md text-white">${portfolio.positions[symbol as string].averagePrice.toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <h3 className="text-gray-400 text-sm mb-1">Market Value</h3>
+                  <p className="text-md text-white">${(portfolio.positions[symbol as string].shares * (stockData.regularMarketPrice || 0)).toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <h3 className="text-gray-400 text-sm mb-1">Total Return</h3>
+                  <p className={`text-md ${(stockData.regularMarketPrice || 0) > portfolio.positions[symbol as string].averagePrice ? 'text-green-400' : 'text-red-400'}`}>
+                    ${((stockData.regularMarketPrice || 0) * portfolio.positions[symbol as string].shares - portfolio.positions[symbol as string].averagePrice * portfolio.positions[symbol as string].shares).toFixed(2)}
+                  </p>
+                </div>
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <h3 className="text-gray-400 text-sm mb-1">Return %</h3>
+                  <p className={`text-md ${(stockData.regularMarketPrice || 0) > portfolio.positions[symbol as string].averagePrice ? 'text-green-400' : 'text-red-400'}`}>
+                    {(((stockData.regularMarketPrice || 0) - portfolio.positions[symbol as string].averagePrice) / portfolio.positions[symbol as string].averagePrice * 100).toFixed(2)}%
+                  </p>
+                </div>
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <h3 className="text-gray-400 text-sm mb-1">Portfolio %</h3>
+                  <p className="text-md text-white">
+                    {((portfolio.positions[symbol as string].shares * (stockData.regularMarketPrice || 0)) / (portfolio.balance + Object.entries(portfolio.positions).reduce((total, [sym, pos]) => total + pos.shares * (stockData.regularMarketPrice || 0), 0)) * 100).toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column - Match the height with the middle column */}
