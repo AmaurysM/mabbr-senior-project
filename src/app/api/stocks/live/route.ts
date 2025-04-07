@@ -19,18 +19,31 @@ const validIntervals = [
 ] as const;
 
 export interface TransformedStockData {
-  symbol?: string;
-  longName?: string;
-  shortName?: string;
+  symbol: string;
+  regularMarketPrice: number;
+  regularMarketChange: number;
+  regularMarketChangePercent: number;
+  regularMarketVolume: number;
+  marketCap?: number;
+  trailingPE?: number;
+  dividendYield?: number;
+  averageVolume?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  targetMeanPrice?: number;
+  profitMargins?: number;
+  operatingMargins?: number;
+  returnOnAssets?: number;
+  returnOnEquity?: number;
+  enterpriseValue?: number;
+  forwardPE?: number;
+  earningsPerShare?: number;
+  bookValue?: number;
   sector?: string;
   industry?: string;
   website?: string;
   longBusinessSummary?: string;
-  marketCap?: number;
-  regularMarketPrice?: number;
-  regularMarketChange?: number;
-  regularMarketChangePercent?: number;
-  regularMarketVolume?: number;
+  shortName?: string;
 }
 
 function getValidatedInterval(
@@ -71,17 +84,30 @@ export async function GET(request: Request) {
 
     const transformedStockData: TransformedStockData = {
       symbol: stockData.price?.symbol,
-      longName: stockData.price?.longName ?? undefined,
-      shortName: stockData.price?.shortName ?? undefined,
-      sector: stockData.assetProfile?.sector,
-      industry: stockData.assetProfile?.industry,
-      website: stockData.assetProfile?.website,
-      longBusinessSummary: stockData.assetProfile?.longBusinessSummary,
-      marketCap: stockData.price?.marketCap,
       regularMarketPrice: stockData.price?.regularMarketPrice,
       regularMarketChange: stockData.price?.regularMarketChange,
       regularMarketChangePercent: stockData.price?.regularMarketChangePercent,
       regularMarketVolume: stockData.price?.regularMarketVolume,
+      marketCap: stockData.price?.marketCap,
+      trailingPE: stockData.price?.trailingPE,
+      dividendYield: stockData.price?.dividendYield,
+      averageVolume: stockData.price?.averageVolume,
+      fiftyTwoWeekHigh: stockData.price?.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: stockData.price?.fiftyTwoWeekLow,
+      targetMeanPrice: stockData.price?.targetMeanPrice,
+      profitMargins: stockData.price?.profitMargins,
+      operatingMargins: stockData.price?.operatingMargins,
+      returnOnAssets: stockData.price?.returnOnAssets,
+      returnOnEquity: stockData.price?.returnOnEquity,
+      enterpriseValue: stockData.price?.enterpriseValue,
+      forwardPE: stockData.price?.forwardPE,
+      earningsPerShare: stockData.price?.earningsPerShare,
+      bookValue: stockData.price?.bookValue,
+      sector: stockData.assetProfile?.sector,
+      industry: stockData.assetProfile?.industry,
+      website: stockData.assetProfile?.website,
+      longBusinessSummary: stockData.assetProfile?.longBusinessSummary,
+      shortName: stockData.price?.shortName,
     };
 
     // Add validation for empty data
