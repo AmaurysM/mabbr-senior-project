@@ -113,11 +113,6 @@ const PortfolioPage: React.FC = () => {
   return (
     <div className="bg-gray-800 p-1">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
-          <p className="text-gray-400">
-            Review your portfolio performance and current holdings.
-          </p>
-        </header>
         <section className="mb-8">
           <PortfolioChart />
         </section>

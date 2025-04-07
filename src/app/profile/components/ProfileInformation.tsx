@@ -164,7 +164,7 @@ const ProfileInformation = (
                         </button>
                     </div>
                     {!isEditingBio ? (
-                        <p className="text-white whitespace-pre-wrap mt-2">{bio}</p>
+                        <div className="text-white whitespace-pre-wrap mt-2">{bio}</div>
                     ) : (
                         <div className="space-y-2 mt-2">
                             <textarea
