@@ -108,28 +108,28 @@ const TradingStaticsticsCard = () => {
             <h2 className="text-2xl font-bold text-white mb-6">Trading Statistics</h2>
             <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <p className="text-sm text-gray-400 mb-1">Total Trades</p>
-                    <p className="text-xl font-bold text-white">{transactions.length}</p>
+                    <div className="text-sm text-gray-400 mb-1">Total Trades</div>
+                    <div className="text-xl font-bold text-white">{transactions.length}</div>
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <p className="text-sm text-gray-400 mb-1">Win Rate</p>
-                    <p className={`text-xl font-bold ${calculateWinRate() > 50 ? 'text-green-400' : 'text-red-400'
+                    <div className="text-sm text-gray-400 mb-1">Win Rate</div>
+                    <div className={`text-xl font-bold ${calculateWinRate() > 50 ? 'text-green-400' : 'text-red-400'
                         }`}>
                         {calculateWinRate().toFixed(0)}%
-                    </p>
+                    </div>
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <p className="text-sm text-gray-400 mb-1">Total Profit</p>
-                    <p className={`text-xl font-bold ${calculateProfit() >= 0 ? 'text-green-400' : 'text-red-400'
+                    <div className="text-sm text-gray-400 mb-1">Total Profit</div>
+                    <div className={`text-xl font-bold ${calculateProfit() >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
                         ${Math.abs(calculateProfit()).toLocaleString()}
-                    </p>
+                    </div>
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <p className="text-sm text-gray-400 mb-1">Risk Level</p>
-                    <p className="text-xl font-bold text-white">
+                    <div className="text-sm text-gray-400 mb-1">Risk Level</div>
+                    <div className="text-xl font-bold text-white">
                         <Risk />
-                    </p>
+                    </div>
                 </div>
             </div>
         </div>)

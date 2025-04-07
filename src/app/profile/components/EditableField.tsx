@@ -69,7 +69,7 @@ const EditableField= ({ value, label, onSave, requireConfirmation = false }:{
             </div>
 
             {!isEditing ? (
-                <p className="text-white">{value}</p>
+                <div className="text-white">{value}</div>
             ) : (
                 <div className="space-y-2 mt-2">
                     <input
@@ -87,7 +87,7 @@ const EditableField= ({ value, label, onSave, requireConfirmation = false }:{
                             className="w-full px-3 py-2 bg-gray-700/30 rounded-lg border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
                         />
                     )}
-                    {error && <p className="text-red-400 text-sm">{error}</p>}
+                    {error && <div className="text-red-400 text-sm">{error}</div>}
                     <div className="flex space-x-2">
                         <button
                             onClick={handleSave}

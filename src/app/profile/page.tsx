@@ -72,7 +72,6 @@ const CombinedProfilePage = () => {
 
 
 
-    // Fetch recent transactions
     const fetchTransactions = async () => {
         try {
             const res = await fetch('/api/user/transactions', {
@@ -92,7 +91,6 @@ const CombinedProfilePage = () => {
         }
     };
 
-    // Fetch portfolio data
     const fetchPortfolioData = async () => {
         try {
             setPortfolioLoading(true);
@@ -100,10 +98,8 @@ const CombinedProfilePage = () => {
             if (response.ok) {
                 const data = await response.json();
 
-                // Calculate total portfolio value of stocks only (excluding balance)
                 let totalStockValue = 0;
 
-                // Add value of all stock positions
                 Object.entries(data.positions).forEach(([symbol, position]: [string, any]) => {
                     totalStockValue += position.shares * position.averagePrice;
                 });
@@ -119,7 +115,6 @@ const CombinedProfilePage = () => {
     };
 
 
-    // Calculate profit based on transactions
     const calculateProfit = () => {
         let buyTotal = 0;
         let sellTotal = 0;
@@ -326,8 +321,8 @@ const CombinedProfilePage = () => {
         return (
             <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10 max-w-md w-full text-center">
-                    <h2 className="text-xl font-bold text-white mb-4">My Profile</h2>
-                    <p className="text-gray-400">Please log in to view your profile, portfolio, and trading activity.</p>
+                    <div className="text-xl font-bold text-white mb-4">My Profile</div>
+                    <div className="text-gray-400">Please log in to view your profile, portfolio, and trading activity.</div>
                 </div>
             </div>
         );
@@ -344,7 +339,7 @@ const CombinedProfilePage = () => {
 
 
     return (
-        <div className="h-full bg-gradient-to-r from-gray-900 to-gray-800 p-4">
+        <div className="h-full bg-gradient-to-r from-gray-900 to-gray-800 p-4 overflow-auto">
             <div className="max-w-7xl mx-auto">
                 {/* Profile Header */}
                 <header className="mb-8 overflow-hidden">
@@ -384,32 +379,32 @@ const CombinedProfilePage = () => {
                             </div>
                             <div>
                                 <div className="flex items-center">
-                                    <h1 className="text-3xl font-bold text-white">
+                                    <div className="text-3xl font-bold text-white">
                                         {name}
-                                    </h1>
+                                    </div>
                                     {icon && <span className="ml-2">{icon}</span>}
                                 </div>
-                                <p className="text-gray-400">{email}</p>
+                                <div className="text-gray-400">{email}</div>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="text-center">
-                                <p className="text-gray-400 text-sm">Balance</p>
-                                <p className="text-xl font-bold text-white">
+                                <div className="text-gray-400 text-sm">Balance</div>
+                                <div className="text-xl font-bold text-white">
                                     ${balance.toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
                                     })}
-                                </p>
+                                </div>
                             </div>
                             <div className="text-center">
-                                <p className="text-gray-400 text-sm">Portfolio Value</p>
-                                <p className="text-xl font-bold text-white">
+                                <div className="text-gray-400 text-sm">Portfolio Value</div>
+                                <div className="text-xl font-bold text-white">
                                     ${portfolioValue.toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
                                     })}
-                                </p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -488,18 +483,18 @@ const CombinedProfilePage = () => {
                 {activeTab === 'portfolio' && (
                     <div className="space-y-8">
                         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                            <h2 className="text-2xl font-bold text-white mb-4">Portfolio Value</h2>
+                            <div className="text-2xl font-bold text-white mb-4">Portfolio Value</div>
                             <PortfolioChart />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                                <h2 className="text-2xl font-bold text-white mb-4">Risk Assessment</h2>
+                                <div className="text-2xl font-bold text-white mb-4">Risk Assessment</div>
                                 <Risk />
                             </div>
 
                             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                                <h2 className="text-2xl font-bold text-white mb-4">Your Holdings</h2>
+                                <div className="text-2xl font-bold text-white mb-4">Your Holdings</div>
                                 <PortfolioTable />
                             </div>
                         </div>
