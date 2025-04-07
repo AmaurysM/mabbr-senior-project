@@ -61,12 +61,12 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update the lootbox
-    const updatedLootbox = await prisma.lootBox.update({
+    await prisma.lootBox.update({
       where: { id },
       data: {
         name,
         price,
-        description,
+        description
       },
     });
 
@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
           data: stocks.map((stockId: string) => ({
             lootBoxId: newLootbox.id,
             stockId,
+            quantity:1,
           })),
         });
       }
