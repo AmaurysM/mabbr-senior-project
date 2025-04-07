@@ -21,7 +21,7 @@ const CommentsList = ({
   selectedComment: Comment | null,
   session: SessionType,
   onNewReply: (newReply: Comment) => void,
-  sortBy: "new" | "top",
+  sortBy: "new" | "top" | "controversial",
   level?: number,
 }) => {
   const router = useRouter();
@@ -124,10 +124,26 @@ const CommentsList = ({
     }
   };
 
+  // const sortedComments = [...comments].sort((a, b) => {
+  //   if (sortBy === "new") {
+  //     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  //   } else {
+  //     const aLikes = a.commentLikes?.length || 0;
+  //     const bLikes = b.commentLikes?.length || 0;
+  //     return bLikes - aLikes;
+  //   }
+  // });
+
   const sortedComments = [...comments].sort((a, b) => {
     if (sortBy === "new") {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else if (sortBy === "controversial") {
+      // Simple controversial implementation - closest to equal upvotes/downvotes
+      const aRatio = Math.abs((a.commentLikes?.length || 0) - (a.commentDislikes?.length || 0));
+      const bRatio = Math.abs((b.commentLikes?.length || 0) - (b.commentDislikes?.length || 0));
+      return aRatio - bRatio;
     } else {
+      // Top - by default
       const aLikes = a.commentLikes?.length || 0;
       const bLikes = b.commentLikes?.length || 0;
       return bLikes - aLikes;
