@@ -59,6 +59,7 @@ model Comment {
   commentableId   String?   // Can be postId, newsUrl, or chatId
   commentableType CommentableType
   commentDescription String?
+  stockSymbol     String?   // For stock-specific chat messages
 
   parentId        String?  
   parent          Comment? @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -73,6 +74,7 @@ model Comment {
   updatedAt       DateTime @updatedAt
 
   @@index([commentableId, commentableType])
+  @@index([stockSymbol])
 }
 
 enum CommentableType {
@@ -83,6 +85,7 @@ enum CommentableType {
   NEWS
   GLOBALCHAT
   FEED
+  STOCKCHAT
 }
 
 
