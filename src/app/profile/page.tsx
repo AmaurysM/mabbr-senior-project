@@ -70,7 +70,7 @@ const CombinedProfilePage = () => {
     const { data: session } = authClient.useSession();
     const user = session?.user;
 
-
+    // All the fetch functions and other logic remain the same
 
     const fetchTransactions = async () => {
         try {
@@ -319,7 +319,7 @@ const CombinedProfilePage = () => {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
+            <div className="min-h-full bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10 max-w-md w-full text-center">
                     <div className="text-xl font-bold text-white mb-4">My Profile</div>
                     <div className="text-gray-400">Please log in to view your profile, portfolio, and trading activity.</div>
@@ -330,17 +330,15 @@ const CombinedProfilePage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
+            <div className="min-h-full bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
                 <div className="text-white">Loading profile...</div>
             </div>
         );
     }
 
-
-
     return (
-        <div className="h-full bg-gradient-to-r from-gray-900 to-gray-800 p-4 overflow-auto">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-full bg-gradient-to-r from-gray-900 to-gray-800 p-4"> {/* Removed overflow-y-scroll */}
+            <div className="max-w-7xl mx-auto"> {/* Removed max-h-full */}
                 {/* Profile Header */}
                 <header className="mb-8 overflow-hidden">
                     <div className="flex flex-col md:flex-row items-center justify-between bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
@@ -465,67 +463,65 @@ const CombinedProfilePage = () => {
                         </button>
                     </div>
                 </div>
-                {/* Profile Tab Content */}
-                {activeTab === 'profile' && (
-                    <>
+                
+                {/* Content container with proper scrolling behavior */}
+                <div className="pb-8">
+                    {/* Profile Tab Content */}
+                    {activeTab === 'profile' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {/* Left Column - Profile Info */}
                             <ProfileInformation />
 
                             {/* Right Column - Stats */}
                             <TradingStaticsticsCard />
-
                         </div>
-                    </>
-                )}
+                    )}
 
-                {/* Portfolio Tab Content */}
-                {activeTab === 'portfolio' && (
-                    <div className="space-y-8">
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                            <div className="text-2xl font-bold text-white mb-4">Portfolio Value</div>
-                            <PortfolioChart />
+                    {/* Portfolio Tab Content */}
+                    {activeTab === 'portfolio' && (
+                        <div className="space-y-8">
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                                <div className="text-2xl font-bold text-white mb-4">Portfolio Value</div>
+                                <PortfolioChart />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                                    <div className="text-2xl font-bold text-white mb-4">Risk Assessment</div>
+                                    <Risk />
+                                </div>
+
+                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                                    <div className="text-2xl font-bold text-white mb-4">Your Holdings</div>
+                                    <PortfolioTable />
+                                </div>
+                            </div>
                         </div>
+                    )}
 
+                    {/* Activity Tab Content */}
+                    {activeTab === 'activity' && (
+                        <RecentActivityList />
+                    )}
+
+                    {/* Friends Tab Content */}
+                    {activeTab === 'friends' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                                <div className="text-2xl font-bold text-white mb-4">Risk Assessment</div>
-                                <Risk />
-                            </div>
-
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                                <div className="text-2xl font-bold text-white mb-4">Your Holdings</div>
-                                <PortfolioTable />
+                            <AddFriendCard />
+                            <div>
+                                <FriendsList />
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Activity Tab Content */}
-                {activeTab === 'activity' && (
-                    <RecentActivityList />
-
-                )}
-
-                {/* Friends Tab Content */}
-                {activeTab === 'friends' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                        < AddFriendCard />
-
-                        <div>
-                            <FriendsList />
-                        </div>
-                    </div>
-                )}
-
-                {/* Settings Tab Content */}
-                {activeTab === 'settings' && (
-                    < AccountSettings />
-
-                )}
+                    {/* Settings Tab Content */}
+                    {activeTab === 'settings' && (
+                        <AccountSettings />
+                    )}
+                </div>
             </div>
         </div>
     );
 }
+
 export default CombinedProfilePage;

@@ -9,62 +9,53 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { LootBoxWithStock, UserLootBox } from '@/lib/prisma_types';
 import LoadingStateAnimation from '@/app/components/LoadingState';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getRarityStyles } from '@/app/components/LootboxTile';
 
-const Page = ({ params }: { params: Promise<{ id: string }> }) => {
-  const router = useRouter(); // Initialize router
-
+const Page = () => {
+  const router = useRouter();
+  const params = useSearchParams()
+  const resolvedId = params.get('lootboxid')
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedStock, setSelectedStock] = useState<LootBoxWithStock | null>(null);
   const [lootBox, setLootBox] = useState<UserLootBox | null>(null);
   const sliderRef = useRef<Slider>(null);
-  const [resolvedId, setResolvedId] = useState<string | null>(null);
-
-
-  useEffect(() => {
-    const resolveParams = async () => {
-      const resolved = await params;
-      setResolvedId(resolved.id);
-    };
-
-    resolveParams();
-  }, [params]);
+  const [redeemed, setRedeemed] = useState(false);
 
   useEffect(() => {
     if (!resolvedId) return;
-  
+
     const fetchLootbox = async () => {
       try {
         console.log(`Fetching lootbox with ID: ${resolvedId}`);
-        
+
         const response = await fetch(`/api/users/userLootBoxes/loot?id=${resolvedId}`);
         console.log("Response status:", response.status);
-    
+
         if (response.status === 404) {
           console.warn("Lootbox not found, stopping requests...");
           setLootBox(null); // Stop trying to fetch again
           return;
         }
-    
+
         if (!response.ok) {
           throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
-    
+
         const data = await response.json();
         console.log("Fetched lootbox:", data);
-        
+
         setLootBox(data);
       } catch (error) {
         console.error("Error fetching lootbox:", error);
       }
     };
-    
-  
+
+
     fetchLootbox();
-  }, [resolvedId, router]); 
-  
-  
+  }, [resolvedId, router]);
+
+
 
   useEffect(() => {
     const addCostToStock = async () => {
@@ -72,8 +63,8 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
 
       const hasAllPrices = lootBox.lootBox.lootBoxStocks.every(
         (lootboxStock) => lootboxStock.stock.price !== 0
-      ); 
-      
+      );
+
       if (hasAllPrices) return;
 
       const updatedLootBoxStocks = await Promise.all(
@@ -106,7 +97,7 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
     };
 
     addCostToStock();
-  }, [lootBox]); 
+  }, [lootBox]);
 
   if (!lootBox) {
     return (
@@ -151,36 +142,37 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
       }
     ]
   };
+
   async function handleSpin(): Promise<void> {
     if (isSpinning || !sliderRef.current || !lootBox) return;
-  
+
     setIsSpinning(true);
     setSelectedStock(null);
-  
+
     const winningStock = getRandomStock();
     const winningIndex = lootBox.lootBox.lootBoxStocks.findIndex(stock => stock.stock.name === winningStock.stock.name);
-  
+
     if (winningIndex === -1) {
       console.error("Winning stock not found in the list!");
       setIsSpinning(false);
       return;
     }
-  
+
     const totalSpins = 5;
     const totalStocks = lootBox.lootBox.lootBoxStocks.length;
     const totalSlidesToMove = (totalSpins * totalStocks) + winningIndex;
-  
+
     sliderRef.current.slickGoTo(0, true);
-  
+
     setTimeout(() => {
       sliderRef.current?.slickGoTo(totalSlidesToMove, false);
-  
+
       setTimeout(async () => {
         setSelectedStock(winningStock);
-  
+
         try {
           const response = await fetch(`/api/users/userLootBoxes/loot`, {
-            method: "PATCH", 
+            method: "PATCH",
             headers: {
               "Content-Type": "application/json",
             },
@@ -189,16 +181,17 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
               winningStockId: winningStock.stockId,
             }),
           });
-        
+
           if (!response.ok) {
             throw new Error(`Error: ${response.status} ${response.statusText}`);
           }
-        
+
           const result = await response.json();
           console.log("Stock added successfully:", result);
-        
+
+          setRedeemed(true);
           // Don't check lootBox state here, directly redirect
-          router.push("/lootbox");
+          // router.push("/lootbox");
         } catch (error) {
           console.error("Error updating user's account:", error);
           setIsSpinning(false);
@@ -206,7 +199,7 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
       }, 4000);
     }, 100);
   }
-  
+
 
   return (
     <div
@@ -284,7 +277,7 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
               <div className="absolute inset-0 bg-gradient-to-r from-slate-700 via-transparent to-slate-700"></div>
 
               {/* Stock Carousel */}
-              <div className={isSpinning ? 'spinning' : ''}>
+              <div className={isSpinning ? 'spinning' : `${redeemed ? 'Redeemed Stock' : ''}`}>
                 <Slider ref={sliderRef} {...settings} className="py-2">
                   {[...Array(10)].map((_, repeatIndex) => (
                     lootBox?.lootBox.lootBoxStocks.map((lootboxStock, stockIndex) => (
@@ -301,17 +294,19 @@ const Page = ({ params }: { params: Promise<{ id: string }> }) => {
                 </Slider>
               </div>
             </div>
+            {!redeemed && (
+              <div className="mt-8">
+                <button
+                  className="py-2 px-4 bg-yellow-500 rounded-md text-lg text-white hover:bg-yellow-400 transition-colors"
+                  onClick={handleSpin}
+                  disabled={isSpinning}
+                >
 
+                  {isSpinning ? 'Spinning...' : 'Spin'}
+                </button>
+              </div>
+            )}
             {/* Spin Button */}
-            <div className="mt-8">
-              <button
-                className="py-2 px-4 bg-yellow-500 rounded-md text-lg text-white hover:bg-yellow-400 transition-colors"
-                onClick={handleSpin}
-                disabled={isSpinning}
-              >
-                {isSpinning ? 'Spinning...' : 'Spin'}
-              </button>
-            </div>
 
 
           </section>

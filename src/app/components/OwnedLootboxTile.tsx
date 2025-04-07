@@ -57,7 +57,7 @@ const getRarityStyles = (price: number) => {
 
 const OwnedLootboxTile = ({  userLootbox }: { userLootbox: UserLootBox }) => {
   console.log("OwnedLootboxTile", userLootbox);
-    const rarity = getRarityStyles(userLootbox.lootBox.price);
+  const rarity = getRarityStyles(userLootbox.lootBox.price);
 
   return (
     <div
