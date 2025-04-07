@@ -51,9 +51,13 @@ const UserLootboxListClient = () => {
     return (
       <div className="w-full bg-gray-800 border border-gray-700 rounded-b-lg p-6 mb-8">
         <h2 className="text-2xl font-bold text-white mb-2">Your Lootboxes</h2>
-        <p className="text-gray-400 mb-6">You don't have any lootboxes yet.</p>
+        <p className="text-gray-400 mb-6">You don&apos;t have any lootboxes yet.</p>
       </div>
     );
+  }
+
+  const handleLootBoxClick = (lootboxId: string) =>{
+    router.push(`../../lootbox/redeem?lootboxid=${lootboxId}`)
   }
 
   return (
@@ -63,7 +67,7 @@ const UserLootboxListClient = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {lootboxes.map((lootbox) => (
-          <div key={lootbox.id} onClick={() => router.push(`../../lootbox/${lootbox.id}`)}>
+          <div key={lootbox.id} onClick={() => handleLootBoxClick(lootbox.id)}>
             <OwnedLootboxTile 
               key={lootbox.id} 
               userLootbox={lootbox} 
