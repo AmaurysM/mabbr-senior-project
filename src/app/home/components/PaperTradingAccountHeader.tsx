@@ -51,7 +51,7 @@ const PaperTradingAccountHeader = () => {
   return (
     <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
       <h2 className="text-2xl font-bold text-white mb-3">Paper Trading Account</h2>
-      <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 gap-2">
+      <div className="bg-gray-800/50 rounded-lg p-3">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
             <h3 className="text-lg font-medium text-gray-300 mb-1">Cash</h3>
