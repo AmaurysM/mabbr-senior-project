@@ -622,16 +622,18 @@ const StockPage = () => {
           </div>
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 flex flex-col" style={{ height: '316px' }}>
             <div className="flex flex-col h-full">
-              <h2 className="text-xl font-bold text-white mb-3">About {symbol}</h2>
+              <h2 className="text-xl font-bold text-white mb-3">About {stockData.shortName || symbol}</h2>
               <div className="line-clamp-5 text-white text-sm flex-1 mb-2">
-                Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide. The company offers iPhone, a line of smartphones; Mac, a line of personal computers; iPad, a line of multi-purpose tablets; and wearables, home, and accessories comprising AirPods, Apple TV, Apple Watch, Beats products, and HomePod. The company also offers AppleCare support services; cloud services; and operates various platforms, including the App Store that allows customers to discover and download applications and digital content, such as books, music, video, games, and podcasts. In addition, it provides various services, such as Apple Arcade, a game subscription service; Apple Music, which offers users a curated listening experience with on-demand radio stations; Apple News+, a subscription news and magazine service; Apple TV+, which offers exclusive original content; Apple Card, a co-branded credit card; and Apple Pay, a cashless payment service, as well as licenses its intellectual property.
+                {stockData.longBusinessSummary || 'No description available.'}
               </div>
-              <button 
-                onClick={() => setIsFullScreenSummary(true)} 
-                className="text-blue-400 text-sm hover:text-blue-300 self-start"
-              >
-                Read More
-              </button>
+              {stockData.longBusinessSummary && (
+                <button 
+                  onClick={() => setIsFullScreenSummary(true)} 
+                  className="text-blue-400 text-sm hover:text-blue-300 self-start"
+                >
+                  Read More
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -642,7 +644,7 @@ const StockPage = () => {
         <div className="fixed inset-0 bg-slate-900/95 z-50 p-6 overflow-y-auto">
           <div className="max-w-4xl mx-auto bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-white/10">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">About {symbol}</h2>
+              <h2 className="text-2xl font-bold text-white">About {stockData.shortName || symbol}</h2>
               <button 
                 onClick={() => setIsFullScreenSummary(false)}
                 className="p-2 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white transition-colors"
@@ -650,58 +652,9 @@ const StockPage = () => {
                 <FaTimes />
               </button>
             </div>
-            
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                <div>
-                  <h3 className="text-gray-400 text-sm">Company Name</h3>
-                  <p className="text-white text-lg font-medium">{stockData.shortName || symbol}</p>
-                </div>
-                <div>
-                  <h3 className="text-gray-400 text-sm">Symbol</h3>
-                  <p className="text-white text-lg font-medium">{symbol}</p>
-                </div>
-                <div>
-                  <h3 className="text-gray-400 text-sm">Sector</h3>
-                  <p className="text-white text-lg font-medium">{stockData.sector || 'N/A'}</p>
-                </div>
-                <div>
-                  <h3 className="text-gray-400 text-sm">Industry</h3>
-                  <p className="text-white text-lg font-medium">{stockData.industry || 'N/A'}</p>
-                </div>
-                <div>
-                  <h3 className="text-gray-400 text-sm">Exchange</h3>
-                  <p className="text-white text-lg font-medium">{(stockData as any).fullExchangeName || 'N/A'}</p>
-                </div>
-                <div>
-                  <h3 className="text-gray-400 text-sm mb-2">Market Cap</h3>
-                  <p className="text-white text-lg font-medium">${formatNumber(stockData.marketCap)}</p>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-gray-400 text-sm mb-2">Business Summary</h3>
-                <p className="text-white leading-relaxed">
-                  {stockData.longBusinessSummary || 'No business summary available.'}
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-700/30 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">Current Price</h3>
-                  <p className="text-xl font-bold text-white">${stockData.regularMarketPrice?.toFixed(2) || "N/A"}</p>
-                </div>
-                <div className="bg-gray-700/30 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">52 Week High</h3>
-                  <p className="text-xl font-bold text-white">${stockData.fiftyTwoWeekHigh?.toFixed(2) || "N/A"}</p>
-                </div>
-                <div className="bg-gray-700/30 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">52 Week Low</h3>
-                  <p className="text-xl font-bold text-white">${stockData.fiftyTwoWeekLow?.toFixed(2) || "N/A"}</p>
-                </div>
-              </div>
+            <div className="text-white leading-relaxed">
+              {stockData.longBusinessSummary || 'No description available.'}
             </div>
-            
             <div className="mt-8 flex justify-end">
               <button 
                 onClick={() => setIsFullScreenSummary(false)}
