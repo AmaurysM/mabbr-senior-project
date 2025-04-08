@@ -309,36 +309,36 @@ const StockList = () => {
         <div className="flex flex-col space-y-2">
             {/* Search Bar */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
-                <h2 className="text-xl font-bold text-white mb-4">Stock Search</h2>
-                <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white mb-3">Stock Search</h2>
+                <div className="bg-gray-800/50 rounded-lg p-3 flex items-center gap-2">
                     <div className="relative flex-grow">
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={handleSearchChange}
                             placeholder="Enter the name of the stock..."
-                            className="w-full px-4 py-2 rounded-lg bg-gray-700/30 border border-white/10 focus:border-blue-500/50 focus:outline-none text-white text-sm pr-10"/>
+                            className="w-full px-4 py-2 rounded-lg bg-gray-700/30 border border-white/10 focus:border-blue-500/50 focus:outline-none text-white text-sm pr-10" />
                         {isSearching && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
                             </div>
                         )}
                     </div>
-                        <button
-                            onClick={handleSearchSubmit}
-                            className="px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors flex items-center gap-2">
-                            <FaSearch className="text-lg" />
-                            <span>Search for Stock</span>
-                        </button>
+                    <button
+                        onClick={handleSearchSubmit}
+                        className="px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors flex items-center gap-2">
+                        <FaSearch className="text-lg" />
+                        <span>Search for Stock</span>
+                    </button>
                 </div>
                 {searchError && <p className="text-red-400 text-sm mt-2 px-2">{searchError}</p>}
             </div>
 
             {/* Favorite Stocks Section */}
             {favorites.size > 0 && favoriteStocks.length > 0 && (
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/10">
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
                     <h2 className="text-xl font-bold text-white mb-3">Your Favorite Stocks</h2>
-                    <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 flex items-center gap-2">
+                    <div className="bg-gray-800/50 rounded-lg p-3 flex items-center gap-2">
                         <div className="grid grid-cols-1 gap-3">
                             {favoriteStocks.map((stock) => (
                                 <CompactStockCard
@@ -359,8 +359,8 @@ const StockList = () => {
                                     }
                                     isLoggedIn={!!user}
                                     isFavorite={favorites.has(stock.symbol)}
-                                    onToggleFavorite={toggleFavorite}/>
-                                ))
+                                    onToggleFavorite={toggleFavorite} />
+                            ))
                             }
                         </div>
                     </div>
@@ -368,11 +368,11 @@ const StockList = () => {
             )}
 
             {/* Stocks Grid */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/10">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
                 <h2 className="text-xl font-bold text-white mb-3">
                     {Object.keys(portfolio?.positions || {}).length > 0 ? 'Your Portfolio & Market' : 'Market Overview'}
                 </h2>
-                <div className="bg-gray-800/50 rounded-lg p-3 border border-white/10 flex items-center gap-2">
+                <div className="bg-gray-800/50 rounded-lg p-3 flex items-center gap-2">
                     {isLoadingStocks ? (
                         <div className="grid grid-cols-1 gap-3 animate-pulse">
                             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -408,9 +408,9 @@ const StockList = () => {
                                         }
                                         isLoggedIn={!!user}
                                         isFavorite={favorites.has(stock.symbol)}
-                                        onToggleFavorite={toggleFavorite}/>
-                                    ))
-                                }
+                                        onToggleFavorite={toggleFavorite} />
+                                ))
+                            }
                         </div>
                     )}
                 </div>
