@@ -35,12 +35,12 @@ const Overview = ({ userId }: { userId: string }) => {
 
     if (loading) {
         return (
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
                 <div className="text-center py-8">
-                    <svg className="w-16 h-16 mx-auto text-gray-300 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                     </svg>
-                    <p className="mt-4 text-gray-500">Loading...</p>
+                    <p className="mt-4 text-gray-400">Loading...</p>
                 </div>
             </div>
         );
@@ -49,9 +49,9 @@ const Overview = ({ userId }: { userId: string }) => {
     // Handle no user data state
     if (!user) {
         return (
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
                 <div className="text-center py-8">
-                    <p className="mt-4 text-gray-500">No user data found.</p>
+                    <p className="mt-4 text-gray-400">No user data found.</p>
                 </div>
             </div>
         );
@@ -60,8 +60,8 @@ const Overview = ({ userId }: { userId: string }) => {
     return (
         <div className=" space-y-6 rounded-lg overflow-clip">
             {/* Favorite Stocks */}
-            <div className="bg-white p-6 shadow">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
+                <h2 className="text-lg font-semibold text-white mb-4">
                     Favorite Stocks
                 </h2>
                 {user.favoriteStocks && user.favoriteStocks.length > 0 ? (
@@ -69,20 +69,20 @@ const Overview = ({ userId }: { userId: string }) => {
                         {user.favoriteStocks.map((stock, idx) => (
                             <span
                                 key={idx}
-                                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                                className="px-3 py-1 bg-blue-600/30 text-blue-200 rounded-full text-sm font-medium"
                             >
                                 {stock}
                             </span>
                         ))}
                     </div>
                 ) : (
-                    <p className="text-gray-500 italic">No favorite stocks yet</p>
+                    <p className="text-gray-400 italic">No favorite stocks yet</p>
                 )}
             </div>
 
             {/* Display Comments Categorized by Type */}
-            <div className="bg-white p-6 shadow">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Comments</h2>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
+                <h2 className="text-lg font-semibold text-white mb-4">Comments</h2>
                 {user?.comments && user.comments.length > 0 ? (
                     <div className="space-y-4">
                         {user.comments.map((comment, idx) => {
@@ -90,19 +90,19 @@ const Overview = ({ userId }: { userId: string }) => {
                             let borderStyle = "";
                             switch (comment.commentableType) {
                                 case "NEWS":
-                                    borderStyle = "border-l-4 border-blue-500";
+                                    borderStyle = "border-l-4 border-blue-500/50";
                                     break;
                                 case "POST":
-                                    borderStyle = "border-l-4 border-green-500";
+                                    borderStyle = "border-l-4 border-green-500/50";
                                     break;
                                 case "GLOBALCHAT":
-                                    borderStyle = "border-l-4 border-red-500";
+                                    borderStyle = "border-l-4 border-red-500/50";
                                     break;
                                 default:
-                                    borderStyle = "border-l-4 border-gray-500";
+                                    borderStyle = "border-l-4 border-gray-500/50";
                             }
                             return (
-                                <div key={idx} className={`p-4 ${borderStyle}`}>
+                                <div key={idx} className={`p-4 bg-gray-700/30 rounded-xl ${borderStyle}`}>
                                     {/* For NEWS comments, display the URL on top */}
                                     {comment.commentableType === "NEWS" && comment.commentableId && (
                                         <div className="mb-2">
@@ -110,14 +110,14 @@ const Overview = ({ userId }: { userId: string }) => {
                                                 href={comment.commentableId}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-blue-600 hover:underline"
+                                                className="text-blue-400 hover:text-blue-300 hover:underline"
                                             >
                                                 {comment.commentableId}
                                             </a>
                                         </div>
                                     )}
-                                    <p className="text-gray-700">{comment.content || "No content"}</p>
-                                    <div className="mt-2 flex justify-between items-center text-sm text-gray-500">
+                                    <p className="text-gray-300">{comment.content || "No content"}</p>
+                                    <div className="mt-2 flex justify-between items-center text-sm text-gray-400">
                                         <span>
                                             {comment.createdAt
                                                 ? formatDate(comment.createdAt.toString())
@@ -145,14 +145,14 @@ const Overview = ({ userId }: { userId: string }) => {
                         })}
                     </div>
                 ) : (
-                    <p className="text-gray-500 italic">No comments yet</p>
+                    <p className="text-gray-400 italic">No comments yet</p>
                 )}
             </div>
 
 
             {/* Recent Achievements */}
-            <div className="bg-white p-6 shadow">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
+                <h2 className="text-lg font-semibold text-white mb-4">
                     Recent Achievements
                 </h2>
                 {user.achievements && user.achievements.length > 0 ? (
@@ -174,24 +174,24 @@ const Overview = ({ userId }: { userId: string }) => {
                         ))}
                     </div>
                 ) : (
-                    <p className="text-gray-500 italic">No achievements yet</p>
+                    <p className="text-gray-400 italic">No achievements yet</p>
                 )}
             </div>
 
             {/* Transactions */}
-            <div className="bg-white p-6 shadow">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
+                <h2 className="text-lg font-semibold text-white mb-4">
                     Transactions
                 </h2>
                 {user.transactions && user.transactions.length > 0 ? (
                     <div className="space-y-4">
                         {user.transactions.map((txn, idx) => (
-                            <div key={idx} className="p-4 bg-gray-50 rounded-lg">
-                                <p className="text-gray-700">Type: {txn.type || "N/A"}</p>
-                                <p className="text-gray-700">
+                            <div key={idx} className="p-4 bg-gray-700/30 rounded-lg">
+                                <p className="text-gray-300">Type: {txn.type || "N/A"}</p>
+                                <p className="text-gray-300">
                                     Amount: {txn.price !== undefined ? txn.price : 0}
                                 </p>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-gray-400">
                                     {txn.timestamp
                                         ? formatDate(txn.timestamp.toString())
                                         : "Unknown date"}
@@ -200,7 +200,7 @@ const Overview = ({ userId }: { userId: string }) => {
                         ))}
                     </div>
                 ) : (
-                    <p className="text-gray-500 italic">No transactions yet</p>
+                    <p className="text-gray-400 italic">No transactions yet</p>
                 )}
             </div>
         </div>

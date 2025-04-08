@@ -6,9 +6,9 @@ const SkeletonLoader = () => {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[...Array(4)].map((_, index) => (
-                <div key={index} className="bg-white p-4 rounded-lg shadow overflow-hidden animate-pulse">
-                    <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
-                    <div className="h-6 bg-gray-400 rounded w-1/2"></div>
+                <div key={index} className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 overflow-hidden animate-pulse">
+                    <div className="h-4 bg-gray-700/50 rounded w-3/4 mb-2"></div>
+                    <div className="h-6 bg-gray-600/50 rounded w-1/2"></div>
                 </div>
             ))}
         </div>
@@ -55,21 +55,21 @@ const CommunityStats = ({ userId }: { userId: string }) => {
         <div>
             {loading ? <SkeletonLoader /> :
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white p-4 rounded-lg shadow overflow-hidden">
-                        <p className="text-sm text-gray-500">Portfolio Value</p>
-                        <p className="text-2xl font-bold text-gray-900">{(portfolioValue?.toFixed(2)) || 0}</p>
+                    <div className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 overflow-hidden">
+                        <p className="text-sm text-gray-400">Portfolio Value</p>
+                        <p className="text-2xl font-bold text-white">{(portfolioValue?.toFixed(2)) || 0}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-lg shadow overflow-hidden">
-                        <p className="text-sm text-gray-500">Balance</p>
-                        <p className="text-2xl font-bold text-gray-900">{(user?.balance?.toFixed(2) || 0)}</p>
+                    <div className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 overflow-hidden">
+                        <p className="text-sm text-gray-400">Balance</p>
+                        <p className="text-2xl font-bold text-white">{(user?.balance?.toFixed(2) || 0)}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-lg shadow overflow-hidden">
-                        <p className="text-sm text-gray-500">Followers</p>
-                        <p className="text-2xl font-bold text-gray-900">{user?.followers?.length || 0}</p>
+                    <div className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 overflow-hidden">
+                        <p className="text-sm text-gray-400">Followers</p>
+                        <p className="text-2xl font-bold text-white">{user?.followers?.length || 0}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-lg shadow overflow-hidden">
-                        <p className="text-sm text-gray-500">Following</p>
-                        <p className="text-2xl font-bold text-gray-900">{user?.following?.length || 0}</p>
+                    <div className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 overflow-hidden">
+                        <p className="text-sm text-gray-400">Following</p>
+                        <p className="text-2xl font-bold text-white">{user?.following?.length || 0}</p>
                     </div>
                 </div>
             }

@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy, useRef } from "react";
 import { FileTextIcon } from "lucide-react";
 import { UserTransactions } from "@/lib/prisma_types";
-import LoadingStateAnimation from "../components/LoadingState";
+import LoadingState from "../components/LoadingState";
 import StockNotesList from "../components/NotesPage/StockNotesList";
 import TransactionHeader from "../components/NotesPage/TransactionHeader";
 import TransactionDetails from "../components/NotesPage/TransactionDetails";
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
-
-const NoteSection = lazy(() => import("../components/NotesPage/NoteSection"));
+import { useRouter, useSearchParams } from "next/navigation";
+import NoteSection from "../components/NotesPage/NoteSection";
 
 const StockNotes = () => {
   const [transactions, setTransactions] = useState<UserTransactions>([]);
@@ -38,45 +38,42 @@ const StockNotes = () => {
     setIsSidebarOpen(prev => !prev);
   }, []);
 
-  const handleSaveNote = useCallback(async (type: "public" | "private") => {
-    if (!selectedTransactionId) return;
+  const handleSaveNote = async (type: "public" | "private", text: string) => {
+    if (!selectedTransaction) return;
 
     try {
       setSaveLoading(true);
-      const updatedNote = type === "public"
-        ? { publicNote: publicNoteText }
-        : { privateNote: privateNoteText };
-
-      const response = await fetch(`/api/user/note?id=${selectedTransactionId}`, {
+      const response = await fetch(`/api/user/note?id=${selectedTransaction.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedNote),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          [type === "public" ? "publicNote" : "privateNote"]: text
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to update ${type} note`);
-      }
+      if (!response.ok) throw new Error("Failed to save note");
 
-      setTransactions((prev) =>
-        prev.map((transaction) =>
-          transaction.id === selectedTransactionId
-            ? { ...transaction, ...updatedNote }
-            : transaction
-        )
-      );
+      // Update local state
+      setTransactions(transactions.map(t => 
+        t.id === selectedTransaction.id 
+          ? { ...t, [type === "public" ? "publicNote" : "privateNote"]: text }
+          : t
+      ));
 
+      // Reset editing state
       if (type === "public") {
         setEditingPublicNote(false);
       } else {
         setEditingPrivateNote(false);
       }
-    } catch (err) {
-      console.error(`Error updating ${type} note:`, err);
-      alert(`Failed to save ${type} note. Please try again.`);
+    } catch (error) {
+      console.error("Failed to save note:", error);
     } finally {
       setSaveLoading(false);
     }
-  }, [selectedTransactionId, publicNoteText, privateNoteText]);
+  };
 
   const handleCancelEdit = useCallback(
     (type: "public" | "private") => {
@@ -160,7 +157,7 @@ const StockNotes = () => {
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full"><LoadingStateAnimation /></div>;
+    return <div className="flex items-center justify-center h-full"><LoadingState /></div>;
   }
 
   if (error) {
@@ -180,12 +177,11 @@ const StockNotes = () => {
       {/* Left sidebar - Transactions list */}
       <div
         ref={sidebarRef}
-        className={`fixed lg:relative inset-y-0 left-0 w-64 lg:w-1/4 min-w-64 border-r overflow-y-auto bg-white z-50 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`fixed lg:relative inset-y-0 left-0 w-64 lg:w-1/4 min-w-64 border-r border-white/10 overflow-y-auto bg-gray-800/50 backdrop-blur-sm z-50 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="p-4 border-b sticky top-0 bg-white z-10 shadow-sm">
-          <h1 className="text-xl font-bold">Stock Notes</h1>
-          <p className="text-sm text-gray-500">{transactions.length} Notes</p>
+        <div className="p-4 border-b border-white/10 sticky top-0 bg-gray-800/50 backdrop-blur-sm z-10 shadow-sm">
+          <h1 className="text-xl font-bold text-white">Stock Notes</h1>
+          <p className="text-sm text-gray-400">{transactions.length} Notes</p>
         </div>
 
         <StockNotesList
@@ -202,7 +198,7 @@ const StockNotes = () => {
         onClick={toggleSidebar}
         className={`lg:hidden fixed top-30 left-0 z-50 shadow-md transition-all duration-300 ${
           isSidebarOpen 
-            ? "bg-white text-gray-800 translate-x-64" 
+            ? "bg-gray-800 text-white translate-x-64" 
             : "bg-blue-600 text-white"
         } py-3 pl-2 pr-3 rounded-r-lg flex items-center justify-center`}
         aria-label={isSidebarOpen ? "Close notes list" : "Open notes list"}
@@ -216,48 +212,43 @@ const StockNotes = () => {
       </button>
 
       {/* Right content area - Transaction details */}
-      <div className="flex-1 p-6 overflow-y-auto bg-gray-200">
+      <div className="flex-1 p-6 overflow-y-auto bg-gray-900">
         {selectedTransaction ? (
-          <div className="max-w-3xl mx-auto lg:mx-0">
-            <TransactionHeader transaction={selectedTransaction} />
+          <div className="max-w-3xl mx-auto lg:mx-0 space-y-6">
             <TransactionDetails transaction={selectedTransaction} />
+            
+            <NoteSection
+              title="Public Note"
+              content={selectedTransaction.publicNote || ''}
+              isEditing={editingPublicNote}
+              onEdit={() => {
+                setPublicNoteText(selectedTransaction.publicNote || '');
+                setEditingPublicNote(true);
+              }}
+              onSave={(text) => handleSaveNote("public", text)}
+              onCancel={() => setEditingPublicNote(false)}
+            />
 
-            {/* Public Note Section */}
-            <Suspense fallback={<LoadingStateAnimation />}>
-              <NoteSection
-                title="Public Note"
-                editing={editingPublicNote}
-                text={publicNoteText}
-                setText={setPublicNoteText}
-                note={selectedTransaction.publicNote}
-                onEdit={() => setEditingPublicNote(true)}
-                onSave={() => handleSaveNote("public")}
-                onCancel={() => handleCancelEdit("public")}
-                saveLoading={saveLoading}
-              />
-            </Suspense>
-
-            {/* Private Note Section */}
-            <Suspense fallback={<></>}>
-              <NoteSection
-                title="Private Note"
-                editing={editingPrivateNote}
-                text={privateNoteText}
-                setText={setPrivateNoteText}
-                note={selectedTransaction.privateNote}
-                onEdit={() => setEditingPrivateNote(true)}
-                onSave={() => handleSaveNote("private")}
-                onCancel={() => handleCancelEdit("private")}
-                saveLoading={saveLoading}
-              />
-            </Suspense>
+            <NoteSection
+              title="Private Note"
+              content={selectedTransaction.privateNote || ''}
+              isEditing={editingPrivateNote}
+              onEdit={() => {
+                setPrivateNoteText(selectedTransaction.privateNote || '');
+                setEditingPrivateNote(true);
+              }}
+              onSave={(text) => handleSaveNote("private", text)}
+              onCancel={() => setEditingPrivateNote(false)}
+            />
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400 bg-white rounded-lg shadow-lg">
-            <FileTextIcon size={64} />
-            <p className="mt-4 text-lg">
-              {transactions.length > 0 ? "Select a transaction to view notes" : "No notes available"}
-            </p>
+          <div className="h-full flex flex-col items-center justify-center">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/10 text-center">
+              <FileTextIcon size={64} className="text-gray-600 mx-auto" />
+              <p className="mt-4 text-lg text-gray-400">
+                {transactions.length > 0 ? "Select a transaction to view notes" : "No notes available"}
+              </p>
+            </div>
           </div>
         )}
       </div>
