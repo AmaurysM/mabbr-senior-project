@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
-import { ArrowLeft, Calendar, Clock, TrendingUp, Search, XCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ArrowLeft, Calendar, Clock, TrendingUp, Search } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Topic, Comment } from "@/lib/prisma_types";
 import PostForm from "./postForm/PostForm";
@@ -8,13 +8,14 @@ import PostsList from "./postsList/PostsList";
 import FocusedComment from "./focusedComment/FocusedComment";
 import Image from "next/image";
 
+
 const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
+
   const [comments, setComments] = useState<Comment[]>([]);
   const [sortBy, setSortBy] = useState<"new" | "top">("new");
   const [focusedComment, setFocusedComment] = useState<Comment | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [searchResults, setSearchResults] = useState<Comment[]>([]);
+  const [filteredComments, setFilteredComments] = useState<Comment[]>([]);
   const { data: session } = authClient.useSession();
 
   useEffect(() => {
@@ -33,12 +34,35 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
       }
     };
     fetchComments();
-  }, [topic.id, sortBy]);
+  }, [topic.id, sortBy]); // Re-fetch comments when either topic or sortBy changes
 
+  // Filter comments based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredComments(sortedComments);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = sortedComments.filter(comment => 
+        comment.content?.toLowerCase().includes(query) || 
+        comment.user?.name?.toLowerCase().includes(query)
+      );
+      setFilteredComments(filtered);
+    }
+  }, [searchQuery, comments, sortBy]);
 
   const handleNewComment = (newComment: Comment) => {
     setComments((prev) => [newComment, ...prev]);
   };
+
+  const sortedComments = [...comments].sort((a, b) => {
+    if (sortBy === "new") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else {
+      const aLikes = a.commentLikes?.length || 0;
+      const bLikes = b.commentLikes?.length || 0;
+      return bLikes - aLikes;
+    }
+  });
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -58,21 +82,21 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
   };
 
   useEffect(() => {
-    const savedCommentId = localStorage.getItem("selectedCommentId");
+    const savedTopicId = localStorage.getItem("selectedCommentId");
 
-    if (savedCommentId && comments.length > 0) {
-      const comment = comments.find(c => c.id === savedCommentId);
-      if (comment) {
-        setFocusedComment(comment);
+    if (savedTopicId && comments.length > 0) {
+      const topic = comments.find(t => t.id === savedTopicId);
+      if (topic) {
+        setFocusedComment(topic);
       }
     }
   }, [comments, sortBy]);
 
-  const handleSelectComment = (comment: Comment | null) => {
-    setFocusedComment(comment);
+  const handleSelectComment = (topic: Comment | null) => {
+    setFocusedComment(topic);
 
-    if (comment) {
-      localStorage.setItem("selectedCommentId", comment.id);
+    if (topic) {
+      localStorage.setItem("selectedCommentId", topic.id);
     } else {
       localStorage.removeItem("selectedCommentId");
     }
@@ -80,12 +104,10 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    setIsSearching(true);
   };
 
   const handleSearchClear = () => {
     setSearchQuery("");
-    setIsSearching(false);
   };
 
   if (!session) return null;
@@ -99,13 +121,6 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
       />
     );
   }
-
-  // Get sorted comments for display
-  const sortedComments = getSortedComments();
-
-  // Determine which comments to display
-  const displayedComments = searchQuery ? searchResults : sortedComments;
-  const noResultsFound = searchQuery && !isSearching && searchResults.length === 0;
 
   return (
     <div className="w-full overflow-auto text-white">
@@ -195,60 +210,23 @@ const Room = ({ topic, onBack }: { topic: Topic, onBack: () => void }) => {
         </div>
       </div>
 
-      {/* Search status */}
+      {/* Search results message if searching */}
       {searchQuery && (
-        <div className="mt-4">
-          {isSearching ? (
-            <div className="bg-gray-800 rounded-md p-3 flex items-center justify-center">
-              <div className="animate-pulse flex items-center space-x-2">
-                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-              </div>
-              <span className="ml-3 text-gray-300">Searching...</span>
-            </div>
-          ) : noResultsFound ? (
-            <div className="bg-gray-800 rounded-md p-6 flex flex-col items-center justify-center">
-              <div className="bg-gray-700 rounded-full p-3 mb-3">
-                <XCircle className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-medium text-white">No results found</h3>
-              <p className="text-gray-400 mt-1 mb-4">We couldn&apos;t find any comments matching &quot;{searchQuery}&quot;</p>
-              <button
-                onClick={handleSearchClear}
-                className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 transition flex items-center"
-              >
-                <Search className="w-4 h-4 mr-2" />
-                Clear search
-              </button>
-            </div>
+        <div className="mt-4 px-2 text-gray-300">
+          {filteredComments.length === 0 ? (
+            <p>No comments found matching "{searchQuery}"</p>
           ) : (
-            <div className="bg-gray-800 rounded-md p-3 flex items-center justify-between">
-              <p className="text-gray-300 flex items-center">
-                <span className="bg-blue-500 text-white text-xs font-medium rounded-full w-6 h-6 flex items-center justify-center mr-2">
-                  {searchResults.length}
-                </span>
-                {searchResults.length === 1 ? 'Result' : 'Results'} for &quot;{searchQuery}&quot;
-              </p>
-              <button
-                onClick={handleSearchClear}
-                className="text-gray-400 hover:text-white text-sm flex items-center"
-              >
-                Clear
-              </button>
-            </div>
+            <p>Found {filteredComments.length} comment{filteredComments.length !== 1 ? 's' : ''} matching "{searchQuery}"</p>
           )}
         </div>
       )}
 
-      {/* Comments list - only show if we have comments to display or not searching */}
-      {(!noResultsFound || !searchQuery) && (
-        <PostsList
-          userId={session.user.id}
-          comments={displayedComments}
-          onSelectComment={(comment: Comment) => handleSelectComment(comment)}
-        />
-      )}
+      {/* Comments list */}
+      <PostsList
+        userId={session.user.id}
+        comments={searchQuery ? filteredComments : sortedComments}
+        onSelectComment={(comment: Comment) => handleSelectComment(comment)}
+      />
     </div>
   );
 };
