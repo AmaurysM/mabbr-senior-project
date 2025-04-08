@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { FaBrain } from 'react-icons/fa';
+import { useAICredits } from '@/hooks/useAICredits';
 
 
 interface NewsItem {
@@ -17,7 +18,7 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
     setIsNewsModalOpen: (isOpen: boolean) => void;
     setIsAIAnalysisOpen: (isOpen: boolean) => void;
 }) => {
-
+    const { remainingCredits } = useAICredits();
     const [isLoadingNews, setIsLoadingNews] = useState(true);
     const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
     // const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
@@ -165,12 +166,25 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
                                     <div className="flex space-x-2">
                                         <button
                                             onClick={() => {
-                                                setSelectedNewsItem(item);
-                                                setIsAIAnalysisOpen(true);
+                                                if (remainingCredits > 0) {
+                                                    setSelectedNewsItem(item);
+                                                    setIsAIAnalysisOpen(true);
+                                                }
                                             }}
-                                            className="p-1.5 bg-blue-500/70 hover:bg-blue-500 rounded-md transition-colors text-white"
-                                            aria-label="AI Analysis">
+                                            className={`group relative p-1.5 rounded-md transition-colors text-white ${
+                                                remainingCredits > 0 
+                                                    ? 'bg-blue-500/70 hover:bg-blue-500' 
+                                                    : 'bg-gray-600/50 cursor-not-allowed'
+                                            }`}
+                                            aria-label="AI Analysis"
+                                            title={remainingCredits === 0 ? "Daily AI analysis limit reached. Please try again tomorrow." : undefined}
+                                        >
                                             <FaBrain size={16} />
+                                            {remainingCredits === 0 && (
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs bg-gray-900 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                                    Daily limit reached
+                                                </div>
+                                            )}
                                         </button>
                                         <button
                                             onClick={() => {
