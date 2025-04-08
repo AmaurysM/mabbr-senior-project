@@ -24,6 +24,10 @@ export interface TransformedStockData {
   regularMarketChange: number;
   regularMarketChangePercent: number;
   regularMarketVolume: number;
+  regularMarketOpen?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketPreviousClose?: number;
   marketCap?: number;
   trailingPE?: number;
   dividendYield?: number;
@@ -77,7 +81,13 @@ export async function GET(request: Request) {
     });
 
     const stockData = await yahooFinance.quoteSummary(symbol, {
-      modules: ["price", "assetProfile"],
+      modules: [
+        "price",
+        "assetProfile",
+        "summaryDetail",
+        "financialData",
+        "defaultKeyStatistics"
+      ]
     });
 
     // transform stockData
@@ -88,21 +98,33 @@ export async function GET(request: Request) {
       regularMarketChange: stockData.price?.regularMarketChange,
       regularMarketChangePercent: stockData.price?.regularMarketChangePercent,
       regularMarketVolume: stockData.price?.regularMarketVolume,
-      marketCap: stockData.price?.marketCap,
-      trailingPE: stockData.price?.trailingPE,
-      dividendYield: stockData.price?.dividendYield,
-      averageVolume: stockData.price?.averageVolume,
-      fiftyTwoWeekHigh: stockData.price?.fiftyTwoWeekHigh,
-      fiftyTwoWeekLow: stockData.price?.fiftyTwoWeekLow,
-      targetMeanPrice: stockData.price?.targetMeanPrice,
-      profitMargins: stockData.price?.profitMargins,
-      operatingMargins: stockData.price?.operatingMargins,
-      returnOnAssets: stockData.price?.returnOnAssets,
-      returnOnEquity: stockData.price?.returnOnEquity,
-      enterpriseValue: stockData.price?.enterpriseValue,
-      forwardPE: stockData.price?.forwardPE,
-      earningsPerShare: stockData.price?.earningsPerShare,
-      bookValue: stockData.price?.bookValue,
+      regularMarketOpen: stockData.price?.regularMarketOpen,
+      regularMarketDayHigh: stockData.price?.regularMarketDayHigh,
+      regularMarketDayLow: stockData.price?.regularMarketDayLow,
+      regularMarketPreviousClose: stockData.price?.regularMarketPreviousClose,
+      
+      // Summary details
+      marketCap: stockData.summaryDetail?.marketCap,
+      trailingPE: stockData.summaryDetail?.trailingPE,
+      dividendYield: stockData.summaryDetail?.dividendYield,
+      averageVolume: stockData.summaryDetail?.averageVolume,
+      fiftyTwoWeekHigh: stockData.summaryDetail?.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: stockData.summaryDetail?.fiftyTwoWeekLow,
+      
+      // Financial data
+      targetMeanPrice: stockData.financialData?.targetMeanPrice,
+      profitMargins: stockData.financialData?.profitMargins,
+      operatingMargins: stockData.financialData?.operatingMargins,
+      returnOnAssets: stockData.financialData?.returnOnAssets,
+      returnOnEquity: stockData.financialData?.returnOnEquity,
+      
+      // Key statistics
+      enterpriseValue: stockData.defaultKeyStatistics?.enterpriseValue,
+      forwardPE: stockData.defaultKeyStatistics?.forwardPE,
+      earningsPerShare: stockData.defaultKeyStatistics?.trailingEps,
+      bookValue: stockData.defaultKeyStatistics?.bookValue,
+      
+      // Company profile
       sector: stockData.assetProfile?.sector,
       industry: stockData.assetProfile?.industry,
       website: stockData.assetProfile?.website,
