@@ -1,6 +1,6 @@
 // app/api/stock/live/route.ts
 import { NextResponse } from "next/server";
-import yahooFinance from "yahoo-finance2";
+import yahooFinance from "@/lib/yahooFinance";
 
 const validIntervals = [
   "1d",

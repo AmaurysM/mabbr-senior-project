@@ -310,7 +310,7 @@ const StockList = () => {
             {/* Search Bar */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
                 <h2 className="text-xl font-bold text-white mb-3">Stock Search</h2>
-                <div className="bg-gray-800/50 rounded-lg p-3 flex items-center gap-2">
+                <div className="flex items-center gap-2">
                     <div className="relative flex-grow">
                         <input
                             type="text"
@@ -338,11 +338,56 @@ const StockList = () => {
             {favorites.size > 0 && favoriteStocks.length > 0 && (
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
                     <h2 className="text-xl font-bold text-white mb-3">Your Favorite Stocks</h2>
-                    <div className="bg-gray-800/50 rounded-lg p-3 flex items-center gap-2">
-                        <div className="grid grid-cols-1 gap-3">
-                            {favoriteStocks.map((stock) => (
+                    <div className="grid grid-cols-1 gap-3">
+                        {favoriteStocks.map((stock) => (
+                            <CompactStockCard
+                                key={stock.symbol}
+                                symbol={stock.symbol}
+                                name={stock.name || stock.symbol}
+                                price={stock.price}
+                                change={stock.change}
+                                changePercent={stock.changePercent}
+                                chartData={stock.chartData || []}
+                                shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
+                                averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
+                                onBuy={(amount, publicNote, privateNote) =>
+                                    executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)
+                                }
+                                onSell={(amount, publicNote, privateNote) =>
+                                    executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)
+                                }
+                                isLoggedIn={!!user}
+                                isFavorite={favorites.has(stock.symbol)}
+                                onToggleFavorite={toggleFavorite} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Stocks Grid */}
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
+                <h2 className="text-xl font-bold text-white mb-3">
+                    {Object.keys(portfolio?.positions || {}).length > 0 ? 'Your Portfolio & Market' : 'Market Overview'}
+                </h2>
+                {isLoadingStocks ? (
+                    <div className="grid grid-cols-1 gap-3 animate-pulse">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="h-24 bg-gray-800/50 rounded-xl"></div>
+                        ))}
+                    </div>
+                ) : filteredStocks.length === 0 && !searchError ? (
+                    <div className="text-center p-6">
+                        <p className="text-gray-400">
+                            {searchQuery ? `No stocks found matching "${searchQuery}"` : 'Enter a stock symbol to search'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-3">
+                        {filteredStocks
+                            .filter((stock) => stock && stock.symbol)
+                            .map((stock, index) => (
                                 <CompactStockCard
-                                    key={stock.symbol}
+                                    key={stock.symbol || index}
                                     symbol={stock.symbol}
                                     name={stock.name || stock.symbol}
                                     price={stock.price}
@@ -361,59 +406,9 @@ const StockList = () => {
                                     isFavorite={favorites.has(stock.symbol)}
                                     onToggleFavorite={toggleFavorite} />
                             ))
-                            }
-                        </div>
+                        }
                     </div>
-                </div>
-            )}
-
-            {/* Stocks Grid */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
-                <h2 className="text-xl font-bold text-white mb-3">
-                    {Object.keys(portfolio?.positions || {}).length > 0 ? 'Your Portfolio & Market' : 'Market Overview'}
-                </h2>
-                <div className="bg-gray-800/50 rounded-lg p-3 flex items-center gap-2">
-                    {isLoadingStocks ? (
-                        <div className="grid grid-cols-1 gap-3 animate-pulse">
-                            {[1, 2, 3, 4, 5, 6].map((i) => (
-                                <div key={i} className="h-24 bg-gray-800/50 rounded-xl"></div>
-                            ))}
-                        </div>
-                    ) : filteredStocks.length === 0 && !searchError ? (
-                        <div className="text-center p-6">
-                            <p className="text-gray-400">
-                                {searchQuery ? `No stocks found matching "${searchQuery}"` : 'Enter a stock symbol to search'}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-3">
-                            {filteredStocks
-                                .filter((stock) => stock && stock.symbol)
-                                .map((stock, index) => (
-                                    <CompactStockCard
-                                        key={stock.symbol || index}
-                                        symbol={stock.symbol}
-                                        name={stock.name || stock.symbol}
-                                        price={stock.price}
-                                        change={stock.change}
-                                        changePercent={stock.changePercent}
-                                        chartData={stock.chartData || []}
-                                        shares={portfolio?.positions?.[stock.symbol]?.shares || 0}
-                                        averagePrice={portfolio?.positions?.[stock.symbol]?.averagePrice || 0}
-                                        onBuy={(amount, publicNote, privateNote) =>
-                                            executeTrade(stock.symbol, 'BUY', amount, publicNote, privateNote)
-                                        }
-                                        onSell={(amount, publicNote, privateNote) =>
-                                            executeTrade(stock.symbol, 'SELL', amount, publicNote, privateNote)
-                                        }
-                                        isLoggedIn={!!user}
-                                        isFavorite={favorites.has(stock.symbol)}
-                                        onToggleFavorite={toggleFavorite} />
-                                ))
-                            }
-                        </div>
-                    )}
-                </div>
+                )}
             </div>
         </div>
     )
