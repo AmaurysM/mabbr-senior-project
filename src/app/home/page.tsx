@@ -31,9 +31,6 @@ const HomePage = () => {
   const [isStockListOpen, setIsStockListOpen] = useState(true);
   const [isFriendActivityOpen, setIsFriendActivityOpen] = useState(true);
 
-  const [isNewsColumnOpen, setIsNewsColumnOpen] = useState(true);
-  const [isStockListOpen, setIsStockListOpen] = useState(true);
-  const [isFriendActivityOpen, setIsFriendActivityOpen] = useState(true);
 
   const {
     data: session,
