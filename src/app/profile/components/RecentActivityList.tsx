@@ -1,3 +1,4 @@
+import SkeletonLoader from '@/app/components/SkeletonLoader';
 import TransactionCard from '@/app/components/TransactionCard';
 import { FunnelIcon } from '@heroicons/react/24/solid';
 import React, { useEffect, useRef, useState } from 'react'
@@ -31,27 +32,72 @@ const RecentActivityList = () => {
     });
 
     useEffect(() => {
+        const abortController = new AbortController();
+
         const fetchTransactions = async () => {
             try {
                 const res = await fetch('/api/user/transactions', {
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
                         'Pragma': 'no-cache'
-                    }
+                    },
+                    signal: abortController.signal
                 });
+
+                if (!res.ok) throw new Error('Request failed');
+
                 const data = await res.json();
                 if (data.success) {
                     setTransactions(data.transactions);
                 }
-                setLoading(false);
             } catch (error) {
-                console.error('Error fetching transactions:', error);
-                setLoading(false);
+                if (error.name !== 'AbortError') {
+                    console.error('Error fetching transactions:', error);
+                }
+            } finally {
+                if (!abortController.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
+
         fetchTransactions();
 
-    });
+        return () => abortController.abort();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                <div className="flex justify-between items-center mb-4">
+                    <SkeletonLoader width="150px" height="28px" />
+                    <div className="flex items-center gap-2">
+                        <SkeletonLoader width="100px" height="20px" />
+                        <SkeletonLoader width="80px" height="32px" />
+                    </div>
+                </div>
+
+                <div className="h-96 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="bg-gray-800/30 p-4 rounded-lg">
+                                <div className="flex justify-between items-center">
+                                    <div className="space-y-2 flex-1">
+                                        <SkeletonLoader width="30%" height="16px" />
+                                        <SkeletonLoader width="50%" height="14px" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <SkeletonLoader width="80px" height="16px" />
+                                        <SkeletonLoader width="60px" height="14px" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">

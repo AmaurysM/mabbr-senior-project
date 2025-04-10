@@ -463,7 +463,7 @@ const CombinedProfilePage = () => {
                         </button>
                     </div>
                 </div>
-                
+
                 {/* Content container with proper scrolling behavior */}
                 <div className="pb-8">
                     {/* Profile Tab Content */}

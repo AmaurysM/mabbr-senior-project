@@ -7,6 +7,7 @@ import { XMarkIcon } from '@heroicons/react/24/solid'
 import { authClient } from '@/lib/auth-client'
 import { toast } from '@/app/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import SkeletonLoader from '@/app/components/SkeletonLoader';
 
 const ProfileInformation = (
 
@@ -137,6 +138,33 @@ const ProfileInformation = (
         }
 
     };
+
+    if (loading) {
+        return (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                <h2 className="text-2xl font-bold text-white mb-6">
+                    <SkeletonLoader width="200px" height="28px" />
+                </h2>
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <SkeletonLoader width="40px" height="16px" />
+                        <SkeletonLoader width="60%" height="24px" />
+                    </div>
+                    <div className="space-y-2">
+                        <SkeletonLoader width="40px" height="16px" />
+                        <SkeletonLoader width="70%" height="24px" />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <SkeletonLoader width="30px" height="16px" />
+                            <SkeletonLoader width="24px" height="24px" className="rounded-full" />
+                        </div>
+                        <SkeletonLoader width="100%" height="96px" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
