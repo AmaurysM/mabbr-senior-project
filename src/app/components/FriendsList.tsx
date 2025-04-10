@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
+import SkeletonLoader from "@/app/components/SkeletonLoader";
 
 interface Friend {
   id: string;
@@ -17,18 +18,17 @@ const FriendsList: React.FC = () => {
   useEffect(() => {
     const fetchFriends = async () => {
       try {
-        const res = await fetch("/api/user/friends", {
-          credentials: "include",
-        });
+        const res = await fetch("/api/user/friends", { credentials: "include" });
+        
         if (!res.ok) {
-          throw new Error("Failed to fetch friends");
+          throw new Error(`Failed to fetch friends: ${res.status} ${res.statusText}`);
         }
+        
         const data = await res.json();
-        // Expecting a response like: { friends: Friend[] }
-        setFriends(data.friends);
+        setFriends(data.friends || []);
       } catch (err: any) {
         console.error("Error fetching friends:", err);
-        setError("Failed to load friends.");
+        setError(err.message || "Failed to load friends");
       } finally {
         setLoading(false);
       }
@@ -37,14 +37,43 @@ const FriendsList: React.FC = () => {
     fetchFriends();
   }, []);
 
-  if (loading) return <div>Loading friends...</div>;
-  if (error) return <div className="text-red-400">{error}</div>;
+  if (error) {
+    return (
+      <div className="md:col-span-2 bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+        <h2 className="text-2xl font-bold text-white mb-4">Your Friends</h2>
+        <div className="text-red-400 p-4 bg-red-900/20 rounded-lg">
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="md:col-span-2 bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-      <h2 className="text-2xl font-bold text-white mb-4">Your Friends</h2>
-      {friends.length === 0 ? (
-        <p className="text-gray-400">You have no friends added yet.</p>
+      <h2 className="text-2xl font-bold text-white mb-4">
+        {loading ? (
+          <SkeletonLoader className="h-8 w-48 rounded-md" />
+        ) : (
+          "Your Friends"
+        )}
+      </h2>
+
+      {loading ? (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-4">
+              <SkeletonLoader className="w-12 h-12 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <SkeletonLoader className="h-4 w-32 rounded-md" />
+                <SkeletonLoader className="h-3 w-24 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : friends.length === 0 ? (
+        <p className="text-gray-400 p-4 bg-gray-700/20 rounded-lg">
+          No friends added yet. Start by adding some friends!
+        </p>
       ) : (
         <ul className="space-y-4">
           {friends.map((friend) => (
@@ -65,8 +94,10 @@ const FriendsList: React.FC = () => {
                 </div>
               )}
               <div>
-                <p className="text-white font-semibold">{friend.name || friend.email}</p>
-                <p className="text-gray-400">{friend.email}</p>
+                <p className="text-white font-semibold">
+                  {friend.name || friend.email.split('@')[0]}
+                </p>
+                <p className="text-gray-400 text-sm">{friend.email}</p>
               </div>
             </li>
           ))}

@@ -12,6 +12,11 @@ const PUBLIC_PATHS = [
   "/community"
 ];
 
+const ONLY_UN_AUTH = [
+  "/",
+  "/login-signup"
+]
+
 const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/leaderboard",
@@ -48,7 +53,7 @@ export async function middleware(request: NextRequest) {
   
   const { pathname } = request.nextUrl;
 
-  if (session && pathname === "/login-signup") {
+  if (session && ONLY_UN_AUTH.includes (pathname)) {
     return NextResponse.redirect(new URL("/profile", request.nextUrl.origin));
   }
 

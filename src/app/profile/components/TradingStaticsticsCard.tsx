@@ -1,5 +1,6 @@
 "use client";
 
+import SkeletonLoader from '@/app/components/SkeletonLoader';
 import Risk from '@/app/portfolio/Risk/page'
 import React, { useEffect, useState } from 'react'
 
@@ -24,27 +25,40 @@ const TradingStaticsticsCard = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const abortController = new AbortController();
+        setLoading(true);
         const fetchTransactions = async () => {
             try {
                 const res = await fetch('/api/user/transactions', {
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
                         'Pragma': 'no-cache'
-                    }
+                    },
+                    signal: abortController.signal
                 });
+
+                if (!res.ok) throw new Error('Request failed');
+
                 const data = await res.json();
                 if (data.success) {
                     setTransactions(data.transactions);
                 }
-                setLoading(false);
             } catch (error) {
-                console.error('Error fetching transactions:', error);
-                setLoading(false);
+                if (error.name !== 'AbortError') {
+                    console.error('Error fetching transactions:', error);
+                }
+            } finally {
+                if (!abortController.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
+
         fetchTransactions();
-        
-    });
+
+        return () => abortController.abort();
+    }, []);
+
 
     const calculateWinRate = () => {
         const stockTransactions: Record<string, Transaction[]> = {};
@@ -103,6 +117,24 @@ const TradingStaticsticsCard = () => {
         return sellTotal - buyTotal;
     };
 
+    if (loading) {
+        return (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                <h2 className="text-2xl font-bold text-white mb-6">
+                    <SkeletonLoader width="200px" height="28px" />
+                </h2>
+                <div className="grid grid-cols-2 gap-4">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="bg-gray-800/30 p-4 rounded-lg space-y-2">
+                            <SkeletonLoader width="80px" height="16px" />
+                            <SkeletonLoader width="120px" height="24px" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
             <h2 className="text-2xl font-bold text-white mb-6">Trading Statistics</h2>
@@ -113,15 +145,13 @@ const TradingStaticsticsCard = () => {
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">
                     <div className="text-sm text-gray-400 mb-1">Win Rate</div>
-                    <div className={`text-xl font-bold ${calculateWinRate() > 50 ? 'text-green-400' : 'text-red-400'
-                        }`}>
+                    <div className={`text-xl font-bold ${calculateWinRate() > 50 ? 'text-green-400' : 'text-red-400'}`}>
                         {calculateWinRate().toFixed(0)}%
                     </div>
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">
                     <div className="text-sm text-gray-400 mb-1">Total Profit</div>
-                    <div className={`text-xl font-bold ${calculateProfit() >= 0 ? 'text-green-400' : 'text-red-400'
-                        }`}>
+                    <div className={`text-xl font-bold ${calculateProfit() >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         ${Math.abs(calculateProfit()).toLocaleString()}
                     </div>
                 </div>
@@ -132,7 +162,8 @@ const TradingStaticsticsCard = () => {
                     </div>
                 </div>
             </div>
-        </div>)
+        </div>
+    );
 }
 
 export default TradingStaticsticsCard

@@ -19,79 +19,66 @@ const PortfolioTable = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-  const fetchHoldings = async () => {
-    try {
-      const res = await fetch("/api/user/portfolio", {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to fetch portfolio");
-      }
-      const data: PortfolioResponse = await res.json();
-      
-      // Only include positions with more than 0 shares.
-      const transformedHoldings: UserStocks = Object.entries(data.positions)
-        .filter(([symbol, position]) => position.shares > 0)
-        .map(([symbol, position]) => ({
-          id: symbol, // Using symbol as the id since we don't have the actual id
-          userId: "", // This field isn't used in the display
-          stockId: "", // This field isn't used in the display
-          quantity: position.shares,
-          stock: {
-            id: "", // This field isn't used in the display
-            name: symbol,
-            price: position.averagePrice,
-          },
-        }));
-      
-      setHoldings(transformedHoldings);
-    } catch (error) {
-      console.error("Error loading portfolio:", error);
-      setError("Failed to load portfolio.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchHoldingsWithPrices = async () => {
+      try {
+        const res = await fetch("/api/user/portfolio", {
+          credentials: "include",
+        });
 
-  fetchHoldings();
-}, []);
+        if (!res.ok) {
+          throw new Error("Failed to fetch portfolio");
+        }
 
+        const data: PortfolioResponse = await res.json();
 
-  useEffect(() => {
-    const addCostToStock = async () => {
-      if (!holdings.length) return;
+        const rawHoldings = Object.entries(data.positions)
+          .filter(([_, position]) => position.shares > 0)
+          .map(([symbol, position]) => ({
+            id: symbol,
+            userId: "",
+            stockId: "",
+            quantity: position.shares,
+            stock: {
+              id: "",
+              name: symbol,
+              price: 0, // initially placeholder
+            },
+          }));
 
-      const hasAllPrices = holdings.every(
-        (holding) => holding.stock.price !== 0
-      );
-      
-      if (hasAllPrices) return;
+        const enrichedHoldings = await Promise.all(
+          rawHoldings.map(async (holding) => {
+            try {
+              const priceRes = await fetch(`/api/stock?symbol=${holding.stock.name}`);
+              if (!priceRes.ok) throw new Error("Price fetch failed");
 
-      const updatedHoldings = await Promise.all(
-        holdings.map(async (holding) => {
-          try {
-            const res = await fetch(`/api/stock?symbol=${holding.stock.name}`);
-            if (!res.ok) {
-              throw new Error(`Error: ${res.status} ${res.statusText}`);
+              const stockData = await priceRes.json();
+              const price = stockData?.quoteResponse?.result?.[0]?.regularMarketPrice ?? 0;
+
+              return {
+                ...holding,
+                stock: {
+                  ...holding.stock,
+                  price,
+                },
+              };
+            } catch (err) {
+              console.error(`Failed to fetch price for ${holding.stock.name}`, err);
+              return holding; // fallback to original with price 0
             }
+          })
+        );
 
-            const stockData = await res.json();
-            holding.stock.price = stockData.quoteResponse.result[0].regularMarketPrice;
-
-            return holding;
-          } catch (error) {
-            console.error("Error fetching stock data:", error);
-            holding.stock.price = 0;
-            return holding;
-          }
-        })
-      );
-
-      setHoldings(updatedHoldings);
+        setHoldings(enrichedHoldings);
+      } catch (err) {
+        console.error("Error loading portfolio:", err);
+        setError("Failed to load portfolio.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    addCostToStock();
-  }, [holdings]);
+    fetchHoldingsWithPrices();
+  }, []);
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
