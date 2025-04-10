@@ -28,9 +28,9 @@ export const auth = betterAuth({
         console.log(
           `Send verification email to ${user.email} to approve change to ${newEmail}. Verification link: ${url}`
         );
-        // Uncomment and integrate with your email service:
+        // Uncomment and integrate with your email service if needed:
         // await sendEmail({
-        //   to: user.email, // The email must be sent to the current email for approval.
+        //   to: user.email,
         //   subject: 'Approve Email Change',
         //   text: `Click the link to approve your email change: ${url}`,
         // });
@@ -43,7 +43,7 @@ export const auth = betterAuth({
   }),
 
   session: {
-    expiresIn: 60 * 60 * 24 * 7,
+    expiresIn: 60 * 60 * 24 * 7, // one week
     updateAge: 60 * 60 * 24 * 7,
     cookieCache: {
       enabled: true,
@@ -76,6 +76,9 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+    // We're not sending a reset password email – using a custom flow instead.
+    // If authClient.forgetPassword is called, nothing will be sent.
+    // You'll use your custom endpoint to reset the password.
   },
 
   emailVerification: {
@@ -89,11 +92,7 @@ export async function getSession() {
     const response = await auth.api.getSession({
       headers: await headers(),
     });
-
-    if (!response) {
-      return null;
-    }
-
+    if (!response) return null;
     return await response;
   } catch (error) {
     console.error("Failed to fetch session:", error);
@@ -121,11 +120,9 @@ const AUTH_CACHE_DURATION = 30 * 1000; // 30 seconds
 
 export async function checkAuthWithCache(): Promise<boolean> {
   const now = Date.now();
-
   if (authCache && now - authCache.timestamp < AUTH_CACHE_DURATION) {
     return authCache.isAuthenticated;
   }
-
   const authenticated = await isAuthenticated();
   authCache = { isAuthenticated: authenticated, timestamp: now };
   return authenticated;
