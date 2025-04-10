@@ -12,3 +12,6 @@ export const formatNumber = (num: number | undefined) => {
     maximumFractionDigits: 2,
   }).format(num);
 };
+
+
+

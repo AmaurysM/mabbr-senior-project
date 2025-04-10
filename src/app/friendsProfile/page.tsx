@@ -2,12 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { User } from "@prisma/client";
 import { authClient } from "@/lib/auth-client"; // Adjust the import path based on your setup
 import CommunityStats from "./components/communityStats";
 import Overview from "./components/overview";
-import NewsPosts from "./components/newsPosts";
 import Stocks from "./components/stocks";
 import Achievements from "./components/achievements";
 import { FaCheckCircle, FaUserShield, FaUserPlus, FaUserCheck } from "react-icons/fa";
@@ -19,7 +17,6 @@ const FriendsProfilePage = () => {
     const [friendStatus, setFriendStatus] = useState<FriendStatus>("notFollowing");
     const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const router = useRouter();
     const [user, setUser] = useState<User | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
     const [activeTab, setActiveTab] = useState<string>("overview");
@@ -240,7 +237,7 @@ const FriendsProfilePage = () => {
                         ></path>
                     </svg>
                     <h1 className="mt-4 text-xl font-bold text-white">User Not Found</h1>
-                    <p className="mt-2 text-gray-400">We couldn't find the user you're looking for.</p>
+                    <p className="mt-2 text-gray-400">We couldn&apos;t find the user you&apos;re looking for.</p>
                 </div>
             </div>
         );
@@ -318,16 +315,7 @@ const FriendsProfilePage = () => {
                         >
                             Overview
                         </button>
-                        <button
-                            onClick={() => setActiveTab("newsPosts")}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                activeTab === "newsPosts"
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-400 hover:text-white"
-                            }`}
-                        >
-                            News Posts
-                        </button>
+                        
                         <button
                             onClick={() => setActiveTab("stocks")}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -354,7 +342,6 @@ const FriendsProfilePage = () => {
                 {/* Content Area */}
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
                     {activeTab === "overview" && <Overview userId={user.id} />}
-                    {activeTab === "newsPosts" && <NewsPosts userId={user.id} />}
                     {activeTab === "stocks" && <Stocks userId={user.id} />}
                     {activeTab === "achievements" && <Achievements userId={user.id} />}
                 </div>
