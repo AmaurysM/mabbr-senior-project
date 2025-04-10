@@ -51,16 +51,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    user.comments.forEach((e) => {
-      //console.log(e.commentLikes);
-      console.log(e.commentLikes.forEach((l)=>{
-        console.log(l)
-        console.log(userId)
-        console.log(l.commentId == userId)
-      }));
-    });
-    // console.log("-------------------------------------------");
-
     return NextResponse.json(user);
   } catch (error) {
     console.error("Error fetching user:", error);

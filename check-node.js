@@ -1,123 +1,125 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 const { execSync } = require("child_process");
 const fs = require("fs");
-const os = require("os");
 
-// Platform-aware NVM detection
+// Check if nvm is installed
 function isNvmInstalled() {
   try {
-    if (os.platform() === 'win32') {
-      execSync("nvm version", { stdio: "ignore" });
-    } else {
-      execSync("command -v nvm", { stdio: "ignore" });
-    }
+    execSync("command -v nvm", { stdio: "ignore" });
     return true;
   } catch (err) {
     return false;
   }
 }
 
-// Platform-specific NVM installation
+// Install nvm via npm if not installed
 function installNvm() {
-  console.log("🚨 NVM is not installed.");
-  
-  if (os.platform() === 'win32') {
-    console.log(`
-    ⚠️ Windows Detected - Please install nvm-windows manually:
-    1. Download from: https://github.com/coreybutler/nvm-windows/releases
-    2. Run the installer as Administrator
-    3. Close and reopen all terminal windows
-    4. Run this script again
-    `);
-  } else {
-    console.log("📥 Installing NVM using official script...");
-    try {
-      execSync("curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash", { stdio: "inherit" });
-      console.log("✅ NVM installed. Please restart your terminal and run this script again.");
-    } catch (err) {
-      console.error("❌ Failed to install NVM. Manual installation required: https://nvm.sh");
-    }
+  console.log("🚨 NVM is not installed. Installing NVM using npm...");
+  try {
+    execSync("npm install -g nvm", { stdio: "inherit" });
+    console.log("✅ NVM installed successfully.");
+  } catch (err) {
+    console.error("❌ Failed to install NVM using npm.");
+    process.exit(1);
   }
+}
+
+// Install Node.js if not installed
+function installNode(requiredVersion) {
+  console.log(`🚨 Node.js is not installed or the required version (${requiredVersion}) is missing.`);
+  console.log(`📥 Installing Node.js ${requiredVersion}...`);
+  try {
+    execSync(`nvm install ${requiredVersion}`, { stdio: "inherit" });
+    execSync(`nvm use ${requiredVersion}`, { stdio: "inherit" });
+    console.log(`✅ Node.js ${requiredVersion} is now active.`);
+  } catch (installError) {
+    console.error("❌ Failed to install Node.js. Make sure NVM is installed and available.");
+    process.exit(1);
+  }
+}
+
+// Check if Next.js is installed
+function isNextInstalled() {
+  try {
+    execSync("npx next --version", { stdio: "ignore" });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Install Next.js if not installed
+function installNext() {
+  console.log("🚨 Next.js is not installed. Installing Next.js...");
+  try {
+    execSync("npm install next", { stdio: "inherit" });
+    console.log("✅ Next.js installed successfully.");
+  } catch (err) {
+    console.error("❌ Failed to install Next.js.");
+    process.exit(1);
+  }
+}
+
+// Check if .nvmrc exists and read the required version
+const requiredVersion = fs.existsSync(".nvmrc") ? fs.readFileSync(".nvmrc", "utf8").trim() : null;
+
+if (!requiredVersion) {
+  console.error("⚠️  No .nvmrc file found! Please create one with the required Node.js version.");
   process.exit(1);
 }
 
-// Node.js version management
-function manageNodeVersion(requiredVersion) {
-  try {
-    const activeVersion = execSync("node -v", { encoding: "utf8" }).trim();
-    
-    if (activeVersion === `v${requiredVersion}`) {
-      console.log(`✅ Using Node.js ${activeVersion}`);
-      return;
+// Ensure Node.js is installed
+try {
+  const activeVersion = execSync("node -v", { encoding: "utf8" }).trim();
+
+  if (activeVersion === `v${requiredVersion}`) {
+    console.log(`✅ Node.js is already set to the required version: ${activeVersion}`);
+  } else {
+    console.log(`🔄 The current Node.js version is ${activeVersion}, switching to v${requiredVersion}...`);
+
+    if (!isNvmInstalled()) {
+      console.log("⚠️ NVM is not installed. Installing NVM using npm...");
+      installNvm();
     }
 
-    console.log(`🔄 Current: ${activeVersion}, Required: v${requiredVersion}`);
-    
-    try {
-      execSync(`nvm install ${requiredVersion}`, { stdio: "inherit" });
-      execSync(`nvm use ${requiredVersion}`, { stdio: "inherit" });
-    } catch (error) {
-      console.error(`❌ Failed to install Node.js ${requiredVersion}`);
-      console.log("Common solutions:");
-      console.log("- Restart your terminal session");
-      if (os.platform() === 'win32') console.log("- Run as Administrator");
-      console.log("- Check network connection");
+    execSync(`nvm use ${requiredVersion}`, { stdio: "inherit" });
+    console.log(`✅ Node.js version switched to ${requiredVersion}`);
+  }
+} catch (error) {
+  installNode(requiredVersion);
+}
+
+// Ensure Next.js is installed
+if (!isNextInstalled()) {
+  installNext();
+} else {
+  console.log("✅ Next.js is already installed.");
+  console.log("🔧 Installing dependencies...");
+  execSync('npm install', { stdio: 'inherit' });
+  console.log("🚀 Starting the development server...");
+  execSync('npm run dev', { stdio: 'inherit' });
+}
+
+// Lets try to install dependencies and start the development server
+try {
+  console.log("🔧 Installing dependencies...");
+  execSync("npm install", { stdio: "inherit" });
+  
+  // Add a verification step for critical dependencies
+  const packageJson = require('./package.json');
+  const criticalDeps = ['yahoo-finance2', 'firebase', 'next'];
+  
+  criticalDeps.forEach(dep => {
+    if (!packageJson.dependencies[dep]) {
+      console.error(`❌ Missing critical dependency: ${dep}`);
       process.exit(1);
     }
-  } catch (error) {
-    console.log("📥 Installing Node.js for the first time...");
-    execSync(`nvm install ${requiredVersion}`, { stdio: "inherit" });
-  }
-}
+  });
 
-// Next.js setup
-function setupNextJS() {
-  try {
-    execSync("npx next --version", { stdio: "ignore" });
-    console.log("✅ Next.js is installed");
-  } catch (err) {
-    console.log("📥 Installing Next.js...");
-    execSync("npm install next", { stdio: "inherit" });
-  }
-}
-
-// Main workflow
-function main() {
-  // Verify .nvmrc exists
-  if (!fs.existsSync(".nvmrc")) {
-    console.error("❌ Missing .nvmrc file");
-    process.exit(1);
-  }
-
-  const requiredVersion = fs.readFileSync(".nvmrc", "utf8").trim();
-
-  // NVM verification
-  if (!isNvmInstalled()) {
-    installNvm();
-  }
-
-  // Node version setup
-  manageNodeVersion(requiredVersion);
-
-  // Dependency management
-  try {
-    console.log("🔧 Installing dependencies...");
-    execSync("npm install", { stdio: "inherit" });
-
-  } catch (error) {
-    console.error("❌ Dependency error:", error.message);
-    process.exit(1);
-  }
-
-  // Start Next.js
-  console.log("🚀 Starting development server...");
+  console.log("🚀 Starting the development server...");
   execSync("npm run dev", { stdio: "inherit" });
-}
 
-// Run the main workflow
-try {
-  main();
 } catch (error) {
-  console.error("❌ Fatal error:", error.message);
+  console.error("❌ Failed to start the development server.");
+  console.error(error);
   process.exit(1);
 }
