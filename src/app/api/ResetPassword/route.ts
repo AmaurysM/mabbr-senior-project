@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Use a case-insensitive query to find the user by email.
     const user = await prisma.user.findFirst({
       where: {
         email: {
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Find the corresponding account record.
     const account = await prisma.account.findFirst({
       where: { userId: user.id },
     });
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-   // update the account record by setting password to newPassword.
+//  we simply update the account record by setting password to newPassword.
     await prisma.account.update({
       where: { id: account.id },
       data: { password: newPassword },
