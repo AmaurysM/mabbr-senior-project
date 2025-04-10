@@ -1,32 +1,42 @@
 "use client";
-import { UserOverview } from '@/lib/prisma_types';
 import React, { useEffect, useState } from 'react';
+import CommentList from './overviewComponents/CommentList';
+import { UserOverview } from "@/lib/prisma_types";
 
 const Overview = ({ userId }: { userId: string }) => {
     const [user, setUser] = useState<UserOverview | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        fetch("/api/user/overview", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ userId }),
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.error) {
+        if (!userId) {
+            console.error("No userId provided");
+            setLoading(false);
+            return;
+        }
+
+        const fetchUser = async () => {
+            try {
+                const res = await fetch("/api/user/overview", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId }),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
                     console.error("API Error:", data.error);
                 } else {
-                    setUser(data as UserOverview);
+                    setUser(data);
                 }
-                setLoading(false);
-            })
-            .catch((error) => {
+            } catch (error) {
                 console.error("Error fetching user:", error);
+            } finally {
                 setLoading(false);
-            });
+            }
+        };
+
+        fetchUser();
     }, [userId]);
 
     const formatDate = (dateStr: string) => {
@@ -46,7 +56,8 @@ const Overview = ({ userId }: { userId: string }) => {
         );
     }
 
-    // Handle no user data state
+
+
     if (!user) {
         return (
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
@@ -81,73 +92,9 @@ const Overview = ({ userId }: { userId: string }) => {
             </div>
 
             {/* Display Comments Categorized by Type */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
-                <h2 className="text-lg font-semibold text-white mb-4">Comments</h2>
-                {user?.comments && user.comments.length > 0 ? (
-                    <div className="space-y-4">
-                        {user.comments.map((comment, idx) => {
-                            // Determine the border style based on the comment type
-                            let borderStyle = "";
-                            switch (comment.commentableType) {
-                                case "NEWS":
-                                    borderStyle = "border-l-4 border-blue-500/50";
-                                    break;
-                                case "POST":
-                                    borderStyle = "border-l-4 border-green-500/50";
-                                    break;
-                                case "GLOBALCHAT":
-                                    borderStyle = "border-l-4 border-red-500/50";
-                                    break;
-                                default:
-                                    borderStyle = "border-l-4 border-gray-500/50";
-                            }
-                            return (
-                                <div key={idx} className={`p-4 bg-gray-700/30 rounded-xl ${borderStyle}`}>
-                                    {/* For NEWS comments, display the URL on top */}
-                                    {comment.commentableType === "NEWS" && comment.commentableId && (
-                                        <div className="mb-2">
-                                            <a
-                                                href={comment.commentableId}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-400 hover:text-blue-300 hover:underline"
-                                            >
-                                                {comment.commentableId}
-                                            </a>
-                                        </div>
-                                    )}
-                                    <p className="text-gray-300">{comment.content || "No content"}</p>
-                                    <div className="mt-2 flex justify-between items-center text-sm text-gray-400">
-                                        <span>
-                                            {comment.createdAt
-                                                ? formatDate(comment.createdAt.toString())
-                                                : "Unknown date"}
-                                        </span>
-                                        <span className="flex items-center">
-                                            <svg
-                                                className="w-4 h-4 mr-1"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth="2"
-                                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                                ></path>
-                                            </svg>
-                                            {comment.commentLikes?.length || 0}
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <p className="text-gray-400 italic">No comments yet</p>
-                )}
-            </div>
+            <CommentList
+                comments={user.comments}
+            />
 
 
             {/* Recent Achievements */}

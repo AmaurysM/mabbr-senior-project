@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { ArrowUp, ArrowDown, MessageSquare, Share2, Award, Bookmark, MoreHorizontal } from "lucide-react";
+import { ArrowUp, ArrowDown, MessageSquare} from "lucide-react";
 import { Comment } from "@/lib/prisma_types";
 import { useRouter } from 'next/navigation'
 import UserVerificationIcon from "@/app/components/UserVerificationIcon/UserVerificationIcon";
@@ -236,7 +236,7 @@ const PostsList = ({
                         className="font-medium text-gray-300 hover:underline cursor-pointer"
                         onClick={() => handleProfileClick(comment.userId)}
                       >
-                        r/{comment.user.name || "user"}
+                        {comment.user.name || "user"}
                       </span>
                       
                       <UserVerificationIcon userRole={comment.user.role} className="h-3 w-3 text-blue-500 ml-1" />
