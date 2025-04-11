@@ -35,9 +35,9 @@ const AddFriendCard = () => {
     };
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 mb-4 w-full">
-                <h2 className="text-xl font-bold text-white mb-3">Add Friends</h2>
-                <div className="bg-gray-800/50 rounded-lg p-3 gap-2">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-white/10 mb-4 w-full">
+                <h2 className="text-xl font-bold text-white mb-2">Add Friends</h2>
+                <div className="bg-gray-800/50 rounded-lg p-2 gap-2">
                     <div className="flex flex-col gap-2">
                         <input
                             type="email"

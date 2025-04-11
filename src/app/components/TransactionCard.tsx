@@ -95,7 +95,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         <span className="text-xs text-gray-400">{formattedTime}</span>
       </div>
       
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center min-h-[28px]">
         <div>
           <div className="flex items-baseline">
             <span className="text-lg font-bold text-white">{getItemDisplayName()}</span>
@@ -113,8 +113,8 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         </div>
       </div>
 
-      {hasNotes && (
-        <div className="mt-2">
+      {hasNotes ? (
+        <div className="mt-3">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center text-sm text-gray-400 hover:text-gray-300 transition-colors group"
@@ -142,6 +142,8 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
             </div>
           )}
         </div>
+      ) : (
+        <div className="mt-1"></div>
       )}
     </div>
   );

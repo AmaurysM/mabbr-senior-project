@@ -88,9 +88,9 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
     }, []);
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 w-full">
-            <h2 className="text-xl font-bold text-white mb-3">Market Insights</h2>
-            <div className="bg-gray-800/50 rounded-lg p-3 gap-2">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-white/10 w-full">
+            <h2 className="text-xl font-bold text-white mb-2">Market Insights</h2>
+            <div className="bg-gray-800/50 rounded-lg p-2 gap-2">
                 {isLoadingNews ? (
                     <div className="animate-pulse space-y-4">
                         {[1, 2, 3, 4, 5].map((i) => (
@@ -215,13 +215,11 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
 
                         {/* Load More button at the bottom of the news section */}
                         {hasMoreNews && !isLoadingMoreNews && (
-                            <div className="mt-4 text-center">
-                                <button
-                                    onClick={loadMoreNews}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors rounded-lg text-white w-full">
-                                    Load More Articles
-                                </button>
-                            </div>
+                            <button
+                                onClick={loadMoreNews}
+                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-4 text-center font-medium transition-colors mt-2 w-full">
+                                Load More Articles
+                            </button>
                         )}
                     </div>
                 ) : (
