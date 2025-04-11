@@ -44,7 +44,7 @@ const TradingStaticsticsCard = () => {
                     setTransactions(data.transactions);
                 }
             } catch (error) {
-                if (error.name !== 'AbortError') {
+                if (error instanceof Error && error.name !== 'AbortError') {
                     console.error('Error fetching transactions:', error);
                 }
             } finally {
@@ -119,7 +119,7 @@ const TradingStaticsticsCard = () => {
 
     if (loading) {
         return (
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+            <div className="p-6">
                 <h2 className="text-2xl font-bold text-white mb-6">
                     <SkeletonLoader width="200px" height="28px" />
                 </h2>
@@ -136,7 +136,7 @@ const TradingStaticsticsCard = () => {
     }
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+        <div className="p-6">
             <h2 className="text-2xl font-bold text-white mb-6">Trading Statistics</h2>
             <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-800/30 p-4 rounded-lg">

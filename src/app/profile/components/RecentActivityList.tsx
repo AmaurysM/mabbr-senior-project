@@ -51,7 +51,7 @@ const RecentActivityList = () => {
                     setTransactions(data.transactions);
                 }
             } catch (error) {
-                if (error.name !== 'AbortError') {
+                if (error instanceof Error && error.name !== 'AbortError') {
                     console.error('Error fetching transactions:', error);
                 }
             } finally {
@@ -68,7 +68,7 @@ const RecentActivityList = () => {
 
     if (loading) {
         return (
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+            <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                     <SkeletonLoader width="150px" height="28px" />
                     <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ const RecentActivityList = () => {
     }
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+        <div className="p-6">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-white">Recent Activity</h2>
                 <div className="flex items-center gap-2">

@@ -319,10 +319,26 @@ const CombinedProfilePage = () => {
 
     if (!user) {
         return (
-            <div className="min-h-full bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10 max-w-md w-full text-center">
-                    <div className="text-xl font-bold text-white mb-4">My Profile</div>
-                    <div className="text-gray-400">Please log in to view your profile, portfolio, and trading activity.</div>
+            <div className="min-h-full bg-gray-900">
+                <div className="flex flex-col items-center justify-center min-h-screen">
+                    <div className="p-8 bg-gray-800/50 backdrop-blur-sm shadow-lg rounded-2xl text-center border border-white/10 max-w-md w-full">
+                        <svg
+                            className="w-16 h-16 mx-auto text-red-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                        <h1 className="mt-4 text-xl font-bold text-white">My Profile</h1>
+                        <p className="mt-2 text-gray-400">Please log in to view your profile, portfolio, and trading activity.</p>
+                    </div>
                 </div>
             </div>
         );
@@ -330,87 +346,102 @@ const CombinedProfilePage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-full bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center">
-                <div className="text-white">Loading profile...</div>
+            <div className="min-h-full bg-gray-900">
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="animate-pulse flex flex-col items-center gap-4">
+                        <div className="w-24 h-24 bg-gray-800/50 backdrop-blur-sm rounded-full border border-white/10"></div>
+                        <div className="h-6 w-48 bg-gray-800/50 backdrop-blur-sm rounded border border-white/10"></div>
+                        <div className="h-4 w-32 bg-gray-800/50 backdrop-blur-sm rounded border border-white/10"></div>
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-full bg-gradient-to-r from-gray-900 to-gray-800 p-4"> {/* Removed overflow-y-scroll */}
-            <div className="max-w-7xl mx-auto"> {/* Removed max-h-full */}
-                {/* Profile Header */}
-                <header className="mb-8 overflow-hidden">
-                    <div className="flex flex-col md:flex-row items-center justify-between bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
-                        <div className="flex items-center mb-4 md:mb-0">
-                            <div className="relative w-20 h-20 md:w-24 md:h-24 group mr-4">
-                                <div
-                                    className="relative w-full h-full rounded-full overflow-hidden cursor-pointer
-                                    group-hover:ring-4 group-hover:ring-blue-500/50 transition-all"
-                                    onClick={handleImageClick}
-                                >
-                                    {imageError ? (
-                                        <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                                            <CameraIcon className="h-8 w-8 text-gray-400" />
+        <div className="min-h-full bg-gray-900">
+            <div className="relative">
+                {/* Cover image with gradient */}
+                <div className="h-64 w-full bg-gradient-to-r from-blue-500/30 to-indigo-600/30 backdrop-blur-sm"></div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="relative -mt-32">
+                        {/* Profile Header with glassy effect */}
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
+                            <div className="flex flex-col md:flex-row items-center justify-between">
+                                <div className="flex items-center mb-4 md:mb-0">
+                                    <div className="relative w-20 h-20 md:w-24 md:h-24 group mr-4">
+                                        <div
+                                            className="relative w-full h-full rounded-full overflow-hidden cursor-pointer
+                                            group-hover:ring-4 group-hover:ring-blue-500/50 transition-all"
+                                            onClick={handleImageClick}
+                                        >
+                                            {imageError ? (
+                                                <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                                                    <CameraIcon className="h-8 w-8 text-gray-400" />
+                                                </div>
+                                            ) : (
+                                                <Image
+                                                    src={profileImage}
+                                                    alt="Profile"
+                                                    fill
+                                                    className="object-cover"
+                                                    onError={() => setImageError(true)}
+                                                />
+                                            )}
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
+                                            transition-opacity flex items-center justify-center">
+                                                <CameraIcon className="h-6 w-6 text-white" />
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <Image
-                                            src={profileImage}
-                                            alt="Profile"
-                                            fill
-                                            className="object-cover"
-                                            onError={() => setImageError(true)}
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleImageChange}
+                                            accept="image/*"
+                                            className="hidden"
                                         />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
-                                    transition-opacity flex items-center justify-center">
-                                        <CameraIcon className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center">
+                                            <div className="text-3xl font-bold text-white">
+                                                {name}
+                                            </div>
+                                            {icon && <span className="ml-2">{icon}</span>}
+                                        </div>
+                                        <div className="text-gray-400">{email}</div>
                                     </div>
                                 </div>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleImageChange}
-                                    accept="image/*"
-                                    className="hidden"
-                                />
-                            </div>
-                            <div>
-                                <div className="flex items-center">
-                                    <div className="text-3xl font-bold text-white">
-                                        {name}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="text-center">
+                                        <div className="text-gray-400 text-sm">Balance</div>
+                                        <div className="text-xl font-bold text-white">
+                                            ${balance.toLocaleString(undefined, {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}
+                                        </div>
                                     </div>
-                                    {icon && <span className="ml-2">{icon}</span>}
-                                </div>
-                                <div className="text-gray-400">{email}</div>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="text-center">
-                                <div className="text-gray-400 text-sm">Balance</div>
-                                <div className="text-xl font-bold text-white">
-                                    ${balance.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })}
-                                </div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-gray-400 text-sm">Portfolio Value</div>
-                                <div className="text-xl font-bold text-white">
-                                    ${portfolioValue.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })}
+                                    <div className="text-center">
+                                        <div className="text-gray-400 text-sm">Portfolio Value</div>
+                                        <div className="text-xl font-bold text-white">
+                                            ${portfolioValue.toLocaleString(undefined, {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </header>
+                </div>
+            </div>
 
-                {/* Navigation Tabs */}
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-2 mb-8 shadow-lg border border-white/10">
-                    <div className="flex overflow-x-auto space-x-1 custom-scrollbar">
+            {/* Main Content */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 pt-4">
+                {/* Navigation Tabs with glassy effects */}
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-lg border border-white/10">
+                    <div className="flex overflow-x-auto space-x-2 custom-scrollbar">
                         <button
                             onClick={() => setActiveTab('profile')}
                             className={`px-4 py-2 rounded-lg flex items-center text-sm ${activeTab === 'profile'
@@ -464,34 +495,38 @@ const CombinedProfilePage = () => {
                     </div>
                 </div>
 
-                {/* Content container with proper scrolling behavior */}
+                {/* Content container with proper scrolling behavior and updated styles */}
                 <div className="pb-8">
                     {/* Profile Tab Content */}
                     {activeTab === 'profile' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Left Column - Profile Info */}
-                            <ProfileInformation />
+                            {/* Left Column - Profile Info with glassy effect */}
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                                <ProfileInformation />
+                            </div>
 
-                            {/* Right Column - Stats */}
-                            <TradingStaticsticsCard />
+                            {/* Right Column - Stats with glassy effect */}
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                                <TradingStaticsticsCard />
+                            </div>
                         </div>
                     )}
 
                     {/* Portfolio Tab Content */}
                     {activeTab === 'portfolio' && (
                         <div className="space-y-8">
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
                                 <div className="text-2xl font-bold text-white mb-4">Portfolio Value</div>
                                 <PortfolioChart />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
                                     <div className="text-2xl font-bold text-white mb-4">Risk Assessment</div>
                                     <Risk />
                                 </div>
 
-                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
                                     <div className="text-2xl font-bold text-white mb-4">Your Holdings</div>
                                     <PortfolioTable />
                                 </div>
@@ -501,14 +536,18 @@ const CombinedProfilePage = () => {
 
                     {/* Activity Tab Content */}
                     {activeTab === 'activity' && (
-                        <RecentActivityList />
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                            <RecentActivityList />
+                        </div>
                     )}
 
                     {/* Friends Tab Content */}
                     {activeTab === 'friends' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <AddFriendCard />
-                            <div>
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                                <AddFriendCard />
+                            </div>
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
                                 <FriendsList />
                             </div>
                         </div>
@@ -516,7 +555,9 @@ const CombinedProfilePage = () => {
 
                     {/* Settings Tab Content */}
                     {activeTab === 'settings' && (
-                        <AccountSettings />
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                            <AccountSettings />
+                        </div>
                     )}
                 </div>
             </div>
