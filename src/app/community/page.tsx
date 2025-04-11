@@ -8,6 +8,7 @@ import GlobalFeed from "./globalFeed/page";
 import Notifications from "./notifications/page";
 import Articles from "./articles/page";
 import Topics from "./topics/page";
+import OnlineFriendsList from "../components/OnlineFriendsList";
 
 enum Tab {
   globalFeed = "globalFeed",
@@ -114,6 +115,11 @@ const CommunityPage = () => {
             </button>
           ))}
         </nav>
+        
+        {/* Friends List */}
+        <div className="mt-8">
+          <OnlineFriendsList />
+        </div>
       </div>
 
       <button
