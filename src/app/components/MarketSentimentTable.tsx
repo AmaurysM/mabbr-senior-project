@@ -20,7 +20,7 @@ const MarketSentimentTable = () => {
   const bullishPercentage = calculateBullishPercentage();
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 w-full" style={{ minHeight: "300px" }}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-white">Market Sentiment</h2>
       </div>

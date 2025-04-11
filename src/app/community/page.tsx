@@ -93,7 +93,7 @@ const CommunityPage = () => {
     <div className="flex h-full">
       {/* Left Sidebar (Fixed) */}
       <div ref={sidebarRef}
-        className={`fixed lg:relative inset-y-0 left-0 w-64 lg:w-1/4 min-w-64 overflow-y-auto bg-gray-800 p-4 border-r border-gray-700 z-50 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed lg:relative inset-y-0 left-0 w-64 lg:w-60 min-w-60 overflow-y-auto bg-gray-800 p-4 border-r border-gray-700 z-50 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}>
         <nav className="space-y-2 sticky top-0">
           {Object.values(Tab).map((value) => (

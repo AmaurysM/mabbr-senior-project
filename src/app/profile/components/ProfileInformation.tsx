@@ -141,7 +141,7 @@ const ProfileInformation = (
 
     if (loading) {
         return (
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+            <div className="p-6">
                 <h2 className="text-2xl font-bold text-white mb-6">
                     <SkeletonLoader width="200px" height="28px" />
                 </h2>
@@ -167,7 +167,7 @@ const ProfileInformation = (
     }
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/10">
+        <div className="p-6">
             <h2 className="text-2xl font-bold text-white mb-6">Profile Information</h2>
             <div className="space-y-6">
                 <EditableField
