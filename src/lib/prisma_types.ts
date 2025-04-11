@@ -49,6 +49,8 @@ export type UserLootBox = Prisma.UserLootBoxGetPayload<{
   };
 }>;
 
+export type Friendship = Prisma.FriendshipGetPayload<object>;
+
 export type FriendRequests = Prisma.FriendshipGetPayload<{
   include: {
     requester: {
@@ -122,7 +124,7 @@ export type FriendPortfolio = Prisma.UserGetPayload<{
 
 export type FriendAchivements = Prisma.UserGetPayload<{
   include: {
-    achievements: true
+    achievements: true;
   };
 }>;
 
@@ -130,92 +132,106 @@ export type globalPosts = Prisma.CommentGetPayload<{
   include: {
     user: {
       select: {
-        id: true,
-        name: true,
-        image: true,
-      },
-    },
-  },
+        id: true;
+        name: true;
+        image: true;
+      };
+    };
+  };
 }>[];
 
 export type NewsComments = Prisma.CommentGetPayload<{
   include: {
     user: {
       select: {
-        id: true,
-        name: true,
-        image: true,
-      },
-    },
-  },
+        id: true;
+        name: true;
+        image: true;
+      };
+    };
+  };
 }>[];
 
 export type UserOverview = Prisma.UserGetPayload<{
   include: {
     comments: {
-      include:{commentLikes: true},
-      orderBy: {createdAt: "desc"},
-      take: 5
-    },
+      include: {
+        user: true,
+        commentLikes: true;
+        commentDislikes: true;
+        children: {
+          include: {
+            user: true,
+            commentLikes: true;
+            commentDislikes: true;
+          };
+        };
+      };
+      where: {
+        parentId: null;
+      };
+      orderBy: { createdAt: "desc" };
+      take: 10;
+    };
     transactions: {
-      orderBy: { timestamp: "desc"},
-      take: 3
-    },
+      orderBy: { timestamp: "desc" };
+      take: 3;
+    };
     achievements: {
-      orderBy: {earnedAt: "desc"},
-      take: 3
-    }
-  }
+      orderBy: { earnedAt: "desc" };
+      take: 3;
+    };
+  };
 }>;
 
 export type FriendsNewsComments = Prisma.UserGetPayload<{
   include: {
     comments: {
       where: {
-        commentableType: "NEWS"
-      }
-    }
-  },
+        commentableType: "NEWS";
+      };
+    };
+  };
 }>;
 
 export type Topics = Prisma.CommentGetPayload<{
-  include:{
+  include: {
     _count: {
       select: {
-        children: true,
-      }
-    }
-  }
+        children: true;
+      };
+    };
+  };
 }>[];
 export type Topic = Prisma.CommentGetPayload<object>;
 export type Comments = Prisma.CommentGetPayload<{
   include: {
-    user: true,
-    commentLikes: true, 
-    commentDislikes: true, 
+    user: true;
+    commentLikes: true;
+    commentDislikes: true;
     children: {
       include: {
-        user: true, 
-        commentLikes: true,
-        commentDislikes: true, 
-      },
-    },
-  },
+        user: true;
+        commentLikes: true;
+        commentDislikes: true;
+      };
+    };
+  };
 }>[];
 
 export type CommentWithChildren = Prisma.CommentGetPayload<{
   include: {
-    user: true,
-    commentLikes: true, 
-    commentDislikes: true, 
+    user: true;
+    commentLikes: true;
+    commentDislikes: true;
     children: {
       include: {
-        user: true, 
-        commentLikes: true,
-        commentDislikes: true, 
-      },
-    },
-  },
+        user: true;
+        commentLikes: true;
+        commentDislikes: true;
+      };
+    };
+  };
 }>;
 
 export type Comment = Omit<
@@ -239,15 +255,15 @@ export type Comment = Omit<
 // export type CommentWithChildren = Prisma.CommentGetPayload<{
 //   include: {
 //     user:true,
-//     commentLikes: true, 
+//     commentLikes: true,
 //     children: {
 //       include: {
 //         user: true,
-//         commentLikes: true, 
+//         commentLikes: true,
 //         children: {
 //           include: {
 //             user: true,
-//             commentLikes: true, 
+//             commentLikes: true,
 //             children: true
 //           },
 //         },
@@ -261,29 +277,27 @@ export type NewRoomComent = Prisma.CommentGetPayload<object>;
 export type Notifications = Prisma.FriendshipGetPayload<{
   include: {
     requester: {
-      select: { id: true, name: true, email: true },
+      select: { id: true; name: true; email: true };
       include: {
-        transactions: true, // Fetch the friend's transactions
-        comments: true,
-      }
-    },
+        transactions: true; // Fetch the friend's transactions
+        comments: true;
+      };
+    };
     recipient: {
-      select: { id: true, name: true, email: true },
+      select: { id: true; name: true; email: true };
       include: {
-        transactions: true, // Fetch the friend's transactions
-        comments: true,
-      }
-    },
-  },
-
+        transactions: true; // Fetch the friend's transactions
+        comments: true;
+      };
+    };
+  };
 }>[];
 
 export type UsableUser = Prisma.UserGetPayload<{
   omit: {
-    id: true,
-    
-  }
-}>
+    id: true;
+  };
+}>;
 
 export type Session = Prisma.SessionGetPayload<object>;
 export type SessionType = ReturnType<typeof authClient.useSession>["data"];

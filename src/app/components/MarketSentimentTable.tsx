@@ -10,33 +10,44 @@ const MarketSentimentTable = () => {
     return <div className="text-white"><LoadingStateAnimation /></div>;
   }
 
+  // Calculate bullish percentage safely
+  const calculateBullishPercentage = () => {
+    const total = (sentiment?.bullishCount || 0) + (sentiment?.bearishCount || 0);
+    if (total === 0) return null;
+    return Math.round((sentiment?.bullishCount || 0) / total * 100);
+  };
+
+  const bullishPercentage = calculateBullishPercentage();
+
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 w-full" style={{ minHeight: "300px" }}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-white">Market Sentiment</h2>
       </div>
 
       <div className="space-y-4">
-        {/* Bulls vs Bears */}
+        {/* Bullish vs Bearish */}
         <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-300">Bulls vs Bears</span>
-            {sentiment && (
+            <span className="text-gray-300">Bullish vs Bearish</span>
+            {bullishPercentage !== null ? (
               <span className="text-green-400">
-                {Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}% Bullish
+                {bullishPercentage}% Bullish
+              </span>
+            ) : (
+              <span className="text-gray-400">
+                No Votes
               </span>
             )}
           </div>
-          {sentiment && (
-            <div className="w-full bg-gray-600/50 rounded-full h-2.5">
-              <div
-                className="bg-green-500 h-2.5 rounded-full"
-                style={{
-                  width: `${Math.round((sentiment.bullishCount / (sentiment.bullishCount + sentiment.bearishCount)) * 100)}%`
-                }}
-              />
-            </div>
-          )}
+          <div className="w-full bg-gray-600/50 rounded-full h-2.5">
+            <div
+              className="bg-green-500 h-2.5 rounded-full"
+              style={{
+                width: bullishPercentage !== null ? `${bullishPercentage}%` : '0%'
+              }}
+            />
+          </div>
         </div>
 
         {/* Most Likely to Outperform */}

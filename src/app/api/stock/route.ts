@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import yahooFinance from 'yahoo-finance2';
+import yahooFinance from '@/lib/yahooFinance';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const symbol = searchParams.get('symbol') || 'NVDA';
 
   try {
+    console.log(`Fetching data for symbol: ${symbol}`);
     const result = await yahooFinance.quoteSummary(symbol, {
       modules: [
         'price',
@@ -19,6 +20,13 @@ export async function GET(request: Request) {
       ]
     });
 
+    if (!result) {
+      console.error('No data returned from Yahoo Finance');
+      return NextResponse.json({ error: 'No data available' }, { status: 404 });
+    }
+
+    console.log('Yahoo Finance raw response:', JSON.stringify(result, null, 2));
+
     const transformedData = {
       quoteResponse: {
         result: [{
@@ -28,6 +36,10 @@ export async function GET(request: Request) {
           regularMarketChange: result.price?.regularMarketChange,
           regularMarketChangePercent: result.price?.regularMarketChangePercent,
           regularMarketVolume: result.price?.regularMarketVolume,
+          regularMarketOpen: result.price?.regularMarketOpen,
+          regularMarketDayHigh: result.price?.regularMarketDayHigh,
+          regularMarketDayLow: result.price?.regularMarketDayLow,
+          regularMarketPreviousClose: result.price?.regularMarketPreviousClose,
           
           // Summary details
           marketCap: result.summaryDetail?.marketCap,
@@ -68,9 +80,15 @@ export async function GET(request: Request) {
       }
     };
 
+    console.log('Transformed data:', JSON.stringify(transformedData, null, 2));
     return NextResponse.json(transformedData);
   } catch (error) {
     console.error('Yahoo Finance API Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch stock data' }, { status: 500 });
+    // More detailed error response
+    return NextResponse.json({ 
+      error: 'Failed to fetch stock data',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: Date.now()
+    }, { status: 500 });
   }
 } 

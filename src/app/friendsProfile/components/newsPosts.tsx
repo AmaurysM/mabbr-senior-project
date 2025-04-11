@@ -48,30 +48,30 @@ const NewsPosts = ({ userId }: { userId: string }) => {
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
             {loading ? (
                 <div className="flex justify-center items-center py-8">
-                    <svg className="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                     </svg>
-                    <p className="mt-4 text-gray-500">No posts available</p>
+                    <p className="mt-4 text-gray-400">No posts available</p>
                 </div>
 
             ) : user?.comments && user.comments.length > 0 ? (
                 <div className="space-y-4 rounded-lg overflow-auto">
                     {user.comments.map((post, idx) => (
-                        <div key={idx} className="p-4 bg-gray-50  border border-gray-100">
+                        <div key={idx} className="p-4 bg-gray-700/30 rounded-xl border border-white/5">
                             <Link href={post.commentableId || ""}>
                                 <div
-                                    className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                    className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
                                     rel="noopener noreferrer"
                                 >
                                     {formatLinkTitle(post?.commentableId || "")}
                                 </div>
                             </Link>
-                            <p className="text-gray-700">{post.content || "No content"}</p>
+                            <p className="text-gray-300">{post.content || "No content"}</p>
 
-                            <div className="mt-2 flex justify-between items-center text-sm text-gray-500">
+                            <div className="mt-2 flex justify-between items-center text-sm text-gray-400">
                                 <span>{post.createdAt ? formatDate(post.createdAt.toString()) : "Unknown date"}</span>
                             </div>
                         </div>
@@ -79,10 +79,10 @@ const NewsPosts = ({ userId }: { userId: string }) => {
                 </div>
             ) : (
                 <div className="text-center py-8">
-                    <svg className="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                     </svg>
-                    <p className="mt-4 text-gray-500">No posts available</p>
+                    <p className="mt-4 text-gray-400">No posts available</p>
                 </div>
             )}
         </div>

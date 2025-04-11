@@ -17,10 +17,12 @@ const GlobalFeed = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         {/* Left Column - Global Chat */}
-        <GlobalMarketChat />
+        <div className="w-full">
+          <GlobalMarketChat />
+        </div>
 
         {/* Right Column - Leaderboards & Friends */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 w-full">
           {/* Top five leader board */}
           <Leaderboard num={5}/>
 

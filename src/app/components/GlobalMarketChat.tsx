@@ -27,14 +27,26 @@ const GlobalMarketChat = () => {
 
   if (!messagesData || error) {
     return (
-      <div className="text-white">
-        <LoadingStateAnimation />
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+        <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
+        <div className="flex flex-col items-center justify-center p-8 bg-gray-700/20 rounded-xl border border-white/5">
+          <p className="text-yellow-400 mb-3">Unable to load chat messages</p>
+          <p className="text-gray-400 text-sm text-center">
+            {error ? "There was an error loading the chat. Please try again later." : "Loading chat data..."}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 w-full" style={{ minHeight: "800px" }}>
       <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
 
       {/* Fixed height scrollable container for messages */}

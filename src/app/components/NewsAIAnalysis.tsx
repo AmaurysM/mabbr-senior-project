@@ -23,16 +23,16 @@ interface NewsAIAnalysisProps {
   newsItem: NewsItem;
   isOpen: boolean;
   onClose: () => void;
-  analysisCache?: Record<string, any>;
-  setAnalysisCache?: (cache: Record<string, any>) => void;
+  analysisCache: Record<string, any>;
+  setAnalysisCache: (cache: Record<string, any>) => void;
 }
 
 const NewsAIAnalysis: React.FC<NewsAIAnalysisProps> = ({
   newsItem,
   isOpen,
   onClose,
-  analysisCache = {},
-  setAnalysisCache = () => {},
+  analysisCache,
+  setAnalysisCache,
 }) => {
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -73,20 +73,26 @@ const NewsAIAnalysis: React.FC<NewsAIAnalysisProps> = ({
         });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch AI analysis');
+          const data = await response.json();
+          if (response.status === 429) {
+            throw new Error('You have reached your daily limit for AI analysis. Please try again tomorrow.');
+          }
+          throw new Error(data.error || 'Failed to fetch AI analysis');
         }
         
         const data = await response.json();
         setAnalysis(data.analysis);
         
-        // Store in cache
-        setAnalysisCache({
-          ...analysisCache,
-          [cacheKey]: data.analysis
-        });
+        // Only store in local cache if it's not a cached response from the server
+        if (!data.cached) {
+          setAnalysisCache({
+            ...analysisCache,
+            [cacheKey]: data.analysis
+          });
+        }
       } catch (err) {
         console.error('Error fetching AI analysis:', err);
-        setError('Failed to analyze article. Please try again later.');
+        setError(err instanceof Error ? err.message : 'Failed to analyze article. Please try again later.');
       } finally {
         setIsLoading(false);
       }
@@ -99,53 +105,49 @@ const NewsAIAnalysis: React.FC<NewsAIAnalysisProps> = ({
   if (!isOpen || !newsItem) return null;
 
   const handleRetry = () => {
-    const cacheKey = getCacheKey(newsItem);
-    
-    // Remove from cache if it exists
-    if (analysisCache[cacheKey]) {
-      const newCache = { ...analysisCache };
-      delete newCache[cacheKey];
-      setAnalysisCache(newCache);
-    }
-    
-    setAnalysis(null);
     setError(null);
     setIsLoading(true);
-    
-    fetch('/api/news/ai-analysis', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: newsItem.title,
-        summary: newsItem.summary,
-        url: newsItem.url,
-      }),
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch AI analysis');
-        }
-        return response.json();
-      })
-      .then(data => {
-        setAnalysis(data.analysis);
-        
-        // Store in cache
-        const cacheKey = getCacheKey(newsItem);
-        setAnalysisCache({
-          ...analysisCache,
-          [cacheKey]: data.analysis
+    const fetchAIAnalysis = async () => {
+      try {
+        const response = await fetch('/api/news/ai-analysis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: newsItem.title,
+            summary: newsItem.summary,
+            url: newsItem.url,
+          }),
         });
         
-        setIsLoading(false);
-      })
-      .catch(err => {
+        if (!response.ok) {
+          const data = await response.json();
+          if (response.status === 429) {
+            throw new Error('You have reached your daily limit for AI analysis. Please try again tomorrow.');
+          }
+          throw new Error(data.error || 'Failed to fetch AI analysis');
+        }
+        
+        const data = await response.json();
+        setAnalysis(data.analysis);
+        
+        // Only store in local cache if it's not a cached response from the server
+        if (!data.cached) {
+          const cacheKey = getCacheKey(newsItem);
+          setAnalysisCache({
+            ...analysisCache,
+            [cacheKey]: data.analysis
+          });
+        }
+      } catch (err) {
         console.error('Error fetching AI analysis:', err);
-        setError('Failed to analyze article. Please try again later.');
+        setError(err instanceof Error ? err.message : 'Failed to analyze article. Please try again later.');
+      } finally {
         setIsLoading(false);
-      });
+      }
+    };
+    fetchAIAnalysis();
   };
 
   return (

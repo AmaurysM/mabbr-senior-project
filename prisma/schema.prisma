@@ -46,6 +46,7 @@ model User {
   comments       Comment[]
   commentLike    CommentLike[]
   commentDislike CommentDislike[]
+  aiUsage        StockAIUsage[]
 
   @@map("user")
 }
@@ -59,6 +60,7 @@ model Comment {
   commentableId   String?   // Can be postId, newsUrl, or chatId
   commentableType CommentableType
   commentDescription String?
+  stockSymbol     String?   // For stock-specific chat messages
 
   parentId        String?  
   parent          Comment? @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -73,6 +75,7 @@ model Comment {
   updatedAt       DateTime @updatedAt
 
   @@index([commentableId, commentableType])
+  @@index([stockSymbol])
 }
 
 enum CommentableType {
@@ -83,6 +86,7 @@ enum CommentableType {
   NEWS
   GLOBALCHAT
   FEED
+  STOCKCHAT
 }
 
 
@@ -337,6 +341,32 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@map("user_achievement")
+}
+
+model StockAIUsage {
+  id          String   @id @default(cuid()) @map("_id")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  usageCount  Int      @default(0)
+
+  @@unique([userId, date])
+  @@index([date])
+  @@map("stock_ai_usage")
+}
+
+model StockAICache {
+  id          String   @id @default(cuid()) @map("_id")
+  articleUrl  String   @unique
+  title       String
+  summary     String
+  analysis    Json
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("stock_ai_cache")
 }
 
 

@@ -1,18 +1,83 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
+import prisma from '@/lib/prisma';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const DAILY_LIMIT = 10; // Daily limit per user
+const CACHE_DURATION_DAYS = 1; // Cache analysis for 1 day
+
 export async function POST(req: Request) {
   try {
+    // Get user session
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const { title, summary, url } = await req.json();
 
-    if (!title || !summary) {
+    if (!title || !summary || !url) {
       return NextResponse.json(
-        { error: 'Title and summary are required' },
+        { error: 'Title, summary, and URL are required' },
         { status: 400 }
+      );
+    }
+
+    // Check cache first
+    const cachedAnalysis = await prisma.stockAICache.findUnique({
+      where: {
+        articleUrl: url,
+      },
+    });
+
+    if (cachedAnalysis && cachedAnalysis.expiresAt > new Date()) {
+      return NextResponse.json({
+        analysis: cachedAnalysis.analysis,
+        cached: true
+      });
+    }
+
+    // If not in cache, check usage limit
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get or create today's usage record
+    let usage = await prisma.stockAIUsage.findFirst({
+      where: {
+        userId: session.user.id,
+        date: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
+    });
+
+    if (!usage) {
+      usage = await prisma.stockAIUsage.create({
+        data: {
+          userId: session.user.id,
+          date: today,
+          usageCount: 0
+        }
+      });
+    }
+
+    // Check if user has reached daily limit
+    if (usage.usageCount >= DAILY_LIMIT) {
+      return NextResponse.json(
+        { error: 'Daily AI analysis limit reached' },
+        { status: 429 }
       );
     }
 
@@ -55,7 +120,7 @@ Ensure your analysis is objective, well-reasoned, and presented in a clear, prof
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Using GPT-4o Mini as specified
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -88,9 +153,35 @@ Ensure your analysis is objective, well-reasoned, and presented in a clear, prof
       );
     }
 
+    // Increment usage count
+    await prisma.stockAIUsage.update({
+      where: { id: usage.id },
+      data: { usageCount: usage.usageCount + 1 }
+    });
+
+    // Cache the analysis
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + CACHE_DURATION_DAYS);
+
+    await prisma.stockAICache.upsert({
+      where: { articleUrl: url },
+      update: {
+        analysis: analysisData,
+        expiresAt
+      },
+      create: {
+        articleUrl: url,
+        title,
+        summary,
+        analysis: analysisData,
+        expiresAt
+      }
+    });
+
     // Return the analysis
     return NextResponse.json({
-      analysis: analysisData
+      analysis: analysisData,
+      cached: false
     });
   } catch (error) {
     console.error("AI Analysis error:", error);

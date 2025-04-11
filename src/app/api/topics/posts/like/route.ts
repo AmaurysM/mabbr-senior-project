@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         },
       },
     });
-
+    
     if (existingLike) {
       await prisma.commentLike.delete({
         where: {

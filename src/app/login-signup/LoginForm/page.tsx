@@ -76,7 +76,7 @@ const LoginForm: React.FC = () => {
             {
                 onRequest: () => setPendingCredentials(true),
                 onSuccess: async () => {
-                    router.push("/portfolio");
+                    router.push("/profile");
                     router.refresh();
                     signUpForm.reset();
                 },

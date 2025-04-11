@@ -31,10 +31,11 @@ export async function POST(req: NextRequest) {
   const { email } = requestBody;
 
   try {
+    // Create a new Request for arcjet using the original headers and body.
     const arcjetReq = new Request(req.url, {
       method: req.method,
       headers: req.headers,
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     });
 
     const decision = await aj.protect(arcjetReq, { email });
@@ -64,17 +65,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Forward the request to Better Auth's handler.
     const authReq = new Request(req.url, {
       method: req.method,
       headers: req.headers,
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     });
 
     return betterAuthHandlers.POST(authReq);
   } catch (error) {
-    console.error('Auth route error:', error);
+    console.error("Auth route error:", error);
     return NextResponse.json(
-      { message: "Internal Server Error", details: error instanceof Error ? error.message : error }, 
+      {
+        message: "Internal Server Error",
+        details: error instanceof Error ? error.message : error,
+      },
       { status: 500 }
     );
   }
