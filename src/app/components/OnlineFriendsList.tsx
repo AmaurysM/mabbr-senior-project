@@ -20,8 +20,12 @@ const OnlineFriendsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { data: session } = authClient.useSession();
   
-  // Consider a user online if they were active in the last 5 minutes
-  const ONLINE_THRESHOLD_MINUTES = 5;
+  // Consider a user online if they were active in the last 2 minutes
+  // This is more responsive and better aligned with our 30-second polling
+  const ONLINE_THRESHOLD_MINUTES = 2;
+  
+  // Poll for updates every 15 seconds for more responsive display
+  const POLLING_INTERVAL_MS = 15000;
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -83,8 +87,8 @@ const OnlineFriendsList: React.FC = () => {
 
     fetchFriends();
     
-    // Poll for updates more frequently
-    const interval = setInterval(fetchFriends, 30000); // every 30 seconds
+    // Poll for updates more frequently for better real-time experience
+    const interval = setInterval(fetchFriends, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [session?.user?.id]);
 
