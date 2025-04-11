@@ -145,23 +145,23 @@ const TopicsPage = () => {
     return (
         <div className="max-w-4xl mx-auto">
             {/* Search & Create */}
-            <div className="border border-white/10 rounded-md shadow-md p-4 mb-4">
-                <div className="flex flex-col sm:flex-row gap-2">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 mb-4">
+                <div className="flex flex-col sm:flex-row items-center gap-2">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-200 w-5 h-5 z-10" />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search topics..."
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-4 py-3 pl-12 rounded-xl bg-gray-700/30 border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white"
                         />
                     </div>
                     <button
                         onClick={() => setShowCreateForm(!showCreateForm)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center justify-center"
+                        className="px-6 py-3 bg-blue-600 rounded-xl text-white font-medium hover:bg-blue-700 transition-colors flex items-center justify-center whitespace-nowrap"
                     >
-                        <Plus className="w-5 h-5 mr-1" />
+                        <Plus className="w-4 h-4 mr-2" />
                         Create Topic
                     </button>
                 </div>
@@ -176,18 +176,18 @@ const TopicsPage = () => {
             </div>
 
             {/* Sorting options */}
-            <div className="border border-white/10 rounded-md shadow-md p-3 mb-4">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 mb-4">
                 <div className="flex space-x-4 text-sm font-medium">
                     <button
                         onClick={() => setSortBy("new")}
-                        className={`flex items-center ${sortBy === "new" ? "text-blue-500" : "text-gray-500"} hover:bg-gray-100 px-3 py-1 rounded-full`}
+                        className={`flex items-center ${sortBy === "new" ? "text-blue-500 bg-blue-900/20" : "text-gray-400"} hover:bg-gray-700/50 px-3 py-1.5 rounded-full transition-colors`}
                     >
                         <Clock className="w-4 h-4 mr-1" />
                         New
                     </button>
                     <button
                         onClick={() => setSortBy("top")}
-                        className={`flex items-center ${sortBy === "top" ? "text-blue-500" : "text-gray-500"} hover:bg-gray-100 px-3 py-1 rounded-full`}
+                        className={`flex items-center ${sortBy === "top" ? "text-blue-500 bg-blue-900/20" : "text-gray-400"} hover:bg-gray-700/50 px-3 py-1.5 rounded-full transition-colors`}
                     >
                         <TrendingUp className="w-4 h-4 mr-1" />
                         Top
@@ -197,14 +197,14 @@ const TopicsPage = () => {
 
             {/* Error message */}
             {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">
+                <div className="bg-red-900/30 backdrop-blur-sm border border-red-500/30 text-red-300 px-4 py-3 rounded-md mb-4">
                     <p>{error}</p>
                 </div>
             )}
 
             {/* Topics list */}
             {isLoading && size === 1 ? (
-                <div className="border border-white/10 rounded-md shadow-md p-12 flex flex-col items-center justify-center">
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/10 flex flex-col items-center justify-center">
                     <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
                     <p className="text-gray-200">Loading topics...</p>
                 </div>
@@ -214,7 +214,7 @@ const TopicsPage = () => {
                         <div
                             key={topic.id}
                             onClick={() => handleSelectTopic(topic)}
-                            className="bg-gray-700 rounded-md shadow-md border-2 border-white/10 hover:border-blue-500 transition-all cursor-pointer overflow-hidden"
+                            className="bg-gray-700/30 rounded-xl shadow-md border border-white/5 hover:border-blue-500/50 transition-all cursor-pointer overflow-hidden"
                         >
                             <div className="flex p-3">
                                 {/* Topic icon - show image if available */}
