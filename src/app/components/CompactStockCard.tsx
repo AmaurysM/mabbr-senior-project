@@ -247,15 +247,30 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
       onClick={isDataUnavailable ? undefined : toggleExpanded}
     >
       {/* Favorite Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleFavorite(symbol);
-        }}
-        className={`absolute top-2 right-2 ${isFavorite ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600 transition-colors`}
-      >
-        <Star className={`w-6 h-6 ${isFavorite ? 'fill-current' : ''}`} />
-      </button>
+      <div className="absolute top-2 right-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(symbol);
+          }}
+          className={`${isFavorite ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600 transition-colors`}
+        >
+          <Star className={`w-6 h-6 ${isFavorite ? 'fill-current' : ''}`} />
+        </button>
+      </div>
+
+      {/* View Stock button */}
+      {!isDataUnavailable && (
+        <div className="absolute bottom-2 right-2">
+          <Link 
+            href={`/stock/${symbol}`}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-green-500 hover:bg-green-400 text-white p-1.5 rounded-full transition-colors flex items-center justify-center"
+          >
+            <FaChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
 
       {/* Compact view - always visible */}
       <div className={`p-4 flex items-center justify-between w-full ${isDataUnavailable ? '' : 'cursor-pointer'}`}>
@@ -324,12 +339,12 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
           )}
         </div>
 
-        {/* Expand/collapse indicator - only show if data is available */}
-        <div className="ml-2 text-gray-400 flex-none">
+        {/* Invisible expand/collapse indicator - keeps layout intact */}
+        <div className="ml-2 text-gray-400 flex-none opacity-0">
           {!isDataUnavailable && (
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className={`h-5 w-5 transform transition-transform ${expanded ? 'rotate-180' : ''}`}
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -339,6 +354,21 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
           )}
         </div>
       </div>
+
+      {/* Visible expand/collapse indicator at bottom center */}
+      {!isDataUnavailable && (
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-gray-400 pb-1">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-5 w-5 transform transition-transform ${expanded ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      )}
 
       {/* Expanded view - only visible when expanded */}
       {!isDataUnavailable && expanded && (
