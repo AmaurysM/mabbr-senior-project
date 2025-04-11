@@ -148,5 +148,145 @@ export const DEFAULT_STOCKS = [
     symbol: "BA",
     name: "Boeing Company",
     description: "Aerospace and defense",
+  },
+  {
+    symbol: "LYFT",
+    name: "Lyft Inc.",
+    description: "Ridesharing and transportation network",
+  },
+  {
+    symbol: "BABA",
+    name: "Alibaba Group Holding Ltd.",
+    description: "E-commerce and technology company",
+  },
+  {
+    symbol: "TGT",
+    name: "Target Corporation",
+    description: "Retail department stores",
+  },
+  {
+    symbol: "PFE",
+    name: "Pfizer Inc.",
+    description: "Pharmaceutical company",
+  },
+  {
+    symbol: "MRNA",
+    name: "Moderna Inc.",
+    description: "Biotechnology company focusing on mRNA therapeutics",
+  },
+  {
+    symbol: "SNAP",
+    name: "Snap Inc.",
+    description: "Camera and social media company",
+  },
+  {
+    symbol: "TWLO",
+    name: "Twilio Inc.",
+    description: "Cloud communications platform",
+  },
+  {
+    symbol: "ROKU",
+    name: "Roku Inc.",
+    description: "Digital media players and streaming services",
+  },
+  {
+    symbol: "SHOP",
+    name: "Shopify Inc.",
+    description: "E-commerce platform for online stores",
+  },
+  {
+    symbol: "UBS",
+    name: "UBS Group AG",
+    description: "Global financial services company",
+  },
+  {
+    symbol: "IBM",
+    name: "International Business Machines",
+    description: "Cloud computing, AI, and IT services",
+  },
+  {
+    symbol: "GM",
+    name: "General Motors Company",
+    description: "Automotive manufacturing",
+  },
+  {
+    symbol: "F",
+    name: "Ford Motor Company",
+    description: "Automotive manufacturing",
+  },
+  {
+    symbol: "COIN",
+    name: "Coinbase Global Inc.",
+    description: "Cryptocurrency exchange platform",
+  },
+  {
+    symbol: "ZM",
+    name: "Zoom Video Communications",
+    description: "Video conferencing software",
+  },
+  {
+    symbol: "SPOT",
+    name: "Spotify Technology S.A.",
+    description: "Audio streaming and media services",
+  },
+  {
+    symbol: "PLTR",
+    name: "Palantir Technologies Inc.",
+    description: "Software and data analytics",
+  },
+  {
+    symbol: "T",
+    name: "AT&T Inc.",
+    description: "Telecommunications company",
+  },
+  {
+    symbol: "VZ",
+    name: "Verizon Communications",
+    description: "Telecommunications company",
+  },
+  {
+    symbol: "DASH",
+    name: "DoorDash Inc.",
+    description: "Online food ordering and delivery platform",
+  },
+  {
+    symbol: "HOOD",
+    name: "Robinhood Markets Inc.",
+    description: "Financial services platform",
+  },
+  {
+    symbol: "RIVN",
+    name: "Rivian Automotive Inc.",
+    description: "Electric vehicle manufacturer",
+  },
+  {
+    symbol: "LCID",
+    name: "Lucid Group Inc.",
+    description: "Electric vehicle manufacturer",
+  },
+  {
+    symbol: "GS",
+    name: "Goldman Sachs Group",
+    description: "Investment banking and financial services",
+  },
+  {
+    symbol: "MS",
+    name: "Morgan Stanley",
+    description: "Financial services and investment banking",
+  },
+  {
+    symbol: "V",
+    name: "Visa Inc.",
+    description: "Digital payments and financial services",
+  },
+  {
+    symbol: "MA",
+    name: "Mastercard Incorporated",
+    description: "Global payments and technology company",
+  },
+  {
+    symbol: "NMAX",
+    name: "NextMax Technologies",
+    description: "Fictional advanced technology company for demonstration",
   }
 ]; 

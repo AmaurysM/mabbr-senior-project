@@ -34,6 +34,7 @@ const StockList = () => {
     // const [isTrading, setIsTrading] = useState(false);
     // const [transactions, setTransactions] = useState<Trade[]>([]);
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
+    const [visibleStocksCount, setVisibleStocksCount] = useState(30);
 
 
 
@@ -49,8 +50,21 @@ const StockList = () => {
         ...Array.from(searchedSymbols)
     ]));
 
-    const { stocks: swrStocks, filteredStocks, isLoading: isLoadingStocks, mutate: mutateStocks } = useStockData(symbolsToFetch, searchQuery);
+    // If searching, fetch all symbols. If not, only fetch the visible symbols plus favorites and portfolio
+    const symbolsToFetchWithLimit = searchQuery.trim() 
+        ? symbolsToFetch
+        : Array.from(new Set([
+            ...DEFAULT_STOCKS.slice(0, visibleStocksCount).map(stock => stock.symbol),
+            ...(user ? Object.keys(portfolio?.positions || {}) : []),
+            ...Array.from(favorites)
+        ]));
+
+    const { stocks: swrStocks, filteredStocks, isLoading: isLoadingStocks, mutate: mutateStocks } = useStockData(symbolsToFetchWithLimit, searchQuery);
     const favoriteStocks = swrStocks.filter((stock) => favorites.has(stock.symbol));
+
+    const loadMoreStocks = () => {
+        setVisibleStocksCount(prev => Math.min(prev + 15, DEFAULT_STOCKS.length));
+    };
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -407,6 +421,15 @@ const StockList = () => {
                                     onToggleFavorite={toggleFavorite} />
                             ))
                         }
+                        
+                        {!searchQuery && visibleStocksCount < DEFAULT_STOCKS.length && (
+                            <button 
+                                onClick={loadMoreStocks}
+                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-4 text-center font-medium transition-colors mt-2"
+                            >
+                                Load More Stocks
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
