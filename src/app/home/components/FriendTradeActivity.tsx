@@ -75,8 +75,8 @@ const FriendTradeActivity = () => {
         : transactions;
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 w-full">
-            <div className="flex justify-between items-center mb-3">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-white/10 w-full">
+            <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xl font-bold text-white">Trade Activity</h2>
                 <div className="flex items-center bg-gray-700/50 rounded-lg">
                     <button 
@@ -93,7 +93,7 @@ const FriendTradeActivity = () => {
                     </button>
                 </div>
             </div>
-            <div className="bg-gray-800/50 rounded-lg p-3 gap-2">
+            <div className="bg-gray-800/50 rounded-lg p-2 gap-2">
                 {filteredTransactions.length === 0 ? (
                     <div className="text-gray-400 text-center py-8">
                         {showOnlyMyTrades 

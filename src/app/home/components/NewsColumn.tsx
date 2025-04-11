@@ -88,9 +88,9 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
     }, []);
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 w-full">
-            <h2 className="text-xl font-bold text-white mb-3">Market Insights</h2>
-            <div className="bg-gray-800/50 rounded-lg p-3 gap-2">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-white/10 w-full">
+            <h2 className="text-xl font-bold text-white mb-2">Market Insights</h2>
+            <div className="bg-gray-800/50 rounded-lg p-2 gap-2">
                 {isLoadingNews ? (
                     <div className="animate-pulse space-y-4">
                         {[1, 2, 3, 4, 5].map((i) => (
