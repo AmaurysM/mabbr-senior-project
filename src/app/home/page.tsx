@@ -69,7 +69,7 @@ const HomePage = () => {
           )}
           <button
             onClick={() => setIsNewsColumnOpen(!isNewsColumnOpen)}
-            className={`mt-3 px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isNewsColumnOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`mt-3 px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isNewsColumnOpen ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             {isNewsColumnOpen ? 'Hide News' : 'Show News'}
           </button>
@@ -77,11 +77,11 @@ const HomePage = () => {
 
 
         {/* Middle Column - Stock Dashboard */}
-        <div className="flex flex-col h-full items-center justify-center">
+        <div className="flex flex-col h-full w-full">
           {isStockListOpen && <StockList />}
           <button
             onClick={() => setIsStockListOpen(!isStockListOpen)}
-            className={`mt-auto px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isStockListOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`mt-3 px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isStockListOpen ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             {isStockListOpen ? 'Hide Stocks' : 'Show Stocks'}
           </button>
@@ -113,7 +113,7 @@ const HomePage = () => {
           </div>
           <button
             onClick={() => setIsFriendActivityOpen(!isFriendActivityOpen)}
-            className={`mt-3 px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isFriendActivityOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`mt-3 px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isFriendActivityOpen ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             {isFriendActivityOpen ? 'Hide Friend Activity' : 'Show Friend Activity'}
           </button>

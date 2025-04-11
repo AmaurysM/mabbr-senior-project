@@ -306,9 +306,9 @@ const StockList = () => {
 
 
     return (
-        <div className="flex flex-col space-y-2">
+        <div className="flex flex-col space-y-2 w-full">
             {/* Search Bar */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 w-full">
                 <h2 className="text-xl font-bold text-white mb-3">Stock Search</h2>
                 <div className="flex items-center gap-2">
                     <div className="relative flex-grow">
@@ -336,7 +336,7 @@ const StockList = () => {
 
             {/* Favorite Stocks Section */}
             {favorites.size > 0 && favoriteStocks.length > 0 && (
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 w-full">
                     <h2 className="text-xl font-bold text-white mb-3">Your Favorite Stocks</h2>
                     <div className="grid grid-cols-1 gap-3">
                         {favoriteStocks.map((stock) => (
@@ -365,7 +365,7 @@ const StockList = () => {
             )}
 
             {/* Stocks Grid */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 w-full">
                 <h2 className="text-xl font-bold text-white mb-3">
                     {Object.keys(portfolio?.positions || {}).length > 0 ? 'Your Portfolio & Market' : 'Market Overview'}
                 </h2>
