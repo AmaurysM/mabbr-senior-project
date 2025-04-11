@@ -17,14 +17,15 @@ export async function GET(req: NextRequest) {
     // This avoids needing to access the session token which is causing errors
     const currentUserId = session.user.id;
     
-    // Find active sessions (updated in the last 10 minutes)
-    const tenMinutesAgo = new Date();
-    tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 10);
+    // Reduced the time window to match client component (2 minutes)
+    // for a more responsive real-time feel
+    const twoMinutesAgo = new Date();
+    twoMinutesAgo.setMinutes(twoMinutesAgo.getMinutes() - 2);
     
     const activeSessions = await prisma.session.findMany({
       where: {
         updatedAt: {
-          gte: tenMinutesAgo
+          gte: twoMinutesAgo
         }
       },
       select: {
