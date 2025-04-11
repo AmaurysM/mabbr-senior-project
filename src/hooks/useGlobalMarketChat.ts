@@ -14,12 +14,23 @@ const stockDataCache: Record<string, StockSymbolData> = {};
 
 const fetchMessages = async (): Promise<globalPosts> => {
   try {
-    const res = await fetch("/api/chat");
-    if (!res.ok) throw new Error("Failed to fetch messages");
+    const res = await fetch("/api/chat", {
+      method: "GET",
+      headers: {
+        "Cache-Control": "no-cache",
+      },
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Chat response not ok:", res.status, errorText);
+      throw new Error("Failed to fetch messages");
+    }
+    
     return await res.json();
   } catch (error) {
     console.error("Error fetching messages:", error);
-    return [];
+    throw error; // Re-throw to be handled by SWR's error state
   }
 };
 
