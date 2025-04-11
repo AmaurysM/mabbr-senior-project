@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { UserCircleIcon } from "@heroicons/react/24/solid";
-import { Globe, Users, Clock, TrendingUp } from 'lucide-react';
+import { Globe, Users, Clock, TrendingUp, ChevronLeft } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
 import { authClient } from '@/lib/auth-client';
+import { useRouter } from 'next/navigation';
 
 interface LeaderboardEntry {
   id: string;
@@ -29,6 +30,7 @@ interface HistoricalData {
 }
 
 const LeaderboardPage = () => {
+  const router = useRouter();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [friendsLeaderboard, setFriendsLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -370,7 +372,16 @@ const LeaderboardPage = () => {
   return (
     <div className="px-4 py-4 w-full min-h-screen bg-gradient-to-r from-gray-900 to-gray-800">
       <div className="w-full mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-4">Trader Leaderboard</h1>
+        <div className="flex items-center gap-4 mb-4">
+          <button 
+            onClick={() => router.push('/community')}
+            className="flex items-center justify-center p-2 rounded-lg bg-gray-700/50 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors"
+            aria-label="Back to Community"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-4xl font-bold text-white">Trader Leaderboard</h1>
+        </div>
         
         <div className="flex flex-col gap-4 h-full">
           {/* Top Controls Section */}
