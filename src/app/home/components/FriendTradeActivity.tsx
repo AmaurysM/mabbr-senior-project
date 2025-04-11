@@ -25,6 +25,7 @@ const FriendTradeActivity = () => {
     } = authClient.useSession();
     const user = session?.user;
     const [transactions, setTransactions] = useState<Trade[]>([]);
+    const [showOnlyMyTrades, setShowOnlyMyTrades] = useState<boolean>(false);
 
     const fetchTransactions = async () => {
         try {
@@ -68,17 +69,40 @@ const FriendTradeActivity = () => {
         }
     }, [user]);
 
+    // Filter transactions based on the toggle state
+    const filteredTransactions = showOnlyMyTrades 
+        ? transactions.filter(transaction => transaction.isCurrentUser)
+        : transactions;
+
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10 w-full">
-            <h2 className="text-xl font-bold text-white mb-3">Trade Activity</h2>
+            <div className="flex justify-between items-center mb-3">
+                <h2 className="text-xl font-bold text-white">Trade Activity</h2>
+                <div className="flex items-center bg-gray-700/50 rounded-lg">
+                    <button 
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${!showOnlyMyTrades ? 'bg-gray-600 text-white' : 'text-gray-300 hover:text-white'}`}
+                        onClick={() => setShowOnlyMyTrades(false)}
+                    >
+                        All Trades
+                    </button>
+                    <button 
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${showOnlyMyTrades ? 'bg-gray-600 text-white' : 'text-gray-300 hover:text-white'}`}
+                        onClick={() => setShowOnlyMyTrades(true)}
+                    >
+                        My Trades
+                    </button>
+                </div>
+            </div>
             <div className="bg-gray-800/50 rounded-lg p-3 gap-2">
-                {transactions.length === 0 ? (
+                {filteredTransactions.length === 0 ? (
                     <div className="text-gray-400 text-center py-8">
-                        No trading activity yet. Make a trade or add friends to see their activity here.
+                        {showOnlyMyTrades 
+                            ? "You haven't made any trades yet." 
+                            : "No trading activity yet. Make a trade or add friends to see their activity here."}
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {transactions.map((transaction) => (
+                        {filteredTransactions.map((transaction) => (
                             <TransactionCard key={transaction.id} transaction={transaction} />
                         ))}
                     </div>
