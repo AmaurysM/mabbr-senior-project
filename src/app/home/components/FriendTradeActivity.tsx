@@ -26,6 +26,7 @@ const FriendTradeActivity = () => {
     const user = session?.user;
     const [transactions, setTransactions] = useState<Trade[]>([]);
     const [showOnlyMyTrades, setShowOnlyMyTrades] = useState<boolean>(false);
+    const [visibleTransactionsCount, setVisibleTransactionsCount] = useState<number>(30);
 
     const fetchTransactions = async () => {
         try {
@@ -73,6 +74,14 @@ const FriendTradeActivity = () => {
     const filteredTransactions = showOnlyMyTrades 
         ? transactions.filter(transaction => transaction.isCurrentUser)
         : transactions;
+        
+    // Get only the visible transactions
+    const visibleTransactions = filteredTransactions.slice(0, visibleTransactionsCount);
+    
+    // Function to load more transactions
+    const loadMoreTransactions = () => {
+        setVisibleTransactionsCount(prevCount => prevCount + 30);
+    };
 
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-white/10 w-full">
@@ -102,9 +111,18 @@ const FriendTradeActivity = () => {
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {filteredTransactions.map((transaction) => (
+                        {visibleTransactions.map((transaction) => (
                             <TransactionCard key={transaction.id} transaction={transaction} />
                         ))}
+                        
+                        {visibleTransactionsCount < filteredTransactions.length && (
+                            <button 
+                                onClick={loadMoreTransactions}
+                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-3 text-center font-medium transition-colors mt-2 w-full"
+                            >
+                                Load More Activity
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
