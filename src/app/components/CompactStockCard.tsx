@@ -682,21 +682,36 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                       <div className="bg-gray-800/70 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
                           <h4 className="text-gray-400 text-sm">Recommendation</h4>
-                          <p className="text-white font-medium">{detailedData.recommendationKey?.toUpperCase() || 'N/A'}</p>
+                          <p className={`font-medium`} style={{ 
+                            color: detailedData.recommendationMean <= 1.5 ? '#4ade80' : 
+                                   detailedData.recommendationMean <= 2.5 ? '#4ade80' :
+                                   detailedData.recommendationMean <= 3.5 ? '#fbbf24' :
+                                   detailedData.recommendationMean <= 4.5 ? '#f87171' : '#f87171'
+                          }}>
+                            {detailedData.recommendationKey?.toUpperCase().replace(/_/g, ' ') || 'N/A'}
+                          </p>
                         </div>
                         <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
                           <div
-                            className="h-full"
+                            className="h-full relative"
                             style={{
-                              width: `${(5 - (detailedData.recommendationMean || 3)) / 4 * 100}%`,
-                              background: 'linear-gradient(to right, #4ade80, #fbbf24, #f87171)',
+                              width: '100%',
+                              background: 'linear-gradient(to right, #f87171, #fbbf24, #4ade80)',
                             }}
-                          ></div>
+                          >
+                            {/* Gray overlay to hide the unused portion of the gradient */}
+                            <div 
+                              className="absolute top-0 bottom-0 right-0 bg-gray-700"
+                              style={{
+                                width: `${100 - ((5 - (detailedData.recommendationMean || 3)) / 4 * 100)}%`,
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="flex justify-between mt-1 text-xs text-gray-400">
-                          <span>Buy</span>
-                          <span>Hold</span>
-                          <span>Sell</span>
+                        <div className="flex justify-between mt-1 text-xs">
+                          <span className="text-red-400 font-medium">Sell</span>
+                          <span className="text-yellow-400 font-medium">Hold</span>
+                          <span className="text-green-400 font-medium">Buy</span>
                         </div>
                       </div>
                       <div className="bg-gray-800/70 rounded-lg p-4">
@@ -707,17 +722,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                   </div>
                 )}
 
-                {detailedData.longBusinessSummary && (
-                  <div>
-                    <div className="flex items-center mb-4">
-                      <div className="w-1 h-5 bg-blue-500 rounded-full mr-2"></div>
-                      <h3 className="text-xl font-bold text-white">About {detailedData.shortName || symbol}</h3>
-                    </div>
-                    <p className="text-gray-300 leading-relaxed">
-                      {detailedData.longBusinessSummary}
-                    </p>
-                  </div>
-                )}
+                {/* About section removed - now available on the stock detail page */}
               </div>
             )
           )}

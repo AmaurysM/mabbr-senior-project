@@ -48,6 +48,9 @@ export interface TransformedStockData {
   website?: string;
   longBusinessSummary?: string;
   shortName?: string;
+  recommendationMean?: number;
+  recommendationKey?: string;
+  numberOfAnalystOpinions?: number;
 }
 
 function getValidatedInterval(
@@ -130,6 +133,11 @@ export async function GET(request: Request) {
       website: stockData.assetProfile?.website,
       longBusinessSummary: stockData.assetProfile?.longBusinessSummary,
       shortName: stockData.price?.shortName,
+      
+      // Analyst ratings
+      recommendationMean: stockData.financialData?.recommendationMean,
+      recommendationKey: stockData.financialData?.recommendationKey,
+      numberOfAnalystOpinions: stockData.financialData?.numberOfAnalystOpinions,
     };
 
     // Add validation for empty data

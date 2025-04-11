@@ -19,6 +19,7 @@ import StockDetails from "@/app/components/StockDetails";
 import StockChat from "@/app/components/StockChat";
 import StockAbout from "@/app/components/StockAbout";
 import StockKeyInsights from "@/app/components/StockKeyInsights";
+import StockAnalystRating from "@/app/components/StockAnalystRating";
 import { authClient } from "@/lib/auth-client";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
@@ -144,7 +145,12 @@ const StockPage = () => {
       }
     };
     fetchPortfolio();
-    const intervalId = user ? setInterval(() => fetchPortfolio(), 30000) : null;
+    
+    let intervalId: NodeJS.Timeout | null = null;
+    if (user) {
+      intervalId = setInterval(fetchPortfolio, 30000) as NodeJS.Timeout;
+    }
+    
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
@@ -620,7 +626,17 @@ const StockPage = () => {
               </div>
             </div>
           </div>
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 flex flex-col" style={{ height: '316px' }}>
+          
+          {/* Analyst Rating Component */}
+          {stockData && (
+            <StockAnalystRating 
+              recommendationMean={stockData.recommendationMean}
+              recommendationKey={stockData.recommendationKey}
+              numberOfAnalystOpinions={stockData.numberOfAnalystOpinions}
+            />
+          )}
+          
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 flex flex-col" style={{ height: '250px' }}>
             <div className="flex flex-col h-full">
               <h2 className="text-xl font-bold text-white mb-3">About {stockData.shortName || symbol}</h2>
               <div className="line-clamp-5 text-white text-sm flex-1 mb-2">
