@@ -109,10 +109,26 @@ const DailyMarketVotePanel = () => {
         mutateSentiment(updatedSentiment);
       }
 
+      // Login Bonus
+      const bonusResponse = await fetch('/api/user/loginBonus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+  
+      if (!bonusResponse.ok) {
+        console.error('LoginBonus failed:', bonusResponse.status, bonusResponse.statusText);
+        throw new Error('Failed to apply login bonus');
+      }
+
+      const bonusData = await bonusResponse.json();
+
       toast({
         title: "Success",
-        description: "Vote submitted successfully!"
-      })
+        description: `Vote submitted successfully! You earned 1 token. Current tokens: ${bonusData.tokenCount}`,
+      });
 
       setShowVotePanel(false);
 

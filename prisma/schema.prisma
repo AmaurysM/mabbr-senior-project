@@ -24,7 +24,8 @@ model User {
   banReason      String?
   banExpires     Int?
   balance        Float         @default(100000.0)
-  bio            String?       @default("No bio yet.") 
+  bio            String?       @default("No bio yet.")
+  tokenCount     Int           @default(0)
 
   votes          UserVote[]
   favoriteStocks String[]      @default([])
@@ -42,7 +43,7 @@ model User {
   userLootBoxes  UserLootBox[]
   achievements   UserAchievement[]
 
-  likes          UserLike[]    
+  likes          UserLike[]
   comments       Comment[]
   commentLike    CommentLike[]
   commentDislike CommentDislike[]
