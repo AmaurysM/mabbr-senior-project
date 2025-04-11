@@ -35,6 +35,7 @@ const StockList = () => {
     // const [transactions, setTransactions] = useState<Trade[]>([]);
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [visibleStocksCount, setVisibleStocksCount] = useState(30);
+    const [sortMethod, setSortMethod] = useState<'volatile' | 'alphabetical' | 'price' | 'gainers'>('gainers');
 
 
 
@@ -380,9 +381,35 @@ const StockList = () => {
 
             {/* Stocks Grid */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 w-full">
-                <h2 className="text-xl font-bold text-white mb-3">
-                    {Object.keys(portfolio?.positions || {}).length > 0 ? 'Your Portfolio & Market' : 'Market Overview'}
-                </h2>
+                <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-xl font-bold text-white">Top Stocks</h2>
+                    <div className="flex items-center bg-gray-700/50 rounded-lg">
+                        <button 
+                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${sortMethod === 'gainers' ? 'bg-gray-600 text-white' : 'text-gray-300 hover:text-white'}`}
+                            onClick={() => setSortMethod('gainers')}
+                        >
+                            Top
+                        </button>
+                        <button 
+                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${sortMethod === 'volatile' ? 'bg-gray-600 text-white' : 'text-gray-300 hover:text-white'}`}
+                            onClick={() => setSortMethod('volatile')}
+                        >
+                            Volatile
+                        </button>
+                        <button 
+                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${sortMethod === 'price' ? 'bg-gray-600 text-white' : 'text-gray-300 hover:text-white'}`}
+                            onClick={() => setSortMethod('price')}
+                        >
+                            Price
+                        </button>
+                        <button 
+                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${sortMethod === 'alphabetical' ? 'bg-gray-600 text-white' : 'text-gray-300 hover:text-white'}`}
+                            onClick={() => setSortMethod('alphabetical')}
+                        >
+                            A-Z
+                        </button>
+                    </div>
+                </div>
                 {isLoadingStocks ? (
                     <div className="grid grid-cols-1 gap-3 animate-pulse">
                         {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -399,6 +426,28 @@ const StockList = () => {
                     <div className="grid grid-cols-1 gap-3">
                         {filteredStocks
                             .filter((stock) => stock && stock.symbol)
+                            .sort((a, b) => {
+                                // If searching, don't change the order
+                                if (searchQuery) return 0;
+                                
+                                // Different sorting methods
+                                switch(sortMethod) {
+                                    case 'gainers':
+                                        // Sort by change percentage (highest first)
+                                        return b.changePercent - a.changePercent;
+                                    case 'volatile':
+                                        // Sort by absolute change percentage (highest movement first)
+                                        return Math.abs(b.changePercent) - Math.abs(a.changePercent);
+                                    case 'alphabetical':
+                                        // Sort alphabetically by symbol
+                                        return a.symbol.localeCompare(b.symbol);
+                                    case 'price':
+                                        // Sort by price (highest first)
+                                        return b.price - a.price;
+                                    default:
+                                        return 0;
+                                }
+                            })
                             .map((stock, index) => (
                                 <CompactStockCard
                                     key={stock.symbol || index}
@@ -425,7 +474,7 @@ const StockList = () => {
                         {!searchQuery && visibleStocksCount < DEFAULT_STOCKS.length && (
                             <button 
                                 onClick={loadMoreStocks}
-                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-4 text-center font-medium transition-colors mt-2"
+                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-4 text-center font-medium transition-colors mt-2 w-full"
                             >
                                 Load More Stocks
                             </button>

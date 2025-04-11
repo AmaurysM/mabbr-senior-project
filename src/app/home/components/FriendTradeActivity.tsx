@@ -118,7 +118,7 @@ const FriendTradeActivity = () => {
                         {visibleTransactionsCount < filteredTransactions.length && (
                             <button 
                                 onClick={loadMoreTransactions}
-                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-3 text-center font-medium transition-colors mt-2 w-full"
+                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-4 text-center font-medium transition-colors mt-2 w-full"
                             >
                                 Load More Activity
                             </button>

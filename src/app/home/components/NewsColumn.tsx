@@ -215,13 +215,11 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
 
                         {/* Load More button at the bottom of the news section */}
                         {hasMoreNews && !isLoadingMoreNews && (
-                            <div className="mt-4 text-center">
-                                <button
-                                    onClick={loadMoreNews}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors rounded-lg text-white w-full">
-                                    Load More Articles
-                                </button>
-                            </div>
+                            <button
+                                onClick={loadMoreNews}
+                                className="bg-gray-700/50 hover:bg-gray-700/70 text-white rounded-xl p-4 text-center font-medium transition-colors mt-2 w-full">
+                                Load More Articles
+                            </button>
                         )}
                     </div>
                 ) : (
