@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { FaCircle } from "react-icons/fa";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 interface Friend {
   id: string;
@@ -19,6 +20,7 @@ const OnlineFriendsList: React.FC = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const { data: session } = authClient.useSession();
+  const router = useRouter();
   
   // Consider a user online if they were active in the last 2 minutes
   // This is more responsive and better aligned with our 30-second polling
@@ -92,6 +94,11 @@ const OnlineFriendsList: React.FC = () => {
     return () => clearInterval(interval);
   }, [session?.user?.id]);
 
+  const handleProfileClick = (userId: string) => {
+    sessionStorage.setItem("selectedUserId", userId);
+    router.push("/friendsProfile");
+  };
+
   const onlineFriends = friends.filter(friend => friend.isOnline);
   const offlineFriends = friends.filter(friend => !friend.isOnline);
 
@@ -130,9 +137,9 @@ const OnlineFriendsList: React.FC = () => {
         <ul className="space-y-2">
           {onlineFriends.map((friend) => (
             <li key={friend.id}>
-              <Link 
-                href={`/friendsProfile?id=${friend.id}`}
-                className="flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors"
+              <button 
+                onClick={() => handleProfileClick(friend.id)}
+                className="w-full flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left"
               >
                 <div className="relative">
                   {friend.image ? (
@@ -155,7 +162,7 @@ const OnlineFriendsList: React.FC = () => {
                 <span className="text-sm truncate">
                   {friend.name || friend.email.split('@')[0]}
                 </span>
-              </Link>
+              </button>
             </li>
           ))}
         </ul>
@@ -175,9 +182,9 @@ const OnlineFriendsList: React.FC = () => {
           <ul className="space-y-2">
             {offlineFriends.map((friend) => (
               <li key={friend.id}>
-                <Link 
-                  href={`/friendsProfile?id=${friend.id}`}
-                  className="flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors"
+                <button 
+                  onClick={() => handleProfileClick(friend.id)}
+                  className="w-full flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left"
                 >
                   <div className="relative">
                     {friend.image ? (
@@ -199,7 +206,7 @@ const OnlineFriendsList: React.FC = () => {
                   <span className="text-sm truncate">
                     {friend.name || friend.email.split('@')[0]}
                   </span>
-                </Link>
+                </button>
               </li>
             ))}
           </ul>
