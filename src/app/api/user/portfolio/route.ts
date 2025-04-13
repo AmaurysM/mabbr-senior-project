@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { UserStocks } from "@/lib/prisma_types";
 
+// Helper function to compute the average purchase price for a stock
+async function computeAveragePrice(userId: string, stockSymbol: string): Promise<number> {
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      userId,
+      stockSymbol,
+      type: "BUY"
+    }
+  });
+
+  if (transactions.length === 0) return 0;
+
+  const totalCost = transactions.reduce((sum, t) => sum + t.price * t.quantity, 0);
+  const totalShares = transactions.reduce((sum, t) => sum + t.quantity, 0);
+
+  return totalShares > 0 ? totalCost / totalShares : 0;
+}
+
 // GET /api/user/portfolio - Get the user's portfolio
 export async function GET(req: NextRequest) {
   try {
@@ -37,14 +55,20 @@ export async function GET(req: NextRequest) {
       include: { stock: true }
     });
     
-    // Format the response to include both balance and positions
+    // Prepare positions with computed average purchase price using transactions
     const positions: { [symbol: string]: { shares: number; averagePrice: number } } = {};
-    userStocks.forEach((userStock) => {
-      positions[userStock.stock.name] = {
-        shares: userStock.quantity,
-        averagePrice: userStock.stock.price
-      };
-    });
+
+    // Compute the cost basis for each stock concurrently
+    await Promise.all(
+      userStocks.map(async (userStock) => {
+        const avgPrice = await computeAveragePrice(user.id, userStock.stock.name);
+        positions[userStock.stock.name] = {
+          shares: userStock.quantity,
+          averagePrice: avgPrice  // now calculated from transactions
+        };
+      })
+    );
+    
     return NextResponse.json({
       balance: user.balance,
       positions: positions
@@ -97,4 +121,4 @@ export async function PUT(req: NextRequest) {
       error: 'Failed to update portfolio. Please try again later.' 
     }, { status: 500 });
   }
-} 
+}
