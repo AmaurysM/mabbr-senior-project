@@ -24,7 +24,10 @@ export const auth = betterAuth({
     changeEmail: {
       enabled: true,
       // This function sends a verification email when the user changes their email.
-      sendChangeEmailVerification: async ({ user, newEmail, url, token }, request) => {
+      sendChangeEmailVerification: async (
+        { user, newEmail, url, token },
+        request
+      ) => {
         console.log(
           `Send verification email to ${user.email} to approve change to ${newEmail}. Verification link: ${url}`
         );

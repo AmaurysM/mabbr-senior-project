@@ -16,7 +16,7 @@ import PortfolioChart from '../portfolio/PortfolioChart/page';
 import TradingStaticsticsCard from './components/TradingStaticsticsCard';
 import RecentActivityList from './components/RecentActivityList';
 import AddFriendCard from '../components/AddFriendCard';
-import AccountSettings from './components/AccountSettings';
+import AccountSettings from './components/accountSettings/AccountSettings';
 import ProfileInformation from './components/ProfileInformation';
 
 interface Transaction {
@@ -384,6 +384,8 @@ const CombinedProfilePage = () => {
                                                     src={profileImage}
                                                     alt="Profile"
                                                     fill
+                                                    sizes="64px" // Fixed the missing sizes prop
+
                                                     className="object-cover"
                                                     onError={() => setImageError(true)}
                                                 />
