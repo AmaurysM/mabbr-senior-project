@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Navbar from "./navbar";
+import ClientLayout from "./ClientLayout";
 
 export default function RootLayout({
   children,
@@ -11,7 +12,9 @@ export default function RootLayout({
         <Navbar />
         
         <main className="flex-grow h-full overflow-auto">
-          {children}
+          <ClientLayout>
+            {children}
+          </ClientLayout>
         </main>
         <Toaster
           position="top-right"
