@@ -70,16 +70,16 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   };
 
   const getActionColor = () => {
-    if (isBuy || isLootboxRedeem) return 'bg-green-500';
+    if (isBuy) return 'bg-green-500';
     if (isSell) return 'bg-red-500';
-    if (isLootboxPurchase) return 'bg-blue-500';
+    if (isLootboxPurchase || isLootboxRedeem) return 'bg-blue-500';
     return 'bg-gray-500';
   };
 
   const getCostColor = () => {
-    if (isBuy || isLootboxPurchase) return 'text-green-400';
+    if (isBuy) return 'text-green-400';
     if (isSell) return 'text-red-400';
-    if (isLootboxRedeem) return 'text-blue-400';
+    if (isLootboxPurchase || isLootboxRedeem) return 'text-blue-400';
     return 'text-gray-400';
   };
   
@@ -106,7 +106,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         </div>
         <div className={`text-right ${getCostColor()}`}>
           {isLootboxRedeem ? (
-            <div className="font-bold">Lootbox Redeemed</div>
+            <div className="font-bold">REDEEMED LOOTBOX</div>
           ) : (
             <div className="font-bold">${totalCost.toFixed(2)}</div>
           )}

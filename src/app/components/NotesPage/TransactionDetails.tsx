@@ -4,6 +4,24 @@ import Link from "next/link";
 
 const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) => {
   const total = transaction.price * transaction.quantity;
+  
+  const isBuy = transaction.type === 'BUY';
+  const isSell = transaction.type === 'SELL';
+  const isLootbox = transaction.type === 'LOOTBOX';
+  const isLootboxRedeem = transaction.type === 'LOOTBOX_REDEEM';
+  
+  // Get styling for the transaction type
+  let typeClasses = 'bg-gray-900/20 text-gray-300 border-gray-700/30';
+  if (isBuy) {
+    typeClasses = 'bg-green-900/20 text-green-300 border-green-700/30';
+  } else if (isSell) {
+    typeClasses = 'bg-red-900/20 text-red-300 border-red-700/30';
+  } else if (isLootbox || isLootboxRedeem) {
+    typeClasses = 'bg-blue-900/20 text-blue-300 border-blue-700/30';
+  }
+  
+  // Determine display text
+  const displayType = isLootboxRedeem ? 'REDEEMED LOOTBOX' : transaction.type;
 
   return (
     <div className="space-y-6">
@@ -12,12 +30,8 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold text-white">{transaction.stockSymbol}</h2>
-            <span className={`px-2 py-0.5 rounded border text-sm font-medium ${
-              transaction.type === 'BUY' 
-                ? 'bg-green-900/20 text-green-300 border-green-700/30' 
-                : 'bg-red-900/20 text-red-300 border-red-700/30'
-            }`}>
-              {transaction.type}
+            <span className={`px-2 py-0.5 rounded border text-sm font-medium ${typeClasses}`}>
+              {displayType}
             </span>
           </div>
           <div className="flex items-center gap-4">
