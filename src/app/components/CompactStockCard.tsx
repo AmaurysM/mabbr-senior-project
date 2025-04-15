@@ -260,7 +260,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
       </div>
 
       {/* View Stock button */}
-      {!isDataUnavailable && (
+      {!isDataUnavailable && !expanded && (
         <div className="absolute bottom-2 right-2">
           <Link 
             href={`/stock/${symbol}`}

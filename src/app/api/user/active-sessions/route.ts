@@ -22,6 +22,22 @@ export async function GET(req: NextRequest) {
     const twoMinutesAgo = new Date();
     twoMinutesAgo.setMinutes(twoMinutesAgo.getMinutes() - 2);
     
+    // Update all sessions for the current user to mark them as active now
+    // This fixes issues with cookie-based logins not updating session timestamps
+    try {
+      await prisma.session.updateMany({
+        where: { 
+          userId: currentUserId 
+        },
+        data: { 
+          updatedAt: new Date() 
+        }
+      });
+    } catch (error) {
+      console.error("Error updating user session timestamp:", error);
+      // Continue even if update fails
+    }
+    
     const activeSessions = await prisma.session.findMany({
       where: {
         updatedAt: {

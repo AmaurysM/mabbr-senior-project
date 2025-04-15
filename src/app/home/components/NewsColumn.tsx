@@ -3,7 +3,80 @@
 import React, { useEffect, useState } from 'react'
 import { FaBrain } from 'react-icons/fa';
 import { useAICredits } from '@/hooks/useAICredits';
+import Link from 'next/link';
 
+// Add interface for stock data
+interface StockSymbolData {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  isPositive: boolean;
+}
+
+// Add a cache for stock data to prevent flashing
+const stockDataCache: Record<string, StockSymbolData> = {};
+
+// Add the StockTooltip component
+const StockTooltip = ({ symbol, data }: { symbol: string, data: StockSymbolData | null }) => {
+  // Map of stock symbols to company names
+  const companyNames: Record<string, string> = {
+    'AAPL': 'Apple Inc.',
+    'MSFT': 'Microsoft Corporation',
+    'GOOG': 'Alphabet Inc.',
+    'GOOGL': 'Alphabet Inc.',
+    'AMZN': 'Amazon.com, Inc.',
+    'META': 'Meta Platforms, Inc.',
+    'TSLA': 'Tesla, Inc.',
+    'NVDA': 'NVIDIA Corporation',
+    'AMD': 'Advanced Micro Devices, Inc.',
+    'INTC': 'Intel Corporation',
+    'IBM': 'International Business Machines',
+    'NFLX': 'Netflix, Inc.',
+    'DIS': 'The Walt Disney Company',
+    // Add more as needed
+  };
+
+  // Display symbol without prefixes
+  const displaySymbol = symbol.includes(':') ? symbol.split(':')[1] : symbol;
+  
+  // Get company name or use a default
+  const companyName = companyNames[displaySymbol] || companyNames[symbol] || 'Corporation';
+
+  if (!data) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
+        <div className="text-gray-400 text-center">Loading...</div>
+      </div>
+    );
+  }
+
+  // Use default values if data is incomplete
+  const price = data.price || 0;
+  const change = data.change || 0;
+  const changePercent = data.changePercent || 0;
+  const isPositive = data.isPositive || false;
+
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
+      <div className="flex justify-between items-start">
+        <div>
+          <div className="text-white font-bold">{displaySymbol}</div>
+          <p className="text-gray-400 text-xs truncate max-w-[120px]">{companyName}</p>
+        </div>
+        <div className={`text-sm font-semibold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+          ${price.toFixed(2)}
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center">
+        <div className={`text-xs ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+          {isPositive ? '+' : ''}{change.toFixed(2)} ({changePercent.toFixed(2)}%)
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface NewsItem {
     title: string;
@@ -21,13 +94,66 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
     const { remainingCredits } = useAICredits();
     const [isLoadingNews, setIsLoadingNews] = useState(true);
     const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-    // const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
-    // const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
-    // const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
     const [newsError, setNewsError] = useState<string>('');
     const [newsPage, setNewsPage] = useState<number>(1);
     const [hasMoreNews, setHasMoreNews] = useState<boolean>(true);
     const [isLoadingMoreNews, setIsLoadingMoreNews] = useState<boolean>(false);
+    const [stockData, setStockData] = useState<Record<string, StockSymbolData>>({});
+
+    // Function to fetch stock data
+    const fetchStockData = async (symbols: string[]): Promise<void> => {
+        try {
+            // Filter out symbols that are already in the cache
+            const symbolsToFetch = symbols.filter(symbol => !stockDataCache[symbol]);
+            
+            // Filter out crypto and forex symbols that are known to cause errors
+            const filteredSymbols = symbolsToFetch.filter(symbol => 
+                !symbol.startsWith('CRYPTO:') && 
+                !symbol.startsWith('FOREX:')
+            );
+            
+            if (filteredSymbols.length === 0) {
+                // Update state with cached data only
+                const cachedData: Record<string, StockSymbolData> = {};
+                symbols.forEach(symbol => {
+                    if (stockDataCache[symbol]) {
+                        cachedData[symbol] = stockDataCache[symbol];
+                    }
+                });
+                setStockData(prevData => ({ ...prevData, ...cachedData }));
+                return;
+            }
+
+            const res = await fetch(`/api/stocks?symbols=${filteredSymbols.join(',')}`);
+            if (!res.ok) throw new Error('Failed to fetch stock data');
+
+            const data = await res.json();
+            if (!data.stocks || data.stocks.length === 0) return;
+
+            const newStockData: Record<string, StockSymbolData> = {};
+
+            data.stocks.forEach((stock: { symbol: string; price: number; change: number; changePercent: number }) => {
+                if (!stock.symbol) return; // Skip if no symbol
+                
+                const result = {
+                    symbol: stock.symbol,
+                    price: stock.price || 0,
+                    change: stock.change || 0,
+                    changePercent: stock.changePercent || 0,
+                    isPositive: (stock.change || 0) >= 0
+                };
+
+                // Update cache
+                stockDataCache[stock.symbol] = result;
+                newStockData[stock.symbol] = result;
+            });
+
+            // Update state with new data
+            setStockData(prevData => ({ ...prevData, ...newStockData }));
+        } catch (error) {
+            console.error('Error fetching stock data:', error);
+        }
+    };
 
     const loadMoreNews = async () => {
         if (!hasMoreNews || isLoadingMoreNews) return;
@@ -48,6 +174,15 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
                 setNewsItems(prev => [...prev, ...data.news]);
                 setNewsPage(nextPage);
                 setHasMoreNews(data.hasMore || false);
+                
+                // Extract tickers from new news items
+                const allTickers = data.news
+                    .flatMap((item: NewsItem) => item.tickers?.map(t => t.ticker) || [])
+                    .filter((ticker: string) => !!ticker);
+                
+                if (allTickers.length > 0) {
+                    fetchStockData(allTickers);
+                }
             } else {
                 setHasMoreNews(false);
             }
@@ -77,6 +212,15 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
                 }
                 setNewsItems(data.news || []);
                 setHasMoreNews(data.hasMore || false);
+                
+                // Extract tickers from news items
+                const allTickers = data.news
+                    .flatMap((item: NewsItem) => item.tickers?.map(t => t.ticker) || [])
+                    .filter((ticker: string) => !!ticker);
+                
+                if (allTickers.length > 0) {
+                    fetchStockData(allTickers);
+                }
             } catch (err) {
                 console.error('Error fetching news:', err);
                 setNewsError('Failed to fetch news. Please try again later.');
@@ -120,19 +264,71 @@ const NewsColumn = ({ setSelectedNewsItem, setIsNewsModalOpen, setIsAIAnalysisOp
                                 <p className="text-sm text-gray-300 mt-2">{item.summary}</p>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     {item.tickers?.map((ticker: any, i: number) => {
+                                        const symbol = ticker.ticker;
                                         const sentiment = ticker.ticker_sentiment_score || 0;
+                                        const isPositive = sentiment > 0;
+                                        
+                                        // Skip crypto and forex symbols that cause errors
+                                        const shouldSkip = symbol.startsWith('CRYPTO:') || symbol.startsWith('FOREX:');
+                                        
+                                        // Define classes based on sentiment
+                                        let bgColor = 'bg-gray-700/40';
+                                        let textColor = 'text-gray-300';
+                                        let borderColor = 'border-gray-600/30';
+                                        
+                                        if (sentiment > 0) {
+                                            bgColor = 'bg-green-900/20';
+                                            textColor = 'text-green-300';
+                                            borderColor = 'border-green-700/30';
+                                        } else if (sentiment < 0) {
+                                            bgColor = 'bg-red-900/20';
+                                            textColor = 'text-red-300';
+                                            borderColor = 'border-red-700/30';
+                                        }
+                                        
+                                        // Get stock data from state or cache
+                                        const data = stockData[symbol] || stockDataCache[symbol];
+                                        
+                                        // Display regular symbol without CRYPTO: or FOREX: prefix
+                                        const displaySymbol = symbol.includes(':') ? symbol.split(':')[1] : symbol;
+                                        
+                                        // If it's a crypto or forex, just show simple pill without tooltip
+                                        if (shouldSkip) {
+                                            return (
+                                                <span
+                                                    key={i}
+                                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${bgColor} ${textColor} border ${borderColor}`}
+                                                >
+                                                    {displaySymbol}
+                                                    <span className="ml-1 font-mono">
+                                                        {isPositive ? '↑' : sentiment < 0 ? '↓' : '–'}
+                                                    </span>
+                                                </span>
+                                            );
+                                        }
+                                        
                                         return (
-                                            <span
-                                                key={i}
-                                                className={`text-xs px-2 py-1 rounded-md ${sentiment > 0
-                                                    ? 'text-green-300 bg-green-500/10'
-                                                    : sentiment < 0
-                                                        ? 'text-red-300 bg-red-500/10'
-                                                        : 'text-gray-400 bg-gray-500/10'
-                                                    }`}>
-                                                {ticker.ticker}
-                                                <span className="ml-1 font-mono">{sentiment > 0 ? '↑' : sentiment < 0 ? '↓' : '–'}</span>
-                                            </span>
+                                            <Link href={`/stock/${symbol}`} key={i} className="inline-block relative group">
+                                                <span
+                                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${bgColor} ${textColor} border ${borderColor}`}
+                                                >
+                                                    {displaySymbol}
+                                                    <span className="ml-1 font-mono">
+                                                        {isPositive ? '↑' : sentiment < 0 ? '↓' : '–'}
+                                                    </span>
+                                                </span>
+                                                
+                                                {/* Tooltip */}
+                                                <div className="absolute opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[9999]"
+                                                    style={{
+                                                        bottom: '100%',
+                                                        left: '50%',
+                                                        transform: 'translateX(-50%)',
+                                                        marginBottom: '5px'
+                                                    }}>
+                                                    <StockTooltip symbol={symbol} data={data || null} />
+                                                </div>
+                                            </Link>
                                         );
                                     })}
                                 </div>
