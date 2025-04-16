@@ -292,25 +292,25 @@ model AlphaVantageNews {
 
 model MarketSentiment {
   id            String   @id @default(cuid()) @map("_id")
+  date          String   @unique // Format: YYYY-MM-DD
   bullishCount  Int      @default(0)
   bearishCount  Int      @default(0)
+  topPicks      Json     // Array of { symbol: string, count: number }
+  marketTrend   Json     // Array of { trend: string, count: number }
+  mostDiscussed Json     // Array of { symbol: string, count: number }
   timestamp     DateTime @default(now())
-  mostDiscussed Json 
-  topPicks      Json 
-  marketTrend   Json 
-  date          String   @unique 
+  updatedAt     DateTime @updatedAt
 
-  @@index([timestamp])
   @@map("market_sentiment")
 }
 
 model UserVote {
   id          String   @id @default(cuid()) @map("_id")
   userId      String
-  date        String 
-  sentiment   String 
-  topPick     String? 
-  marketTrend String? 
+  date        String   // Format: YYYY-MM-DD
+  sentiment   String   // 'bullish' or 'bearish'
+  topPick     String?  // Stock symbol
+  marketTrend String?  // Index name
   timestamp   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

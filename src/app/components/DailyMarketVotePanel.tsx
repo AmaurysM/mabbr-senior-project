@@ -108,72 +108,23 @@ const DailyMarketVotePanel = () => {
     }
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const voteKey = `market_vote_${user.id}_${today}`;
-      localStorage.setItem(voteKey, JSON.stringify(voteData));
+      // Submit vote to API
+      const response = await fetch('/api/market-sentiment/vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(voteData),
+      });
 
-      const aggregateKey = `market_votes_${today}`;
-      const aggregatedVotes = JSON.parse(localStorage.getItem(aggregateKey) || 'null') || {
-        bullish: 0,
-        bearish: 0,
-        topPicks: {},
-        marketIndices: {}
-      };
-
-      if (voteData.sentiment === 'bullish') {
-        aggregatedVotes.bullish += 1;
-      } else {
-        aggregatedVotes.bearish += 1;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit vote');
       }
 
-      if (voteData.topPick) {
-        aggregatedVotes.topPicks[voteData.topPick] = (aggregatedVotes.topPicks[voteData.topPick] || 0) + 1;
-      }
-
-      if (voteData.marketTrend) {
-        aggregatedVotes.marketIndices[voteData.marketTrend] = (aggregatedVotes.marketIndices[voteData.marketTrend] || 0) + 1;
-      }
-
-      localStorage.setItem(aggregateKey, JSON.stringify(aggregatedVotes));
-
-      if (sentiment) {
-        const updatedSentiment = { ...sentiment };
-
-        if (voteData.sentiment === 'bullish') {
-          updatedSentiment.bullishCount += 1;
-        } else {
-          updatedSentiment.bearishCount += 1;
-        }
-
-        if (voteData.topPick) {
-          const topPicks = [...updatedSentiment.topPicks];
-          const existingIndex = topPicks.findIndex(p => p.symbol === voteData.topPick);
-
-          if (existingIndex >= 0) {
-            topPicks[existingIndex].count += 1;
-          } else {
-            topPicks.push({ symbol: voteData.topPick, count: 1 });
-          }
-
-          topPicks.sort((a, b) => b.count - a.count);
-          updatedSentiment.topPicks = topPicks;
-        }
-
-        if (voteData.marketTrend) {
-          const trends = [...updatedSentiment.marketTrend];
-          const existingIndex = trends.findIndex(t => t.trend === voteData.marketTrend);
-
-          if (existingIndex >= 0) {
-            trends[existingIndex].count += 1;
-          } else {
-            trends.push({ trend: voteData.marketTrend, count: 1 });
-          }
-
-          trends.sort((a, b) => b.count - a.count);
-          updatedSentiment.marketTrend = trends;
-        }
-        mutateSentiment(updatedSentiment);
-      }
+      // After successful vote submission, refresh the sentiment data
+      mutateSentiment();
 
       // Login Bonus
       const bonusResponse = await fetch('/api/user/loginBonus', {
@@ -369,25 +320,30 @@ const DailyMarketVotePanel = () => {
   }, []);
 
   useEffect(() => {
-    const checkVoteStatus = () => {
-      if (!user) return;
+    const checkVoteStatus = async () => {
+      if (!user) {
+        setShowVotePanel(false);
+        return;
+      }
 
-      const today = new Date().toISOString().split('T')[0];
-      const voteKey = `market_vote_${user.id}_${today}`;
-      const hasVotedToday = localStorage.getItem(voteKey);
-
-      if (typeof window !== 'undefined') {
-        const lastVoteDay = localStorage.getItem('last_vote_day');
-        if (lastVoteDay && lastVoteDay !== today) {
-          // It's a new day, reset the vote panel
-          setShowVotePanel(user !== null);
+      try {
+        // Check if user has already voted today
+        const response = await fetch('/api/market-sentiment/vote', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Show vote panel only if user hasn't voted yet
+          setShowVotePanel(!data.hasVoted);
         } else {
-          // Same day, check if user already voted
-          setShowVotePanel(!hasVotedToday && user !== null);
+          // If there's an error, show the panel
+          setShowVotePanel(true);
         }
-
-        // Set today as the last vote day
-        localStorage.setItem('last_vote_day', today);
+      } catch (error) {
+        console.error('Error checking vote status:', error);
+        // In case of error, show the panel
+        setShowVotePanel(true);
       }
     };
 
