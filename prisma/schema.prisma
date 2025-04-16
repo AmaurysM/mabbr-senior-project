@@ -298,8 +298,8 @@ model MarketSentiment {
   topPicks      Json     // Array of { symbol: string, count: number }
   marketTrend   Json     // Array of { trend: string, count: number }
   mostDiscussed Json     // Array of { symbol: string, count: number }
-  timestamp     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  timestamp     DateTime? // Make optional to handle existing null values
+  updatedAt     DateTime? // Make it optional to handle existing inconsistent data
 
   @@map("market_sentiment")
 }
