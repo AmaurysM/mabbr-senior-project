@@ -11,34 +11,29 @@ interface MarketSentiment {
 }
 
 const fetchMarketSentiment = async (): Promise<MarketSentiment> => {
-  if (typeof window !== "undefined") {
-    const today = new Date().toISOString().split("T")[0];
-    const aggregateKey = `market_votes_${today}`;
-    const localVotes = JSON.parse(localStorage.getItem(aggregateKey) || "null");
-
+  try {
+    const response = await fetch('/api/market-sentiment', {
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch market sentiment');
+    }
+    
+    const data = await response.json();
+    return data.sentiment;
+  } catch (error) {
+    console.error('Error fetching market sentiment:', error);
+    // Return empty sentiment object as fallback
     return {
-      bullishCount: localVotes?.bullish || 0,
-      bearishCount: localVotes?.bearish || 0,
-      topPicks: Object.entries(localVotes?.topPicks || {})
-        .map(([symbol, count]) => ({ symbol, count: count as number }))
-        .sort((a, b) => b.count - a.count),
-      marketTrend: Object.entries(localVotes?.marketIndices || {})
-        .map(([trend, count]) => ({ trend, count: count as number }))
-        .sort((a, b) => b.count - a.count),
-      mostDiscussed: Object.entries(localVotes?.topPicks || {})
-        .map(([symbol, count]) => ({ symbol, count: count as number }))
-        .sort((a, b) => b.count - a.count),
+      bullishCount: 0,
+      bearishCount: 0,
+      topPicks: [],
+      marketTrend: [],
+      mostDiscussed: [],
       timestamp: new Date(),
     };
   }
-  return {
-    bullishCount: 0,
-    bearishCount: 0,
-    topPicks: [],
-    marketTrend: [],
-    mostDiscussed: [],
-    timestamp: new Date(),
-  };
 };
 
 export const useMarketSentiment = () => {

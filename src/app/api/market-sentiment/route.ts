@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import prisma from '@/lib/prisma';
+
+// Helper function to get today's date in YYYY-MM-DD format
+function getTodayDateString(): string {
+  return new Date().toISOString().split('T')[0];
+}
 
 // GET - Retrieve current market sentiment
 export async function GET() {
@@ -13,35 +19,51 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Create default sentiment data - temporarily using hardcoded data until DB schema issue is resolved
-    const initialSentiment = {
-      bullishCount: 65,
-      bearishCount: 35,
-      topPicks: [
-        { symbol: 'AAPL', count: 32 },
-        { symbol: 'TSLA', count: 28 },
-        { symbol: 'NVDA', count: 24 },
-        { symbol: 'MSFT', count: 20 },
-        { symbol: 'AMZN', count: 18 }
-      ],
-      mostDiscussed: [
-        { symbol: 'AAPL', count: 32 },
-        { symbol: 'TSLA', count: 28 },
-        { symbol: 'NVDA', count: 24 },
-        { symbol: 'MSFT', count: 20 },
-        { symbol: 'AMZN', count: 18 }
-      ],
-      marketTrend: [
-        { trend: "Nasdaq", count: 18 },
-        { trend: "S&P 500", count: 15 },
-        { trend: "Dow Jones", count: 8 },
-        { trend: "Russell 2000", count: 5 },
-        { trend: "VIX", count: 3 }
-      ],
-      timestamp: new Date()
-    };
+    const today = getTodayDateString();
+    
+    // Try to fetch today's market sentiment from the database
+    let sentiment = await prisma.marketSentiment.findUnique({
+      where: { date: today }
+    });
 
-    return NextResponse.json({ sentiment: initialSentiment });
+    // If no data found for today, create a default empty sentiment
+    if (!sentiment) {
+      const defaultSentiment = {
+        id: '',
+        date: today,
+        bullishCount: 0,
+        bearishCount: 0,
+        topPicks: JSON.stringify([]),
+        mostDiscussed: JSON.stringify([]),
+        marketTrend: JSON.stringify([]),
+        timestamp: new Date()
+      };
+      
+      return NextResponse.json({ 
+        sentiment: {
+          ...defaultSentiment,
+          topPicks: [],
+          mostDiscussed: [],
+          marketTrend: []
+        }
+      });
+    }
+    
+    // Parse JSON fields
+    return NextResponse.json({ 
+      sentiment: {
+        ...sentiment,
+        topPicks: typeof sentiment.topPicks === 'string' 
+          ? JSON.parse(sentiment.topPicks as string) 
+          : sentiment.topPicks,
+        mostDiscussed: typeof sentiment.mostDiscussed === 'string' 
+          ? JSON.parse(sentiment.mostDiscussed as string) 
+          : sentiment.mostDiscussed,
+        marketTrend: typeof sentiment.marketTrend === 'string' 
+          ? JSON.parse(sentiment.marketTrend as string) 
+          : sentiment.marketTrend
+      }
+    });
   } catch (error) {
     console.error('Error fetching market sentiment:', error);
     return NextResponse.json(
@@ -51,27 +73,5 @@ export async function GET() {
   }
 }
 
-// POST - Update market sentiment
-export async function POST() {
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Just acknowledge the update without actually storing it
-    return NextResponse.json({
-      success: true,
-      message: `Market sentiment updated successfully`
-    });
-  } catch (error) {
-    console.error('Error updating market sentiment:', error);
-    return NextResponse.json(
-      { error: 'Failed to update market sentiment' },
-      { status: 500 }
-    );
-  }
-} 
+// POST endpoint is no longer needed as we'll use the /vote endpoint
+// for updating sentiment data 
