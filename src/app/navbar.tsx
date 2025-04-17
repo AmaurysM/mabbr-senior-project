@@ -8,6 +8,7 @@ import { UserCircleIcon } from "@heroicons/react/24/solid";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { authClient } from "@/lib/auth-client";
 import NotificationBell from "./components/NotificationBell";
+import DailyMarketPulseButton from './components/DailyMarketPulseButton';
 
 interface NavItem {
   name: string;
@@ -107,7 +108,9 @@ const Navbar = () => {
                   <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-200" />
                 </Link>
               ))}
+              
               <NotificationBell refreshKey={notificationRefreshKey} onBellClick={refreshNotifications}/>
+              
               {user && (
                 <div className="relative ml-2">
 
@@ -199,10 +202,20 @@ const Navbar = () => {
             </button>
           </div>
 
+          {/* Daily Market Pulse Drawer Button - Desktop */}
+          <div className="hidden md:block absolute inset-x-0 top-0 z-50">
+            <DailyMarketPulseButton />
+          </div>
+
           {/* Mobile Menu */}
           {menuOpen && (
             <div className="md:hidden border-t border-gray-100">
               <div className="px-4 py-2 space-y-1">
+                {/* Daily Market Pulse in Mobile Menu */}
+                <div className="flex justify-center mb-4" onClick={() => setMenuOpen(false)}>
+                  <DailyMarketPulseButton />
+                </div>
+                
                 {navigationItems.map((item) => (
                   <Link
                     key={item.name}
@@ -213,6 +226,7 @@ const Navbar = () => {
                     {item.name}
                   </Link>
                 ))}
+                
                 {user && (
                   <>
                     <Link
