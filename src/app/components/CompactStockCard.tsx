@@ -378,15 +378,24 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
           {/* Action Buttons - Trade, Close, and View Stock */}
           {!tradeMode && detailedData && (
             <div className="flex space-x-4 mb-6">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTradeMode(true);
-                }}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                Trade {symbol}
-              </button>
+              {isLoggedIn ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTradeMode(true);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Trade {symbol}
+                </button>
+              ) : (
+                <a
+                  href="/login-signup"
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-colors duration-200 text-center"
+                >
+                  Login to trade
+                </a>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -404,7 +413,6 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
               </Link>
             </div>
           )}
-
 
           {loading && (
             <div className="text-center py-8">
@@ -756,12 +764,6 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
               </div>
             )
           )}
-        </div>
-      )}
-
-      {!isLoggedIn && !expanded && (
-        <div className="mt-1 text-xs text-center bg-blue-600/30 rounded px-2 py-1 text-blue-300">
-          Login to trade
         </div>
       )}
     </div>
