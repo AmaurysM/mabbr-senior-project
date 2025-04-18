@@ -32,8 +32,9 @@ const StockPredictionGame: React.FC = () => {
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
   const basePrice = 100;
+  const stake = 100; // amount gained or lost per round
 
-  // Fetch the current balance
+  // helper to fetch current balance
   const fetchBalance = useCallback(async () => {
     try {
       const res = await fetch("/api/user/portfolio", { credentials: "include" });
@@ -46,38 +47,41 @@ const StockPredictionGame: React.FC = () => {
     }
   }, []);
 
+  
   useEffect(() => {
     fetchBalance();
   }, [fetchBalance]);
 
   const handleSubmitPrediction = async () => {
-    // Generate and show random walk
+  
     const data = generateRandomData(20, basePrice);
     setChartData(data);
 
+    
     const actual = data[data.length - 1].price >= data[0].price ? "up" : "down";
     const win = prediction === actual;
+    const increment = win ? stake : -stake;
 
-    // Show result message
+   
     setResultMessage(
       win
-        ? `🎉 You were right! It went ${actual}. +$100`
-        : `😢 You were wrong. It went ${actual}.`
+        ? `🎉 You were right! It went ${actual}. +$${stake}`
+        : `😢 You were wrong. It went ${actual}. -$${stake}`
     );
 
-    // Always call PUT to /api/user/portfolio with increment 100 on win, 0 on loss
+    
     try {
       const res = await fetch("/api/user/portfolio", {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ increment: win ? 100 : 0 }),
+        body: JSON.stringify({ increment }),
       });
       const json = await res.json();
       if (res.ok && typeof json.balance === "number") {
         setBalance(json.balance);
       } else {
-        // Fallback: re-fetch balance
+        
         await fetchBalance();
       }
     } catch (err) {
@@ -92,10 +96,12 @@ const StockPredictionGame: React.FC = () => {
         Trend Prediction Game
       </h1>
 
+      {/* Persistent balance display */}
       <p className="text-center text-lg mb-4">
         Balance: <span className="font-semibold">${balance}</span>
       </p>
 
+      {/* Prediction controls */}
       <div className="mb-4">
         <p className="mb-1 font-medium">Predict the Trend:</p>
         <label className="mr-4">
@@ -116,6 +122,7 @@ const StockPredictionGame: React.FC = () => {
         </label>
       </div>
 
+      {/* Submit button */}
       <button
         onClick={handleSubmitPrediction}
         className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded mb-4"
@@ -123,6 +130,7 @@ const StockPredictionGame: React.FC = () => {
         Submit Prediction
       </button>
 
+      {/* Chart display */}
       <div className="mb-4 h-48">
         {chartData.length === 0 ? (
           <p className="text-center text-gray-500 mt-16">
@@ -146,6 +154,7 @@ const StockPredictionGame: React.FC = () => {
         )}
       </div>
 
+      {/* Result message */}
       {resultMessage && (
         <p className="text-center font-medium">{resultMessage}</p>
       )}
