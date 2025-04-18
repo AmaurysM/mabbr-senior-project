@@ -13,7 +13,7 @@ import {
 
 type ChartPoint = { time: string; price: number };
 
-/** Pure random walk, ±2% noise */
+/** Pure random walk, ±2% per step */
 function generateRandomData(points: number, startPrice: number): ChartPoint[] {
   const data: ChartPoint[] = [];
   let price = startPrice;
@@ -26,21 +26,22 @@ function generateRandomData(points: number, startPrice: number): ChartPoint[] {
 }
 
 const StockPredictionGame: React.FC = () => {
+  // — persisted balance
   const [balance, setBalance] = useState<number>(0);
+  // — chart + UI state
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [prediction, setPrediction] = useState<"up" | "down">("up");
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
   const basePrice = 100;
 
-  // Fetch and display the user balance
+  // helper: fetch the user’s balance from GET /api/user/portfolio
   const fetchBalance = useCallback(async () => {
+    console.log("🔄 Fetching balance…");
     try {
-      const res = await fetch("/api/user/portfolio", {
-        credentials: "include",
-      });
+      const res = await fetch("/api/user/portfolio", { credentials: "include" });
       const json = await res.json();
-      console.log("GET balance →", res.status, json);
+      console.log("GET /api/user/portfolio →", res.status, json);
       if (res.ok && typeof json.balance === "number") {
         setBalance(json.balance);
       }
@@ -49,40 +50,50 @@ const StockPredictionGame: React.FC = () => {
     }
   }, []);
 
-  // Initial load of balance
+  // initial load
   useEffect(() => {
     fetchBalance();
   }, [fetchBalance]);
 
   const handleSubmitPrediction = async () => {
-    // Generate and show the chart
+    console.log("🔔 submitPrediction fired");
+
+    // generate & show the random walk
     const data = generateRandomData(20, basePrice);
     setChartData(data);
+    console.log("chartData:", data);
 
-    // Determine actual trend
+    // determine actual trend
     const actual = data[data.length - 1].price >= data[0].price ? "up" : "down";
+    console.log("Your guess:", prediction, "| Actual:", actual);
 
-    if (prediction === actual) {
-      setResultMessage(`🎉 You were right! It went ${actual}. +$100`);
+    const win = prediction === actual;
+    setResultMessage(
+      win
+        ? `🎉 You were right! It went ${actual}. +$100`
+        : `😢 You were wrong. It went ${actual}.`
+    );
 
-      try {
-        // Credit $100
-        const res = await fetch("/api/user/portfolio", {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ increment: 100 }),
-        });
-        const json = await res.json();
-        console.log("PUT increment →", res.status, json);
-      } catch (err) {
-        console.error("Error incrementing balance:", err);
+    // always call PUT /api/user/portfolio
+    try {
+      const res = await fetch("/api/user/portfolio", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ increment: win ? 100 : 0 }),
+      });
+      const json = await res.json();
+      console.log("PUT /api/user/portfolio →", res.status, json);
+
+      if (res.ok && typeof json.balance === "number") {
+        setBalance(json.balance);
+      } else {
+        console.warn("PUT didn’t return a balance, re-fetching…");
+        await fetchBalance();
       }
-
-      // Always re-fetch the balance, whether the PUT succeeded or not
-      fetchBalance();
-    } else {
-      setResultMessage(`😢 You were wrong. It went ${actual}.`);
+    } catch (err) {
+      console.error("Error calling PUT /api/user/portfolio:", err);
+      await fetchBalance();
     }
   };
 
@@ -92,7 +103,7 @@ const StockPredictionGame: React.FC = () => {
         Trend Prediction Game
       </h1>
 
-      {/* Always-visible balance */}
+      {/* Always show the balance */}
       <p className="text-center text-lg mb-4">
         Balance: <span className="font-semibold">${balance}</span>
       </p>
