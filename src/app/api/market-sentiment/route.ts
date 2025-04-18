@@ -33,18 +33,37 @@ export async function GET() {
         date: today,
         bullishCount: 0,
         bearishCount: 0,
-        topPicks: [],
-        mostDiscussed: [],
-        marketTrend: [],
+        topPicks: JSON.stringify([]),
+        mostDiscussed: JSON.stringify([]),
+        marketTrend: JSON.stringify([]),
         timestamp: new Date()
       };
       
-      return NextResponse.json({ sentiment: defaultSentiment });
+      return NextResponse.json({ 
+        sentiment: {
+          ...defaultSentiment,
+          topPicks: [],
+          mostDiscussed: [],
+          marketTrend: []
+        }
+      });
     }
     
-    // Return the sentiment data directly since Prisma already handles JSON fields
-    return NextResponse.json({ sentiment });
-
+    // Parse JSON fields
+    return NextResponse.json({ 
+      sentiment: {
+        ...sentiment,
+        topPicks: typeof sentiment.topPicks === 'string' 
+          ? JSON.parse(sentiment.topPicks as string) 
+          : sentiment.topPicks,
+        mostDiscussed: typeof sentiment.mostDiscussed === 'string' 
+          ? JSON.parse(sentiment.mostDiscussed as string) 
+          : sentiment.mostDiscussed,
+        marketTrend: typeof sentiment.marketTrend === 'string' 
+          ? JSON.parse(sentiment.marketTrend as string) 
+          : sentiment.marketTrend
+      }
+    });
   } catch (error) {
     console.error('Error fetching market sentiment:', error);
     return NextResponse.json(
