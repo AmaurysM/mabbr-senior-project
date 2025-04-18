@@ -19,7 +19,7 @@ const navigationItems: NavItem[] = [
   { name: "Home", href: "/home" },
   { name: "Community", href: "/community" },
   { name: "Notes", href: "/note" },
-  { name: "Loot Box", href: "/lootbox" },
+  { name: "Games", href: "/games" },
 ];
 
 const Navbar = () => {
@@ -256,7 +256,7 @@ const Navbar = () => {
                         <Link
                           href="/admin/lootbox-manager"
                           className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                          onClick={() => setProfileDropdownOpen(false)}
+                          onClick={() => setMenuOpen(false)}
                         >
                           Manage Lootboxes
                         </Link>
@@ -264,7 +264,7 @@ const Navbar = () => {
                         <Link
                           href="/admin/user-manager"
                           className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                          onClick={() => setProfileDropdownOpen(false)}
+                          onClick={() => setMenuOpen(false)}
                         >
                           Manage Users
                         </Link>
