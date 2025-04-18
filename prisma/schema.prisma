@@ -48,6 +48,7 @@ model User {
   commentLike    CommentLike[]
   commentDislike CommentDislike[]
   aiUsage        StockAIUsage[]
+  dailyDrawEntries DailyDrawEntry[]
 
   @@map("user")
 }
@@ -368,6 +369,20 @@ model StockAICache {
   @@index([createdAt])
   @@index([expiresAt])
   @@map("stock_ai_cache")
+}
+
+model DailyDrawEntry {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String   // Format: YYYY-MM-DD
+  tokens    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([date])
+  @@map("daily_draw_entry")
 }
 
 
