@@ -1,6 +1,7 @@
+// src/app/components/StockPredictionGame.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -10,176 +11,148 @@ import {
   Tooltip,
 } from "recharts";
 
-interface PortfolioResponse {
-  balance: number;
-  positions: {
-    [symbol: string]: {
-      shares: number;
-      averagePrice: number;
-    };
-  };
-}
-
 type ChartPoint = { time: string; price: number };
 
-const StockPredictionGame = () => {
-  const initialBalance = 1000;
-  const [balance, setBalance] = useState(initialBalance);
+/** Pure random walk, ±2% noise */
+function generateRandomData(points: number, startPrice: number): ChartPoint[] {
+  const data: ChartPoint[] = [];
+  let price = startPrice;
+  for (let i = 0; i < points; i++) {
+    data.push({ time: `${i}`, price: Number(price.toFixed(2)) });
+    const noise = Math.random() * 0.04 - 0.02;
+    price = Math.max(1, price * (1 + noise));
+  }
+  return data;
+}
 
-  // Portfolio stocks
-  const [userStocks, setUserStocks] = useState<string[]>([]);
-  const [selectedStock, setSelectedStock] = useState<string>("");
-
-  // Chart data
+const StockPredictionGame: React.FC = () => {
+  const [balance, setBalance] = useState<number>(0);
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
-  const [loadingChart, setLoadingChart] = useState(true);
-
-  // Prediction & feedback
   const [prediction, setPrediction] = useState<"up" | "down">("up");
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
-  // Fetch user-owned stocks
-  useEffect(() => {
-    fetch("/api/user/portfolio", { credentials: "include" })
-      .then((res) => res.json())
-      .then((data: PortfolioResponse) => {
-        const stocks = Object.entries(data.positions)
-          .filter(([, pos]) => pos.shares > 0)
-          .map(([symbol]) => symbol);
-        setUserStocks(stocks);
-        if (stocks.length) setSelectedStock(stocks[0]);
-      })
-      .catch(console.error);
+  const basePrice = 100;
+
+  // Fetch and display the user balance
+  const fetchBalance = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/portfolio", {
+        credentials: "include",
+      });
+      const json = await res.json();
+      console.log("GET balance →", res.status, json);
+      if (res.ok && typeof json.balance === "number") {
+        setBalance(json.balance);
+      }
+    } catch (err) {
+      console.error("Error fetching balance:", err);
+    }
   }, []);
 
-  // Whenever the selected stock changes, fetch current price & simulate chart
+  // Initial load of balance
   useEffect(() => {
-    if (!selectedStock) return;
-    setLoadingChart(true);
-    fetch(`/api/stock?symbol=${selectedStock}`)
-      .then((res) => res.json())
-      .then((json) => {
-        const current =
-          json.quoteResponse?.result?.[0]?.regularMarketPrice ?? 100;
-        // simulate 10 points with small random walk
-        const points: ChartPoint[] = [];
-        let price = current;
-        for (let i = 0; i < 10; i++) {
-          points.push({ time: `${i}`, price });
-          // ±2% change
-          price = Number(
-            (price * (1 + (Math.random() * 0.04 - 0.02))).toFixed(2)
-          );
-        }
-        setChartData(points);
-      })
-      .catch(console.error)
-      .finally(() => setLoadingChart(false));
-  }, [selectedStock]);
+    fetchBalance();
+  }, [fetchBalance]);
 
-  // Handle the prediction
-  const playGame = () => {
-    if (!chartData.length) return;
-    const first = chartData[0].price;
-    const last = chartData[chartData.length - 1].price;
-    const outcome = last >= first ? "up" : "down";
+  const handleSubmitPrediction = async () => {
+    // Generate and show the chart
+    const data = generateRandomData(20, basePrice);
+    setChartData(data);
 
-    if (prediction === outcome) {
-      setBalance((b) => b + 100); // fixed $100 win, or change logic as desired
-      setResultMessage(`You’re right! ${selectedStock} trended ${outcome}.`);
+    // Determine actual trend
+    const actual = data[data.length - 1].price >= data[0].price ? "up" : "down";
+
+    if (prediction === actual) {
+      setResultMessage(`🎉 You were right! It went ${actual}. +$100`);
+
+      try {
+        // Credit $100
+        const res = await fetch("/api/user/portfolio", {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ increment: 100 }),
+        });
+        const json = await res.json();
+        console.log("PUT increment →", res.status, json);
+      } catch (err) {
+        console.error("Error incrementing balance:", err);
+      }
+
+      // Always re-fetch the balance, whether the PUT succeeded or not
+      fetchBalance();
     } else {
-      setBalance((b) => b - 100);
-      setResultMessage(`Oops! ${selectedStock} actually went ${outcome}.`);
+      setResultMessage(`😢 You were wrong. It went ${actual}.`);
     }
   };
 
   return (
     <div className="max-w-md mx-auto p-6 bg-gray-100 shadow rounded">
       <h1 className="text-2xl font-bold mb-4 text-center">
-        Stock Prediction Game
+        Trend Prediction Game
       </h1>
 
-      <p className="text-lg mb-4">
+      {/* Always-visible balance */}
+      <p className="text-center text-lg mb-4">
         Balance: <span className="font-semibold">${balance}</span>
       </p>
 
-      {userStocks.length === 0 ? (
-        <p className="text-center text-gray-600">
-          You don’t own any stocks to play.
-        </p>
-      ) : (
-        <>
-          {/* Stock selector */}
-          <div className="mb-4">
-            <label className="block mb-1">Select Stock:</label>
-            <select
-              className="w-full px-3 py-2 border rounded"
-              value={selectedStock}
-              onChange={(e) => setSelectedStock(e.target.value)}
-            >
-              {userStocks.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Prediction controls */}
+      <div className="mb-4">
+        <p className="mb-1 font-medium">Predict the Trend:</p>
+        <label className="mr-4">
+          <input
+            type="radio"
+            checked={prediction === "up"}
+            onChange={() => setPrediction("up")}
+          />{" "}
+          Up
+        </label>
+        <label>
+          <input
+            type="radio"
+            checked={prediction === "down"}
+            onChange={() => setPrediction("down")}
+          />{" "}
+          Down
+        </label>
+      </div>
 
-          {/* Chart */}
-          <div className="mb-4 h-48">
-            {loadingChart ? (
-              <p className="text-center text-gray-500 mt-16">
-                Loading chart…
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <XAxis dataKey="time" hide />
-                  <YAxis domain={["auto", "auto"]} />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="price"
-                    stroke="#3b82f6"
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+      {/* Submit */}
+      <button
+        onClick={handleSubmitPrediction}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded mb-4"
+      >
+        Submit Prediction
+      </button>
 
-          {/* Prediction controls */}
-          <div className="mb-4">
-            <p className="mb-1">Predict the overall trend:</p>
-            <label className="mr-4">
-              <input
-                type="radio"
-                checked={prediction === "up"}
-                onChange={() => setPrediction("up")}
-              />{" "}
-              Up
-            </label>
-            <label>
-              <input
-                type="radio"
-                checked={prediction === "down"}
-                onChange={() => setPrediction("down")}
-              />{" "}
-              Down
-            </label>
-          </div>
+      {/* Chart */}
+      <div className="mb-4 h-48">
+        {chartData.length === 0 ? (
+          <p className="text-center text-gray-500 mt-16">
+            Click “Submit Prediction” to see the trend.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <XAxis dataKey="time" hide />
+              <YAxis domain={["auto", "auto"]} />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="price"
+                stroke="#3b82f6"
+                dot={false}
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
 
-          <button
-            onClick={playGame}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded"
-          >
-            Submit Prediction
-          </button>
-
-          {resultMessage && (
-            <p className="mt-4 text-center font-semibold">{resultMessage}</p>
-          )}
-        </>
+      {/* Feedback */}
+      {resultMessage && (
+        <p className="text-center font-medium">{resultMessage}</p>
       )}
     </div>
   );
