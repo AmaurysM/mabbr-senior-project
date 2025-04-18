@@ -206,3 +206,54 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(75, 85, 99, 0.4) rgba(31, 32, 45, 0.3);
 }
+
+/* Add this to your existing animations */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+/* Jiggle animation for the Daily Market Pulse button */
+@keyframes jiggle {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+.animate-jiggle {
+  animation: jiggle 0.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Gold shimmer effect - smoother version */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.gold-shimmer {
+  background: linear-gradient(
+    90deg, 
+    rgba(255, 215, 0, 0.4) 0%, 
+    rgba(255, 223, 0, 0.7) 20%, 
+    rgba(255, 230, 0, 0.85) 50%, 
+    rgba(255, 223, 0, 0.7) 80%, 
+    rgba(255, 215, 0, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 4s infinite ease-in-out;
+}

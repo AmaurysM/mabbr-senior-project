@@ -54,7 +54,15 @@ const MARKET_INDICES = {
   ]
 };
 
-const DailyMarketVotePanel = () => {
+interface DailyMarketVotePanelProps {
+  isOverlay?: boolean; // Optional prop to indicate if used as an overlay
+  showTokenMessage?: boolean; // Optional prop to show token message
+}
+
+const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({ 
+  isOverlay = false,
+  showTokenMessage = false
+}) => {
 
   const { data: session } = authClient.useSession();
   const user = session?.user;
@@ -63,7 +71,7 @@ const DailyMarketVotePanel = () => {
 
   const { toast } = useToast();
 
-  const [showVotePanel, setShowVotePanel] = useState<boolean>(false);
+  const [showVotePanel, setShowVotePanel] = useState<boolean>(isOverlay); // Initialize based on isOverlay prop
   const [voteData, setVoteData] = useState({
     sentiment: '',
     topPick: '',
@@ -380,17 +388,25 @@ const DailyMarketVotePanel = () => {
 
   return (
     <>
-      {user && showVotePanel && (
-        <div className="mb-6 bg-blue-900/30 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-blue-500/20 animate-fadeIn relative z-[1000]">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-white">Daily Market Pulse</h2>
-            <button
-              onClick={() => setShowVotePanel(false)}
-              className="text-gray-400 hover:text-white"
-            >
-              ✕
-            </button>
-          </div>
+      {user && (showVotePanel || isOverlay) && (
+        <div className={`bg-blue-900/30 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-blue-500/20 animate-fadeIn relative z-[1000] ${isOverlay ? 'border-t-0 rounded-t-none' : 'mb-6'}`}>
+          {!isOverlay && (
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Daily Market Pulse</h2>
+              <button
+                onClick={() => setShowVotePanel(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {showTokenMessage && (
+            <div className="mb-4 bg-yellow-500/20 border border-yellow-500/40 rounded-lg p-3 text-center">
+              <p className="text-yellow-300 font-medium">Submit to claim your free daily token!</p>
+            </div>
+          )}
 
           <form onSubmit={handleVoteSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -631,10 +647,10 @@ const DailyMarketVotePanel = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6">
               <button
                 type="submit"
-                className="px-6 py-3 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-6 py-4 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!voteData.sentiment}
               >
                 Submit Vote
