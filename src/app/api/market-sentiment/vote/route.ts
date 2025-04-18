@@ -91,7 +91,10 @@ export async function GET(req: NextRequest) {
       }
     });
     
-    return NextResponse.json({ hasVoted: !!userVote });
+    return NextResponse.json({ 
+      hasVoted: !!userVote,
+      vote: userVote || null
+    });
   } catch (error) {
     console.error('Error checking vote status:', error);
     return NextResponse.json({ hasVoted: false, error: 'Failed to check vote status' }, { status: 500 });
