@@ -7,12 +7,19 @@ import DailyMarketVotePanel from './DailyMarketVotePanel';
 const DailyMarketPulseButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Toggle the drawer open/closed
   const toggleDrawer = () => {
     setIsOpen(prevState => !prevState);
+  };
+
+  // Handle vote submission
+  const handleVoteSubmit = () => {
+    setHasVoted(true);
+    setIsOpen(false); // Auto close panel on submission
   };
 
   // Close overlay when clicking outside
@@ -59,6 +66,26 @@ const DailyMarketPulseButton: React.FC = () => {
     };
   }, [isOpen]);
 
+  // Check if user has already voted
+  useEffect(() => {
+    const checkVoteStatus = async () => {
+      try {
+        const response = await fetch('/api/market-sentiment/vote', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setHasVoted(data.hasVoted);
+        }
+      } catch (error) {
+        console.error('Error checking vote status:', error);
+      }
+    };
+
+    checkVoteStatus();
+  }, []);
+
   return (
     <div className="relative flex justify-center w-full">
       <button
@@ -66,13 +93,13 @@ const DailyMarketPulseButton: React.FC = () => {
         onClick={toggleDrawer}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`gold-shimmer flex items-center justify-center px-4 py-1 rounded-b-lg shadow-md transition-all duration-200 focus:outline-none ${isOpen ? '' : 'animate-jiggle'}`}
+        className={`${hasVoted ? 'bg-transparent border border-black/40' : 'gold-shimmer'} flex items-center justify-center px-4 py-1 rounded-b-lg ${hasVoted ? '' : 'shadow-md'} transition-all duration-200 focus:outline-none ${isOpen ? '' : (!hasVoted && 'animate-jiggle')}`}
         aria-label="Open Daily Market Pulse"
       >
-        <ChevronDownIcon className={`h-5 w-5 text-yellow-900 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDownIcon className={`h-5 w-5 ${hasVoted ? 'text-black/70' : 'text-yellow-900'} transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       
-      {showTooltip && !isOpen && (
+      {showTooltip && !isOpen && !hasVoted && (
         <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-black text-white text-sm rounded whitespace-nowrap z-50">
           Daily Login Tokens Available!
         </div>
@@ -94,11 +121,13 @@ const DailyMarketPulseButton: React.FC = () => {
                   ✕
                 </button>
               </div>
-              <div className="bg-yellow-400/20 rounded-lg p-3 mb-4">
-                <p className="text-yellow-300 font-medium text-center">Submit to claim your free daily token!</p>
+              <div className={`${hasVoted ? 'bg-blue-500/20 border border-blue-500/40' : 'bg-yellow-400/20'} rounded-lg p-3 mb-4`}>
+                <p className={`${hasVoted ? 'text-blue-300' : 'text-yellow-300'} font-medium text-center`}>
+                  {hasVoted ? "Daily Tokens Claimed" : "Submit to claim your free daily token!"}
+                </p>
               </div>
             </div>
-            <DailyMarketVotePanel isOverlay={true} showTokenMessage={false} />
+            <DailyMarketVotePanel isOverlay={true} showTokenMessage={false} onVoteSubmit={handleVoteSubmit} />
           </div>
         </div>
       )}

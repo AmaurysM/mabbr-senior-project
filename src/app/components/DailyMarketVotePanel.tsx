@@ -57,11 +57,13 @@ const MARKET_INDICES = {
 interface DailyMarketVotePanelProps {
   isOverlay?: boolean; // Optional prop to indicate if used as an overlay
   showTokenMessage?: boolean; // Optional prop to show token message
+  onVoteSubmit?: () => void; // Callback when vote is submitted
 }
 
 const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({ 
   isOverlay = false,
-  showTokenMessage = false
+  showTokenMessage = false,
+  onVoteSubmit
 }) => {
 
   const { data: session } = authClient.useSession();
@@ -72,6 +74,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
   const { toast } = useToast();
 
   const [showVotePanel, setShowVotePanel] = useState<boolean>(isOverlay); // Initialize based on isOverlay prop
+  const [hasVoted, setHasVoted] = useState<boolean>(false); // Track if user has voted
   const [voteData, setVoteData] = useState({
     sentiment: '',
     topPick: '',
@@ -96,8 +99,21 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
   });
   const indexDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Prevent dropdown state changes when voted
+  useEffect(() => {
+    if (hasVoted) {
+      setShowStockDropdown(false);
+      setShowIndexDropdown(false);
+    }
+  }, [hasVoted]);
+
   const handleVoteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent resubmission if already voted
+    if (hasVoted) {
+      return;
+    }
 
     if (!user) {
       toast({
@@ -155,7 +171,13 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
         description: `Vote submitted successfully! You earned 1 token. Current tokens: ${bonusData.tokenCount}`,
       });
 
-      setShowVotePanel(false);
+      // Set hasVoted to true instead of closing the panel
+      setHasVoted(true);
+      
+      // Call the callback if provided
+      if (onVoteSubmit) {
+        onVoteSubmit();
+      }
 
     } catch (error) {
       if (error instanceof Error) {
@@ -174,6 +196,8 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
 
   // Toggle custom stock search mode
   const toggleCustomStockMode = () => {
+    if (hasVoted) return; // Prevent toggling if user has voted
+
     setIsCustomStock(!isCustomStock);
     setCustomStockSearch('');
     setSearchResults([]);
@@ -187,8 +211,11 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
 
   // Select a stock from common stocks dropdown
   const selectStock = (symbol: string, name?: string) => {
-    setVoteData({ ...voteData, topPick: symbol });
-    setShowStockDropdown(false);
+    // Only allow selection if user hasn't voted yet
+    if (!hasVoted) {
+      setVoteData({ ...voteData, topPick: symbol });
+      setShowStockDropdown(false);
+    }
   };
 
   // Debounced search function to avoid too many API calls
@@ -285,13 +312,18 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
 
   // Select a custom stock from search results
   const selectCustomStock = (symbol: string, name?: string) => {
-    setVoteData({ ...voteData, topPick: symbol });
-    setCustomStockSearch(name ? `${symbol} - ${name}` : symbol);
-    setSearchResults([]);
+    // Only allow selection if user hasn't voted yet
+    if (!hasVoted) {
+      setVoteData({ ...voteData, topPick: symbol });
+      setCustomStockSearch(name ? `${symbol} - ${name}` : symbol);
+      setSearchResults([]);
+    }
   };
 
   // Toggle category expansion in the index dropdown
   const toggleCategory = (category: string) => {
+    if (hasVoted) return; // Prevent toggling if user has voted
+
     setExpandedCategories({
       ...expandedCategories,
       [category]: !expandedCategories[category]
@@ -300,8 +332,11 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
 
   // Select index from custom dropdown
   const selectIndex = (value: string) => {
-    setVoteData({ ...voteData, marketTrend: value });
-    setShowIndexDropdown(false);
+    // Only allow selection if user hasn't voted yet
+    if (!hasVoted) {
+      setVoteData({ ...voteData, marketTrend: value });
+      setShowIndexDropdown(false);
+    }
   };
 
   // Close dropdowns when clicking outside
@@ -342,8 +377,18 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
         
         if (response.ok) {
           const data = await response.json();
-          // Show vote panel only if user hasn't voted yet
-          setShowVotePanel(!data.hasVoted);
+          // When in overlay mode, always show the panel, otherwise hide if user has voted
+          setShowVotePanel(isOverlay ? true : !data.hasVoted);
+          setHasVoted(data.hasVoted);
+          
+          // If user has voted, load their previous vote data
+          if (data.hasVoted && data.vote) {
+            setVoteData({
+              sentiment: data.vote.sentiment || '',
+              topPick: data.vote.topPick || '',
+              marketTrend: data.vote.marketTrend || ''
+            });
+          }
         } else {
           // If there's an error, show the panel
           setShowVotePanel(true);
@@ -356,7 +401,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
     };
 
     checkVoteStatus();
-  }, [user]);
+  }, [user, isOverlay]);
 
   // Get the display label for the stock select
   const getSelectedStockLabel = () => {
@@ -403,8 +448,10 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
           )}
 
           {showTokenMessage && (
-            <div className="mb-4 bg-yellow-500/20 border border-yellow-500/40 rounded-lg p-3 text-center">
-              <p className="text-yellow-300 font-medium">Submit to claim your free daily token!</p>
+            <div className={`mb-4 ${hasVoted ? 'bg-blue-500/20 border border-blue-500/40' : 'bg-yellow-500/20 border border-yellow-500/40'} rounded-lg p-3 text-center`}>
+              <p className={`${hasVoted ? 'text-blue-300' : 'text-yellow-300'} font-medium`}>
+                {hasVoted ? "Daily Tokens Claimed" : "Submit to claim your free daily token!"}
+              </p>
             </div>
           )}
 
@@ -416,11 +463,13 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                 <div className="flex gap-4">
                   <button
                     type="button"
-                    onClick={() => setVoteData({ ...voteData, sentiment: 'bullish' })}
-                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bullish'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
-                      }`}
+                    onClick={() => !hasVoted && setVoteData({ ...voteData, sentiment: 'bullish' })}
+                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
+                      voteData.sentiment === 'bullish'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+                    } ${hasVoted ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
+                    disabled={hasVoted}
                   >
                     <ChevronUpIcon className="w-5 h-5 inline-block mr-1" />
                     Bullish
@@ -428,11 +477,13 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setVoteData({ ...voteData, sentiment: 'bearish' })}
-                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${voteData.sentiment === 'bearish'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
-                      }`}
+                    onClick={() => !hasVoted && setVoteData({ ...voteData, sentiment: 'bearish' })}
+                    className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
+                      voteData.sentiment === 'bearish'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+                    } ${hasVoted ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
+                    disabled={hasVoted}
                   >
                     <ChevronDownIcon className="w-5 h-5 inline-block mr-1" />
                     Bearish
@@ -447,8 +498,8 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                 {!isCustomStock ? (
                   <div className="relative">
                     <div 
-                      onClick={() => setShowStockDropdown(!showStockDropdown)}
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white cursor-pointer flex justify-between items-center"
+                      onClick={() => !hasVoted && setShowStockDropdown(!showStockDropdown)}
+                      className={`w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white ${hasVoted ? 'cursor-default opacity-80' : 'cursor-pointer'} flex justify-between items-center`}
                     >
                       <span className={`${!voteData.topPick ? 'text-gray-400' : 'text-white'}`}>
                         {getSelectedStockLabel()}
@@ -468,7 +519,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                         {/* Custom Stock Option */}
                         <div 
                           onClick={toggleCustomStockMode}
-                          className="px-4 py-2.5 cursor-pointer hover:bg-gray-700 text-blue-300 transition-colors flex items-center"
+                          className={`px-4 py-2.5 cursor-pointer hover:bg-gray-700 text-blue-300 transition-colors flex items-center ${hasVoted ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                           <span>Custom...</span>
                         </div>
@@ -482,7 +533,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                             <div 
                               key={stock.symbol}
                               onClick={() => selectStock(stock.symbol, stock.name)}
-                              className={`px-4 py-2 cursor-pointer hover:bg-gray-700 transition-colors ${voteData.topPick === stock.symbol ? 'bg-blue-600/30 text-blue-200' : 'text-white'}`}
+                              className={`px-4 py-2 ${hasVoted ? 'cursor-default' : 'cursor-pointer hover:bg-gray-700'} transition-colors ${voteData.topPick === stock.symbol ? 'bg-blue-600/30 text-blue-200' : 'text-white'} ${hasVoted ? 'opacity-80' : ''}`}
                             >
                               <span className="font-medium">{stock.symbol}</span>
                               <span className="text-sm text-gray-400 ml-2">
@@ -501,6 +552,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                         type="button"
                         onClick={toggleCustomStockMode}
                         className="bg-gray-700 text-white px-3 rounded-l-lg"
+                        disabled={hasVoted}
                       >
                         ←
                       </button>
@@ -508,9 +560,10 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                         <input
                           type="text"
                           value={customStockSearch}
-                          onChange={(e) => handleCustomStockSearch(e.target.value)}
+                          onChange={(e) => !hasVoted && handleCustomStockSearch(e.target.value)}
                           placeholder="Search for a stock..."
-                          className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-r-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className={`w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-r-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${hasVoted ? 'cursor-not-allowed opacity-80' : ''}`}
+                          disabled={hasVoted}
                         />
                         {isSearching && (
                           <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -529,7 +582,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                           <div 
                             key={stock.symbol}
                             onClick={() => selectCustomStock(stock.symbol, stock.name)}
-                            className="px-4 py-2.5 cursor-pointer hover:bg-gray-700 text-white border-b border-gray-700/50 last:border-b-0 transition-colors"
+                            className={`px-4 py-2.5 ${hasVoted ? 'cursor-default' : 'cursor-pointer hover:bg-gray-700'} text-white border-b border-gray-700/50 last:border-b-0 transition-colors ${hasVoted ? 'opacity-80' : ''}`}
                           >
                             <div className="flex justify-between items-center">
                               <span className="font-medium">{stock.symbol}</span>
@@ -553,8 +606,8 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                 
                 <div className="relative">
                   <div 
-                    onClick={() => setShowIndexDropdown(!showIndexDropdown)}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white cursor-pointer flex justify-between items-center"
+                    onClick={() => !hasVoted && setShowIndexDropdown(!showIndexDropdown)}
+                    className={`w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white ${hasVoted ? 'cursor-default opacity-80' : 'cursor-pointer'} flex justify-between items-center`}
                   >
                     <span className={`${!voteData.marketTrend ? 'text-gray-400' : 'text-white'}`}>
                       {getSelectedIndexLabel()}
@@ -588,7 +641,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                       <div className="border-t border-gray-700/40">
                         <div 
                           onClick={() => toggleCategory('global')}
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-700/50 transition-colors flex items-center text-gray-300"
+                          className={`px-4 py-2 ${hasVoted ? 'cursor-default' : 'cursor-pointer hover:bg-gray-700/50'} transition-colors flex items-center text-gray-300 ${hasVoted ? 'opacity-80' : ''}`}
                         >
                           {expandedCategories.global ? (
                             <ChevronDownIcon className="w-4 h-4 mr-2" />
@@ -617,7 +670,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                       <div className="border-t border-gray-700/40">
                         <div 
                           onClick={() => toggleCategory('sector')}
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-700/50 transition-colors flex items-center text-gray-300"
+                          className={`px-4 py-2 ${hasVoted ? 'cursor-default' : 'cursor-pointer hover:bg-gray-700/50'} transition-colors flex items-center text-gray-300 ${hasVoted ? 'opacity-80' : ''}`}
                         >
                           {expandedCategories.sector ? (
                             <ChevronDownIcon className="w-4 h-4 mr-2" />
@@ -650,10 +703,16 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
             <div className="mt-6">
               <button
                 type="submit"
-                className="w-full px-6 py-4 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!voteData.sentiment}
+                className={`w-full px-6 py-4 rounded-lg text-white font-medium transition-colors ${
+                  hasVoted 
+                    ? 'bg-gray-500 cursor-not-allowed opacity-50' 
+                    : !voteData.sentiment 
+                      ? 'bg-blue-600/50 cursor-not-allowed opacity-50' 
+                      : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+                }`}
+                disabled={!voteData.sentiment || hasVoted}
               >
-                Submit Vote
+                {hasVoted ? "Vote Already Submitted" : "Submit Vote"}
               </button>
             </div>
           </form>
