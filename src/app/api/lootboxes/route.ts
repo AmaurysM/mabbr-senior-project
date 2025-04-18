@@ -13,20 +13,11 @@ export async function GET() {
         },
       },
     });
-
-    // Transform data format for the client
-    const transformedLootboxes = lootboxes.map((lootbox) => ({
-      ...lootbox,
-      stocks: lootbox.lootBoxStocks.map((relation) => relation.stock),
-    }));
-
-    return NextResponse.json(transformedLootboxes);
+    
+    return NextResponse.json(lootboxes);
   } catch (error) {
-    console.error("Error fetching lootboxes:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch lootboxes" },
-      { status: 500 }
-    );
+    console.error('Error fetching lootboxes:', error);
+    return NextResponse.json({ error: 'Failed to fetch lootboxes' }, { status: 500 });
   }
 }
 
