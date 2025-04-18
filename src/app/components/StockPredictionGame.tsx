@@ -10,6 +10,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+import { ArrowUp, ArrowDown } from "lucide-react";
 
 type ChartPoint = { time: string; price: number };
 
@@ -32,9 +33,8 @@ const StockPredictionGame: React.FC = () => {
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
   const basePrice = 100;
-  const stake = 100; // amount won or lost
+  const stake = 100;
 
-  // Fetch the user’s balance
   const fetchBalance = useCallback(async () => {
     try {
       const res = await fetch("/api/user/portfolio", { credentials: "include" });
@@ -43,25 +43,20 @@ const StockPredictionGame: React.FC = () => {
         setBalance(json.balance);
       }
     } catch (err) {
-      console.error("Error fetching balance:", err);
+      console.error(err);
     }
   }, []);
 
-  
   useEffect(() => {
     fetchBalance();
-
-   
-    const initialData = generateRandomData(20, basePrice);
-    setChartData(initialData);
+    // initial chart
+    setChartData(generateRandomData(20, basePrice));
   }, [fetchBalance]);
 
   const handleSubmitPrediction = async () => {
-   
     const data = generateRandomData(20, basePrice);
     setChartData(data);
 
-   
     const actual = data[data.length - 1].price >= data[0].price ? "up" : "down";
     const win = prediction === actual;
     const increment = win ? stake : -stake;
@@ -72,7 +67,6 @@ const StockPredictionGame: React.FC = () => {
         : `😢 You were wrong. It went ${actual}. -$${stake}`
     );
 
-  
     try {
       const res = await fetch("/api/user/portfolio", {
         method: "PUT",
@@ -86,63 +80,64 @@ const StockPredictionGame: React.FC = () => {
       } else {
         await fetchBalance();
       }
-    } catch (err) {
-      console.error("Error updating balance:", err);
+    } catch {
       await fetchBalance();
     }
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-gray-100 shadow rounded">
-      <h1 className="text-2xl font-bold mb-4 text-center">
-        Trend Prediction Game
-      </h1>
-
-      {/* Persistent balance */}
+    <div className="max-w-md mx-auto p-6 bg-gray-700 rounded-xl shadow-lg text-white">
       <p className="text-center text-lg mb-4">
-        Balance: <span className="font-semibold">${balance}</span>
+        Balance: <span className="font-bold">${balance}</span>
       </p>
 
-      {/* Prediction controls */}
-      <div className="mb-4">
-        <p className="mb-1 font-medium">Predict the Trend:</p>
-        <label className="mr-4">
-          <input
-            type="radio"
-            checked={prediction === "up"}
-            onChange={() => setPrediction("up")}
-          />{" "}
-          Up
-        </label>
-        <label>
-          <input
-            type="radio"
-            checked={prediction === "down"}
-            onChange={() => setPrediction("down")}
-          />{" "}
-          Down
-        </label>
+      {/* Prediction buttons */}
+      <div className="mb-4 flex justify-center space-x-4">
+        <button
+          onClick={() => setPrediction("up")}
+          className={
+            `flex items-center px-4 py-2 rounded-lg transition focus:outline-none text-white ` +
+            (prediction === "up"
+              ? "bg-green-700 ring-2 ring-green-400"
+              : "bg-green-500 hover:bg-green-600")
+          }
+        >
+          <ArrowUp className="w-5 h-5 mr-2" /> Up
+        </button>
+        <button
+          onClick={() => setPrediction("down")}
+          className={
+            `flex items-center px-4 py-2 rounded-lg transition focus:outline-none text-white ` +
+            (prediction === "down"
+              ? "bg-red-700 ring-2 ring-red-400"
+              : "bg-red-500 hover:bg-red-600")
+          }
+        >
+          <ArrowDown className="w-5 h-5 mr-2" /> Down
+        </button>
       </div>
 
       {/* Submit button */}
       <button
         onClick={handleSubmitPrediction}
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded mb-4"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg mb-6 transition"
       >
         Submit Prediction
       </button>
 
-      {/* Chart always shows (initial or updated) */}
+      {/* Chart */}
       <div className="mb-4 h-48">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
             <XAxis dataKey="time" hide />
-            <YAxis domain={["auto", "auto"]} />
-            <Tooltip />
+            <YAxis domain={["auto", "auto"]} tick={{ fill: "#CBD5E1" }} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#1F2937", borderRadius: "0.5rem", border: "none" }}
+            />
             <Line
               type="monotone"
               dataKey="price"
-              stroke="#3b82f6"
+              stroke="#6366F1"
               dot={false}
               strokeWidth={2}
             />
@@ -150,7 +145,6 @@ const StockPredictionGame: React.FC = () => {
         </ResponsiveContainer>
       </div>
 
-      {/* Feedback message */}
       {resultMessage && (
         <p className="text-center font-medium">{resultMessage}</p>
       )}
