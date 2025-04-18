@@ -1,4 +1,4 @@
-// src/app/components/StockPredictionGame.tsx
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -13,7 +13,7 @@ import {
 
 type ChartPoint = { time: string; price: number };
 
-/** Pure random walk, ±2% per step */
+
 function generateRandomData(points: number, startPrice: number): ChartPoint[] {
   const data: ChartPoint[] = [];
   let price = startPrice;
@@ -26,22 +26,18 @@ function generateRandomData(points: number, startPrice: number): ChartPoint[] {
 }
 
 const StockPredictionGame: React.FC = () => {
-  // — persisted balance
   const [balance, setBalance] = useState<number>(0);
-  // — chart + UI state
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [prediction, setPrediction] = useState<"up" | "down">("up");
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
   const basePrice = 100;
 
-  // helper: fetch the user’s balance from GET /api/user/portfolio
+  // Fetch the current balance
   const fetchBalance = useCallback(async () => {
-    console.log("🔄 Fetching balance…");
     try {
       const res = await fetch("/api/user/portfolio", { credentials: "include" });
       const json = await res.json();
-      console.log("GET /api/user/portfolio →", res.status, json);
       if (res.ok && typeof json.balance === "number") {
         setBalance(json.balance);
       }
@@ -50,31 +46,26 @@ const StockPredictionGame: React.FC = () => {
     }
   }, []);
 
-  // initial load
   useEffect(() => {
     fetchBalance();
   }, [fetchBalance]);
 
   const handleSubmitPrediction = async () => {
-    console.log("🔔 submitPrediction fired");
-
-    // generate & show the random walk
+    // Generate and show random walk
     const data = generateRandomData(20, basePrice);
     setChartData(data);
-    console.log("chartData:", data);
 
-    // determine actual trend
     const actual = data[data.length - 1].price >= data[0].price ? "up" : "down";
-    console.log("Your guess:", prediction, "| Actual:", actual);
-
     const win = prediction === actual;
+
+    // Show result message
     setResultMessage(
       win
         ? `🎉 You were right! It went ${actual}. +$100`
         : `😢 You were wrong. It went ${actual}.`
     );
 
-    // always call PUT /api/user/portfolio
+    // Always call PUT to /api/user/portfolio with increment 100 on win, 0 on loss
     try {
       const res = await fetch("/api/user/portfolio", {
         method: "PUT",
@@ -83,16 +74,14 @@ const StockPredictionGame: React.FC = () => {
         body: JSON.stringify({ increment: win ? 100 : 0 }),
       });
       const json = await res.json();
-      console.log("PUT /api/user/portfolio →", res.status, json);
-
       if (res.ok && typeof json.balance === "number") {
         setBalance(json.balance);
       } else {
-        console.warn("PUT didn’t return a balance, re-fetching…");
+        // Fallback: re-fetch balance
         await fetchBalance();
       }
     } catch (err) {
-      console.error("Error calling PUT /api/user/portfolio:", err);
+      console.error("Error updating balance:", err);
       await fetchBalance();
     }
   };
@@ -103,12 +92,10 @@ const StockPredictionGame: React.FC = () => {
         Trend Prediction Game
       </h1>
 
-      {/* Always show the balance */}
       <p className="text-center text-lg mb-4">
         Balance: <span className="font-semibold">${balance}</span>
       </p>
 
-      {/* Prediction controls */}
       <div className="mb-4">
         <p className="mb-1 font-medium">Predict the Trend:</p>
         <label className="mr-4">
@@ -129,7 +116,6 @@ const StockPredictionGame: React.FC = () => {
         </label>
       </div>
 
-      {/* Submit */}
       <button
         onClick={handleSubmitPrediction}
         className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded mb-4"
@@ -137,7 +123,6 @@ const StockPredictionGame: React.FC = () => {
         Submit Prediction
       </button>
 
-      {/* Chart */}
       <div className="mb-4 h-48">
         {chartData.length === 0 ? (
           <p className="text-center text-gray-500 mt-16">
@@ -161,7 +146,6 @@ const StockPredictionGame: React.FC = () => {
         )}
       </div>
 
-      {/* Feedback */}
       {resultMessage && (
         <p className="text-center font-medium">{resultMessage}</p>
       )}
