@@ -32,9 +32,9 @@ const StockPredictionGame: React.FC = () => {
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
   const basePrice = 100;
-  const stake = 100; // amount gained or lost per round
+  const stake = 100; // amount won or lost
 
-  // helper to fetch current balance
+  // Fetch the user’s balance
   const fetchBalance = useCallback(async () => {
     try {
       const res = await fetch("/api/user/portfolio", { credentials: "include" });
@@ -50,26 +50,29 @@ const StockPredictionGame: React.FC = () => {
   
   useEffect(() => {
     fetchBalance();
+
+   
+    const initialData = generateRandomData(20, basePrice);
+    setChartData(initialData);
   }, [fetchBalance]);
 
   const handleSubmitPrediction = async () => {
-  
+   
     const data = generateRandomData(20, basePrice);
     setChartData(data);
 
-    
+   
     const actual = data[data.length - 1].price >= data[0].price ? "up" : "down";
     const win = prediction === actual;
     const increment = win ? stake : -stake;
 
-   
     setResultMessage(
       win
         ? `🎉 You were right! It went ${actual}. +$${stake}`
         : `😢 You were wrong. It went ${actual}. -$${stake}`
     );
 
-    
+  
     try {
       const res = await fetch("/api/user/portfolio", {
         method: "PUT",
@@ -81,7 +84,6 @@ const StockPredictionGame: React.FC = () => {
       if (res.ok && typeof json.balance === "number") {
         setBalance(json.balance);
       } else {
-        
         await fetchBalance();
       }
     } catch (err) {
@@ -96,7 +98,7 @@ const StockPredictionGame: React.FC = () => {
         Trend Prediction Game
       </h1>
 
-      {/* Persistent balance display */}
+      {/* Persistent balance */}
       <p className="text-center text-lg mb-4">
         Balance: <span className="font-semibold">${balance}</span>
       </p>
@@ -130,31 +132,25 @@ const StockPredictionGame: React.FC = () => {
         Submit Prediction
       </button>
 
-      {/* Chart display */}
+      {/* Chart always shows (initial or updated) */}
       <div className="mb-4 h-48">
-        {chartData.length === 0 ? (
-          <p className="text-center text-gray-500 mt-16">
-            Click “Submit Prediction” to see the trend.
-          </p>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis dataKey="time" hide />
-              <YAxis domain={["auto", "auto"]} />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="price"
-                stroke="#3b82f6"
-                dot={false}
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData}>
+            <XAxis dataKey="time" hide />
+            <YAxis domain={["auto", "auto"]} />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="price"
+              stroke="#3b82f6"
+              dot={false}
+              strokeWidth={2}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* Result message */}
+      {/* Feedback message */}
       {resultMessage && (
         <p className="text-center font-medium">{resultMessage}</p>
       )}
