@@ -1,3 +1,4 @@
+
 "use client";
 import React from "react";
 import StockPredictionGame from "@/app/components/StockPredictionGame";
