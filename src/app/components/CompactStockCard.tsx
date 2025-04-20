@@ -166,7 +166,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
   const toggleExpanded = useCallback(() => {
     // Don't allow expansion if data is unavailable
     if (isDataUnavailable) return;
-    
+
     setExpanded(prev => !prev);
     // Reset trade mode when collapsing
     if (expanded) {
@@ -185,69 +185,19 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
   const chartTrend = lastPrice - firstPrice;
   const chartColor = chartTrend >= 0 ? '#4ade80' : '#f87171'; // Green for up, red for down
 
-  // Calculate date ranges for detailed chart data
-  const formatChartTime = (time: string) => {
-    if (!time) return '';
-    const date = new Date(time);
-    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-  };
-
-  // Render the buy/sell section or login prompt
-  const renderTradeSection = () => {
-    if (!isLoggedIn) {
-      return (
-        <div className="mt-4 p-3 bg-gray-700/30 rounded-lg text-center">
-          <p className="text-gray-300 mb-2">Login to trade this stock</p>
-          <a
-            href="/login-signup"
-            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-          >
-            Login
-          </a>
-        </div>
-      );
-    }
-
-    if (!tradeMode) {
-      return (
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => {
-              setTradeType('buy');
-              setTradeMode(true);
-            }}
-            className="flex-1 py-2 px-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors"
-          >
-            Buy
-          </button>
-          <button
-            onClick={() => {
-              setTradeType('sell');
-              setTradeMode(true);
-            }}
-            className="flex-1 py-2 px-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition-colors"
-            disabled={shares <= 0}
-          >
-            Sell
-          </button>
-        </div>
-      );
-    }
-  };
-
   return (
-    <div
+<div
       className={`relative transition-all duration-300 ease-in-out ${
         isDataUnavailable 
           ? 'bg-gray-800/30 border-gray-700/30' 
           : expanded 
             ? 'bg-gray-800/80' 
             : 'bg-gray-800/50 hover:bg-gray-700/60'
-      } rounded-xl border border-white/10 ${expanded ? 'shadow-2xl' : 'shadow-lg'} backdrop-blur-sm w-full`}
+      } rounded-xl border border-white/10 ${expanded ? 'shadow-2xl' : 'shadow-lg'} backdrop-blur-sm w-full overflow-hidden`}
       onClick={isDataUnavailable ? undefined : toggleExpanded}
     >
       {/* Favorite Button */}
-      <div className="absolute top-2 right-2">
+      <div className="absolute top-3 right-3 z-10">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -255,39 +205,39 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
           }}
           className={`${isFavorite ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600 transition-colors`}
         >
-          <Star className={`w-6 h-6 ${isFavorite ? 'fill-current' : ''}`} />
+          <Star className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
         </button>
       </div>
 
       {/* View Stock button */}
       {!isDataUnavailable && !expanded && (
-        <div className="absolute bottom-2 right-2">
+        <div className="absolute bottom-3 right-3 z-10">
           <Link 
             href={`/stock/${symbol}`}
             onClick={(e) => e.stopPropagation()}
             className="bg-green-500 hover:bg-green-400 text-white p-1.5 rounded-full transition-colors flex items-center justify-center"
           >
-            <FaChevronRight className="w-4 h-4" />
+            <FaChevronRight className="w-3 h-3" />
           </Link>
         </div>
       )}
 
       {/* Compact view - always visible */}
-      <div className={`p-4 flex items-center justify-between w-full ${isDataUnavailable ? '' : 'cursor-pointer'}`}>
+      <div className={`p-4 flex flex-wrap items-center w-full pr-10 ${isDataUnavailable ? '' : 'cursor-pointer'}`}>
         {/* Left section: Symbol, name, price */}
-        <div className="flex-none mr-4 w-48">
-          <div className="flex items-baseline">
-            <h3 className="text-xl font-bold text-white mr-2">{symbol}</h3>
-            <p className="text-gray-400 text-sm truncate">{name}</p>
+        <div className="flex-none mr-4 w-36 sm:w-40">
+          <div className="flex items-baseline flex-wrap">
+            <h3 className="text-lg font-bold text-white mr-2">{symbol}</h3>
+            <p className="text-gray-400 text-xs truncate">{name}</p>
           </div>
           {isDataUnavailable ? (
             <div className="flex items-center mt-1">
-              <span className="text-gray-400">Data for this stock is unavailable</span>
+              <span className="text-gray-400 text-sm">Data unavailable</span>
             </div>
           ) : (
             <div className="flex items-center mt-1">
-              <span className="text-lg text-white mr-2">${price.toFixed(2)}</span>
-              <span className={`text-sm ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span className="text-base text-white mr-2">${price.toFixed(2)}</span>
+              <span className={`text-xs ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {change >= 0 ? '+' : ''}{change.toFixed(2)} ({changePercent.toFixed(2)}%)
               </span>
             </div>
@@ -295,72 +245,60 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
         </div>
 
         {/* Middle section: Extended info and position info if owned */}
-        <div className="flex-1 flex items-center justify-start">
+        <div className="flex-1">
           {!isDataUnavailable && (
-            <div className="hidden md:grid grid-cols-3 gap-8 flex-1">
-              <div>
+            <div className="hidden md:grid grid-cols-3 gap-4">
+              <div className="text-left">
                 <div className="text-xs text-gray-400">Volume</div>
-                <div className="text-sm text-white">{formatNumber(Math.round(price * 1000000))}</div>
+                <div className="text-xs text-white">{formatNumber(Math.round(price * 1000000))}</div>
               </div>
-              <div>
+              <div className="text-left">
                 <div className="text-xs text-gray-400">52W Range</div>
-                <div className="text-sm text-white">
+                <div className="text-xs text-white">
                   <span className="text-red-400">${(price * 0.8).toFixed(2)}</span> - <span className="text-green-400">${(price * 1.2).toFixed(2)}</span>
                 </div>
               </div>
-              <div>
+              <div className="text-left">
                 <div className="text-xs text-gray-400">Avg Vol</div>
-                <div className="text-sm text-white">{formatNumber(Math.round(price * 1200000))}</div>
+                <div className="text-xs text-white">{formatNumber(Math.round(price * 1200000))}</div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Right section: Mini chart */}
-        <div className="flex-none w-48 h-16">
-          {!isDataUnavailable ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <YAxis domain={[minPrice, maxPrice]} hide />
-                <Line
-                  type="monotone"
-                  dataKey="price"
-                  stroke={chartColor}
-                  strokeWidth={1.5}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="border-2 border-dashed border-gray-700 rounded-lg h-8 w-32"></div>
-            </div>
-          )}
-        </div>
-
-        {/* Invisible expand/collapse indicator - keeps layout intact */}
-        <div className="ml-2 text-gray-400 flex-none opacity-0">
-          {!isDataUnavailable && (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          )}
-        </div>
+        {/* Right section: Mini chart with aspect ratio */}
+        <div className="flex-none w-full h-12 ml-auto relative">
+            {!isDataUnavailable ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart 
+                  data={chartData} 
+                  margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                >
+                  <YAxis domain={[minPrice, maxPrice]} hide />
+                  <Line
+                    type="monotone"
+                    dataKey="price"
+                    stroke={chartColor}
+                    strokeWidth={1.5}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="border-2 border-dashed border-gray-700 rounded-lg h-6 w-20"></div>
+              </div>
+            )}
+          </div>
       </div>
 
       {/* Visible expand/collapse indicator at bottom center */}
       {!isDataUnavailable && (
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-gray-400 pb-1">
+        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 text-gray-400">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className={`h-5 w-5 transform transition-transform ${expanded ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 transform transition-transform ${expanded ? 'rotate-180' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -435,8 +373,8 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                       setTradeType('buy');
                     }}
                     className={`px-4 py-2 rounded-lg font-semibold transition-colors ${tradeType === 'buy'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-700/30 text-gray-400'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-700/30 text-gray-400'
                       }`}
                   >
                     Buy
@@ -447,8 +385,8 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                       setTradeType('sell');
                     }}
                     className={`px-4 py-2 rounded-lg font-semibold transition-colors ${tradeType === 'sell'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-700/30 text-gray-400'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-700/30 text-gray-400'
                       }`}
                   >
                     Sell
@@ -462,8 +400,8 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                       setIsDollarAmount(true);
                     }}
                     className={`px-3 py-1 rounded-md transition-colors ${isDollarAmount
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400'
                       }`}
                   >
                     $
@@ -474,8 +412,8 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                       setIsDollarAmount(false);
                     }}
                     className={`px-3 py-1 rounded-md transition-colors ${!isDollarAmount
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400'
                       }`}
                   >
                     Shares
@@ -539,8 +477,8 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                     handleTrade(tradeType);
                   }}
                   className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors duration-200 font-semibold ${tradeType === 'buy'
-                      ? 'bg-green-600 hover:bg-green-500'
-                      : 'bg-red-600 hover:bg-red-500'
+                    ? 'bg-green-600 hover:bg-green-500'
+                    : 'bg-red-600 hover:bg-red-500'
                     }`}
                 >
                   {tradeType === 'buy' ? 'Buy' : 'Sell'} {symbol}
@@ -720,11 +658,11 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                       <div className="bg-gray-800/70 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
                           <h4 className="text-gray-400 text-sm">Recommendation</h4>
-                          <p className={`font-medium`} style={{ 
-                            color: detailedData.recommendationMean <= 1.5 ? '#4ade80' : 
-                                   detailedData.recommendationMean <= 2.5 ? '#4ade80' :
-                                   detailedData.recommendationMean <= 3.5 ? '#fbbf24' :
-                                   detailedData.recommendationMean <= 4.5 ? '#f87171' : '#f87171'
+                          <p className={`font-medium`} style={{
+                            color: detailedData.recommendationMean <= 1.5 ? '#4ade80' :
+                              detailedData.recommendationMean <= 2.5 ? '#4ade80' :
+                                detailedData.recommendationMean <= 3.5 ? '#fbbf24' :
+                                  detailedData.recommendationMean <= 4.5 ? '#f87171' : '#f87171'
                           }}>
                             {detailedData.recommendationKey?.toUpperCase().replace(/_/g, ' ') || 'N/A'}
                           </p>
@@ -738,7 +676,7 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                             }}
                           >
                             {/* Gray overlay to hide the unused portion of the gradient */}
-                            <div 
+                            <div
                               className="absolute top-0 bottom-0 right-0 bg-gray-700"
                               style={{
                                 width: `${100 - ((5 - (detailedData.recommendationMean || 3)) / 4 * 100)}%`,
@@ -760,7 +698,6 @@ const CompactStockCard: React.FC<CompactStockCardProps> = memo(({
                   </div>
                 )}
 
-                {/* About section removed - now available on the stock detail page */}
               </div>
             )
           )}
