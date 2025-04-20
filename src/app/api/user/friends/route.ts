@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Get session using your auth module (adjust based on your auth implementation)
     const session = await auth.api.getSession({ headers: await headers() });
@@ -31,8 +31,7 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // Map friendships to a list of friends.
-    // If the current user is the requester, return the recipient; otherwise, return the requester.
+
     const friends = friendships.map(friendship => {
       return friendship.requesterId === userId
         ? friendship.recipient

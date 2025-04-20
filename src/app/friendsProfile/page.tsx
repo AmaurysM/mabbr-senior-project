@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import { User } from "@prisma/client";
 import { authClient } from "@/lib/auth-client"; // Adjust the import path based on your setup
@@ -20,6 +20,8 @@ const FriendsProfilePage = () => {
     const [user, setUser] = useState<User | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
     const [activeTab, setActiveTab] = useState<string>("overview");
+    const [banner, setBanner] = useState<string | null>(null);
+    const [bannerError, setBannerError] = useState<boolean>(false);
 
     // Fetch current user's session
     useEffect(() => {
@@ -206,6 +208,59 @@ const FriendsProfilePage = () => {
         }
     };
 
+
+    useEffect(() => {
+        const getBanner = async () => {
+
+            try {
+                const userId = sessionStorage.getItem("selectedUserId");
+                setBannerError(false);
+                console.log("Fetching banner...");
+                const response = await fetch(`/api/user/banner/friend`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ userId }),
+                });
+
+                if (!response.ok) {
+                    console.error("Failed to fetch banner:", response.status);
+                    setBannerError(true);
+                    return;
+                }
+
+                const json = await response.json();
+                console.log("Banner API response:", json);
+                setBanner(json.banner);
+                setBannerError(false);
+            } catch (e) {
+                console.error("Error fetching banner:", e);
+                setBannerError(true);
+            }
+        };
+
+        if (user) {
+            getBanner();
+        }
+    }, [user]);
+
+
+
+
+
+    const isValidUrl = banner && typeof banner === 'string' && banner.trim() !== '' && (
+        banner.trim().startsWith('http://') ||
+        banner.trim().startsWith('https://') ||
+        banner.trim().startsWith('/') ||
+        banner.trim().startsWith('data:image/')
+    );
+
+    const bannerWithTimestamp = useMemo(() => {
+        if (!banner) return null;
+        return `${banner}?t=${new Date().getTime()}`;
+    }, [banner]);
+
     if (loading || currentUserId === null) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-900">
@@ -217,7 +272,6 @@ const FriendsProfilePage = () => {
             </div>
         );
     }
-
     if (!user) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900">
@@ -242,12 +296,31 @@ const FriendsProfilePage = () => {
             </div>
         );
     }
-
     return (
         <div className="min-h-full bg-gray-900">
             {/* Cover and Profile Header */}
             <div className="relative">
-                <div className="h-64 w-full bg-gradient-to-r from-blue-500/30 to-indigo-600/30 backdrop-blur-sm"></div>
+                {/* Cover image with gradient */}
+                <div className="relative w-full h-64 ">
+                    {isValidUrl && !bannerError ? (
+                        <Image
+                            src={bannerWithTimestamp || ''}
+                            alt="Profile banner"
+                            fill
+                            sizes="100vw"
+                            priority
+                            className="object-cover object-center"
+                            onError={() => {
+                                console.error("Failed to load banner thumbnail:", bannerWithTimestamp);
+                                setBannerError(true);
+                            }}
+                        />
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-indigo-600/30 backdrop-blur-sm flex items-center justify-center text-white text-xl font-semibold">
+                        </div>
+                    )}
+                </div>
+
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="relative -mt-32">
                         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
@@ -273,13 +346,12 @@ const FriendsProfilePage = () => {
                                 <button
                                     onClick={handleFollow}
                                     disabled={isFollowLoading || isOwnProfile}
-                                    className={`flex items-center gap-2 px-6 py-2 rounded-xl font-medium transition-colors ${
-                                        isOwnProfile
-                                            ? "bg-gray-700 text-gray-300 cursor-not-allowed"
-                                            : friendStatus === "notFollowing" || friendStatus === "followingYou"
+                                    className={`flex items-center gap-2 px-6 py-2 rounded-xl font-medium transition-colors ${isOwnProfile
+                                        ? "bg-gray-700 text-gray-300 cursor-not-allowed"
+                                        : friendStatus === "notFollowing" || friendStatus === "followingYou"
                                             ? "bg-blue-600 hover:bg-blue-700 text-white"
                                             : "bg-green-600 hover:bg-green-700 text-white"
-                                    }`}
+                                        }`}
                                 >
                                     {renderFollowButtonContent()}
                                 </button>
@@ -307,32 +379,29 @@ const FriendsProfilePage = () => {
                     <div className="flex flex-wrap gap-4">
                         <button
                             onClick={() => setActiveTab("overview")}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                activeTab === "overview"
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-400 hover:text-white"
-                            }`}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === "overview"
+                                ? "bg-blue-600 text-white"
+                                : "text-gray-400 hover:text-white"
+                                }`}
                         >
                             Overview
                         </button>
-                        
+
                         <button
                             onClick={() => setActiveTab("stocks")}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                activeTab === "stocks"
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-400 hover:text-white"
-                            }`}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === "stocks"
+                                ? "bg-blue-600 text-white"
+                                : "text-gray-400 hover:text-white"
+                                }`}
                         >
                             Portfolio
                         </button>
                         <button
                             onClick={() => setActiveTab("achievements")}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                activeTab === "achievements"
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-400 hover:text-white"
-                            }`}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === "achievements"
+                                ? "bg-blue-600 text-white"
+                                : "text-gray-400 hover:text-white"
+                                }`}
                         >
                             Achievements
                         </button>

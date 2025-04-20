@@ -66,12 +66,16 @@ const CombinedProfilePage = () => {
     const [portfolioLoading, setPortfolioLoading] = useState<boolean>(true);
 
     const [userRole, setUserRole] = useState<string>('user');
+    const [banner, setBanner] = useState<string>("");
+    const [bannerError, setBannerError] = useState<boolean>(false);
 
     const { data: session } = authClient.useSession();
     const user = session?.user;
 
     // All the fetch functions and other logic remain the same
-
+    useEffect(() => {
+        setBannerError(false);
+      }, [banner]);
     const fetchTransactions = async () => {
         try {
             const res = await fetch('/api/user/transactions', {
@@ -214,6 +218,9 @@ const CombinedProfilePage = () => {
                             if (userData.bio) {
                                 setBio(userData.bio);
                                 setNewBio(userData.bio);
+                            }
+                            if (userData.banner) {
+                                setBanner(userData.banner);
                             }
                             if (userData.image) {
                                 // Use timestamp to force browser to load new image
@@ -358,11 +365,37 @@ const CombinedProfilePage = () => {
         );
     }
 
+
+    const isValidBanner = banner && typeof banner === 'string' &&
+        (banner.startsWith('http') || banner.startsWith('/') || banner.startsWith('data:image'));
+
+
     return (
         <div className="min-h-full bg-gray-900">
             <div className="relative">
                 {/* Cover image with gradient */}
-                <div className="h-64 w-full bg-gradient-to-r from-blue-500/30 to-indigo-600/30 backdrop-blur-sm"></div>
+                <div className="relative h-64 w-full overflow-hidden">
+                    {/* Fallback gradient background */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-indigo-600/30 backdrop-blur-sm"></div>
+
+                    {/* Banner image */}
+                    {isValidBanner && !bannerError && (
+                        <div className="absolute inset-0">
+                            <Image
+                                src={banner}
+                                alt="Profile banner"
+                                fill
+                                sizes="100vw"
+                                priority
+                                className="object-cover"
+                                onError={() => setBannerError(true)}
+                            />
+                            <div className="absolute inset-0 bg-black/20"></div>
+                        </div>
+                    )}
+
+                    <div className="relative z-10 h-full flex items-center justify-center"></div>
+                </div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="relative -mt-32">
                         {/* Profile Header with glassy effect */}

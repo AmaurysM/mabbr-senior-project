@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 import EditableField from './EditableSettingFields';
+import Banner from './Banner';
 
 export const ResetPasswordSchema = z.object({
     currentPassword: z
@@ -31,7 +32,6 @@ const AccountSettings = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [localImage, setLocalImage] = useState<string>('');
     const [dbImage, setDbImage] = useState<string>('');
-    const [imageError, setImageError] = useState(false);
     const [userName, setUserName] = useState<string>('');
     const [userEmail, setUserEmail] = useState<string>('');
     const router = useRouter();
@@ -272,7 +272,6 @@ const AccountSettings = () => {
                                     fill
                                     sizes="64px" // Fixed the missing sizes prop
                                     className="object-cover"
-                                    onError={() => setImageError(true)}
                                 />
                             </div>
                             <div>
@@ -295,6 +294,8 @@ const AccountSettings = () => {
                         </button>
                     </div>
                 </div>
+
+                <Banner />
 
                 {/* Name and Email sections now use the improved EditableField component */}
                 <EditableField label="Name" value={displayName} onSave={updateName} />
