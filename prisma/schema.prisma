@@ -371,4 +371,17 @@ model StockAICache {
   @@map("stock_ai_cache")
 }
 
+model UserPerformanceMetric {
+  id            String   @id @default(cuid()) @map("_id")
+  userId        String
+  timestamp     DateTime @default(now())
+  netWorth      Float
+  profit        Float
+  percentChange Float
+  
+  @@index([userId])
+  @@index([timestamp])
+  @@map("user_performance_metric")
+}
+
 

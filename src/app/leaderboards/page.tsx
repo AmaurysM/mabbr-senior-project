@@ -137,67 +137,36 @@ const LeaderboardPage = () => {
     fetchFriendsLeaderboard();
   }, [timeframe, user, viewMode]);
 
-  // Add a separate useEffect for historical data that runs when leaderboard or viewMode changes
+  // Replace the mock historical data function with a real API call
   useEffect(() => {
-    const updateHistoricalData = async () => {
-      if (currentLeaderboard.length > 0) {
-        // Mock historical data for demo purposes
-        // In a real app, you would fetch this from an API
-        const mockHistorical: HistoricalData = {};
+    const fetchHistoricalData = async () => {
+      try {
+        if (currentLeaderboard.length === 0) return;
         
-        // Generate mock data points for the top 6 users
-        const now = new Date();
+        // Fetch historical performance data
+        const res = await fetch(`/api/historical-performance?limit=6&timeframe=${timeframe}`);
         
-        // Use the first 6 users from the current leaderboard (which could be either global or friends)
-        const usersToGraph = currentLeaderboard.slice(0, 6);
+        if (!res.ok) {
+          throw new Error('Failed to fetch historical performance data');
+        }
         
-        usersToGraph.forEach((entry, index) => {
-          const dataPoints = [];
-          let currentValue = entry.totalValue - (entry.profit * 0.8); // Starting value
-          let currentProfit = entry.profit * 0.2; // Starting profit (20% of final profit)
-          let currentPercentChange = entry.percentChange * 0.2; // Starting percent change
-          
-          for (let i = 30; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i);
-            
-            // Create a somewhat realistic growth pattern
-            const volatilityFactor = 0.02 * (Math.random() - 0.3); // More likely to go up
-            const movement = currentValue * volatilityFactor;
-            currentValue += movement;
-            
-            // Update profit and percent change similarly
-            currentProfit += (entry.profit - currentProfit) * (1/30);
-            currentPercentChange += (entry.percentChange - currentPercentChange) * (1/30);
-            
-            // Make sure the final values match the current leaderboard values
-            if (i === 0) {
-              currentValue = entry.totalValue;
-              currentProfit = entry.profit;
-              currentPercentChange = entry.percentChange;
-            }
-            
-            dataPoints.push({
-              time: date.toISOString(),
-              value: currentValue,
-              profit: currentProfit,
-              percentChange: currentPercentChange
-            });
-          }
-          
-          mockHistorical[entry.id] = {
-            name: entry.name,
-            image: entry.image,
-            data: dataPoints
-          };
-        });
+        const data = await res.json();
+        if (!data.historicalData) {
+          throw new Error('Invalid historical data format');
+        }
         
-        setHistoricalData(mockHistorical);
+        // If there's no historical data for the top users, we'll use empty data
+        // The user can manually trigger data collection using the button
+        setHistoricalData(data.historicalData);
+      } catch (err) {
+        console.error('Error fetching historical performance data:', err);
+        // If there's an error, we'll use empty historical data
+        setHistoricalData({});
       }
     };
     
-    updateHistoricalData();
-  }, [currentLeaderboard]);
+    fetchHistoricalData();
+  }, [currentLeaderboard, timeframe]);
 
   // Get time period label for empty state message
   const getTimePeriodLabel = () => {
@@ -810,8 +779,8 @@ const LeaderboardPage = () => {
                   </div>
                 </>
               ) : (
-                <div className="w-full mx-auto flex items-center justify-center bg-gray-800/30 rounded-lg" style={{ aspectRatio: '4/3' }}>
-                  <p className="text-gray-400 text-center">
+                <div className="w-full mx-auto flex flex-col items-center justify-center bg-gray-800/30 rounded-lg" style={{ aspectRatio: '4/3' }}>
+                  <p className="text-gray-400 text-center mb-4">
                     {loading ? (
                       <>
                         <span className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></span>
@@ -826,6 +795,62 @@ const LeaderboardPage = () => {
                       "No performance data available for the selected time period"
                     )}
                   </p>
+                  
+                  {/* Manual trigger button for collecting metrics when no data exists */}
+                  {!loading && currentLeaderboard.length > 0 && Object.keys(historicalData).length === 0 && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          setLoading(true);
+                          // Show a message that we're collecting data
+                          setError("Generating performance data, this may take a moment...");
+                          
+                          // Attempt to trigger data collection
+                          const res = await fetch('/api/cron/update-performance', { method: 'GET' });
+                          
+                          if (res.ok) {
+                            const data = await res.json();
+                            setError(`Successfully generated ${data.count} performance records. Loading data...`);
+                            
+                            // Wait a moment and then refresh the data
+                            setTimeout(async () => {
+                              // Refetch the historical data
+                              const refreshRes = await fetch(`/api/historical-performance?limit=6&timeframe=${timeframe}`);
+                              if (refreshRes.ok) {
+                                const refreshData = await refreshRes.json();
+                                if (refreshData.historicalData) {
+                                  setHistoricalData(refreshData.historicalData);
+                                  setError(null);
+                                }
+                              }
+                              setLoading(false);
+                            }, 2000);
+                          } else {
+                            setError("Failed to generate performance data. Please try again.");
+                            setLoading(false);
+                          }
+                        } catch (error) {
+                          console.error('Error triggering performance update:', error);
+                          setError("An error occurred while generating performance data.");
+                          setLoading(false);
+                        }
+                      }}
+                      className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                          Generating Data...
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="w-4 h-4" />
+                          Generate Performance Data
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

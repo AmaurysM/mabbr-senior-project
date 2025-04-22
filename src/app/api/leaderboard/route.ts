@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     // Get query parameters
     const { searchParams } = new URL(req.url);
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50); // Cap at 50
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 50); // Default to 50, cap at 50
     const timeframe = searchParams.get('timeframe') || 'all';
 
     // Calculate the start date based on timeframe
@@ -22,26 +22,32 @@ export async function GET(req: NextRequest) {
         break;
       case 'all':
       default:
-        // No date filtering for all-time
+        // For all-time, look at the most recent metric for each user
         startDate.setFullYear(2000);
         break;
     }
 
-    // Fetch all users with their transactions within the timeframe
+    // Fetch all users with their latest performance metrics
     const users = await prisma.user.findMany({
       select: {
         id: true,
         name: true,
         image: true,
         badgeImage: true,
-        balance: true,
-        userStocks: {
-          include: {
-            stock: true
-          }
-        },
-        transactions: {
+        balance: true
+      },
+      where: {
+        banned: false
+      }
+    });
+
+    // Get most recent performance metrics for all users
+    const userMetrics = await Promise.all(
+      users.map(async (user) => {
+        // Get the most recent metric for this user within the timeframe
+        const latestMetric = await prisma.userPerformanceMetric.findFirst({
           where: {
+            userId: user.id,
             timestamp: {
               gte: startDate
             }
@@ -49,51 +55,57 @@ export async function GET(req: NextRequest) {
           orderBy: {
             timestamp: 'desc'
           }
+        });
+
+        if (!latestMetric) {
+          // If no metrics found in the timeframe, calculate current values
+          // This handles users who haven't had metrics recorded yet
+          const userWithStocks = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: {
+              userStocks: {
+                include: {
+                  stock: true
+                }
+              }
+            }
+          });
+
+          const holdingsValue = userWithStocks?.userStocks.reduce((total, holding) => {
+            return total + (holding.quantity * holding.stock.price);
+          }, 0) || 0;
+
+          const totalValue = (userWithStocks?.balance || 0) + holdingsValue;
+          const initialValue = 100000; // Default starting balance
+          const profit = totalValue - initialValue;
+          const percentChange = ((totalValue - initialValue) / initialValue) * 100;
+
+          return {
+            ...user,
+            totalValue,
+            profit,
+            percentChange,
+            hasMetrics: false
+          };
         }
-      },
-      where: {
-        banned: false
-      }
-    });
-
-    // Calculate portfolio value and metrics for each user
-    const leaderboardData = users
-      .map(user => {
-        // Calculate holdings value
-        const holdingsValue = user.userStocks.reduce((total, holding) => {
-          return total + (holding.quantity * holding.stock.price);
-        }, 0);
-
-        // Calculate total value (cash + holdings)
-        const totalValue = user.balance + holdingsValue;
-
-        // Calculate initial value (everyone starts with $100,000)
-        const initialValue = 100000;
-
-        // Calculate profit/loss
-        const profit = totalValue - initialValue;
-        const percentChange = ((totalValue - initialValue) / initialValue) * 100;
-
-        // Check if user has trades in the selected timeframe
-        const hasTrades = user.transactions.length > 0;
 
         return {
-          id: user.id,
-          name: user.name,
-          image: user.image,
-          badgeImage: user.badgeImage,
-          totalValue: totalValue,
-          profit: profit,
-          percentChange: percentChange,
-          hasTrades
+          ...user,
+          totalValue: latestMetric.netWorth,
+          profit: latestMetric.profit,
+          percentChange: latestMetric.percentChange,
+          hasMetrics: true
         };
       })
-      .filter(user => user.hasTrades) // Only include users who have made trades in the timeframe
+    );
+
+    // Sort by total value and get top users
+    const sortedUsers = userMetrics
       .sort((a, b) => b.totalValue - a.totalValue)
       .slice(0, limit);
 
     // Add rank information
-    const rankedLeaderboard = leaderboardData.map((user, index) => ({
+    const rankedLeaderboard = sortedUsers.map((user, index) => ({
       ...user,
       rank: index + 1
     }));
