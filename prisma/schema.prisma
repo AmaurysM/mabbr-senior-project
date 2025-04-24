@@ -91,6 +91,20 @@ enum CommentableType {
   STOCKCHAT
 }
 
+model CommentReaction {
+  id         String   @id @default(cuid()) @map("_id")
+  emoji      String   
+  
+  userId     String
+
+  commentId  String
+
+
+  createdAt  DateTime @default(now())
+
+  @@unique([commentId, userId, emoji]) // prevents duplicate reactions from same user
+}
+
 
 model CommentLike {
   id        String   @id @default(cuid()) @map("_id")

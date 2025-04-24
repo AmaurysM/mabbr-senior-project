@@ -1,13 +1,15 @@
 import { authClient } from '@/lib/auth-client'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
-import { UserCircleIcon } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Flag, Trash, ChevronDown, UserCircle, Smile } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { Comment } from '@prisma/client'
 import UserVerificationIcon from './UserVerificationIcon/UserVerificationIcon'
 import { User } from '@/lib/prisma_types'
 import Link from 'next/link'
+import data from '@emoji-mart/data'
+import Picker from '@emoji-mart/react'
 
 // Add a new interface for stock data
 interface StockSymbolData {
@@ -80,7 +82,7 @@ const StockTooltip = ({ symbol, data }: { symbol: string, data: StockSymbolData 
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mt-1">
         <div className={`text-xs ${data.isPositive ? 'text-green-400' : 'text-red-400'}`}>
           {data.isPositive ? '+' : ''}{data.change.toFixed(2)} ({data.changePercent.toFixed(2)}%)
         </div>
@@ -89,12 +91,132 @@ const StockTooltip = ({ symbol, data }: { symbol: string, data: StockSymbolData 
   );
 };
 
+interface Reaction {
+  emoji: string
+  count: number
+  me: boolean
+}
+
+// Custom hook for detecting clicks outside of a component
+const useClickAway = (ref: React.RefObject<HTMLElement>, handler: () => void) => {
+  useEffect(() => {
+    const listener = (event: MouseEvent | TouchEvent) => {
+      if (!ref.current || ref.current.contains(event.target as Node)) {
+        return;
+      }
+      handler();
+    };
+
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
+
+    return () => {
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
+    };
+  }, [ref, handler]);
+};
+
+// Common emojis for quick reactions
+const commonEmojis = [
+  { emoji: "👍", label: "Thumbs Up" },
+  { emoji: "❤️", label: "Heart" },
+  { emoji: "😂", label: "Joy" },
+  { emoji: "🎉", label: "Party" },
+  { emoji: "👏", label: "Clap" },
+  { emoji: "🔥", label: "Fire" },
+  { emoji: "💯", label: "100" },
+  { emoji: "🤔", label: "Thinking" }
+];
+
 const GlobalCommentCard = ({ message }: { message: Comment }) => {
   const { data: session } = authClient.useSession()
-  const [poster, setPoster] = useState<User | null>(null);
-  const [stockData, setStockData] = useState<Record<string, StockSymbolData>>({});
-  const router = useRouter();
+  const [poster, setPoster] = useState<User | null>(null)
+  const [stockData, setStockData] = useState<Record<string, StockSymbolData>>({})
+  const [reactions, setReactions] = useState<Reaction[]>([])
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showActionMenu, setShowActionMenu] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter()
 
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
+  const actionMenuRef = useRef<HTMLDivElement>(null)
+
+  useClickAway(emojiPickerRef, () => setShowEmojiPicker(false))
+  useClickAway(actionMenuRef, () => setShowActionMenu(false))
+
+  const fetchReactions = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/comment/reaction?messageId=${message.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to fetch reactions');
+
+      const data = await res.json();
+      setReactions(data.reactions);
+    } catch (error) {
+      console.error('Error fetching reactions:', error);
+    }
+  }, [message.id]);
+
+  const handleAddReaction = async (emoji: string) => {
+    if (session?.user.id === message.userId) {
+      // Prevent reacting to own comment
+      return
+    }
+
+    try {
+      const res = await fetch('/api/comment/reaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: message.id,
+          emoji,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to toggle reaction');
+
+      // Update local state with the new reactions data
+      const data = await res.json();
+      setReactions(data.reactions);
+
+      // Hide emoji picker after selection
+      setShowEmojiPicker(false);
+    } catch (error) {
+      console.error('Error toggling reaction:', error);
+    }
+  }
+
+  const handleToggleReaction = async (emoji: string) => {
+    if (session?.user.id === message.userId) {
+      // Prevent reacting to own comment
+      return
+    }
+
+    try {
+      const res = await fetch('/api/comment/reaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: message.id,
+          emoji,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to toggle reaction');
+
+      // Update local state with the new reactions data
+      const data = await res.json();
+      setReactions(data.reactions);
+    } catch (error) {
+      console.error('Error toggling reaction:', error);
+    }
+  }
 
   const fetchStockData = async (symbols: string[]): Promise<void> => {
     try {
@@ -142,8 +264,6 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
     }
   };
 
-
-
   const formatTimestamp = (date: string | number | Date) => {
     if (!date) return 'Just now'; // Handle undefined/null cases
 
@@ -158,10 +278,59 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
     return formatDistanceToNow(parsedDate, { addSuffix: true });
   };
 
-
   const handleProfileClick = () => {
     sessionStorage.setItem("selectedUserId", message.userId);
     router.push(`/friendsProfile`)
+  }
+
+  // Share the message
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Check out this comment',
+        text: `${poster?.name || 'Someone'} said: ${message.content}`,
+        url: window.location.href
+      })
+        .then(() => console.log('Successfully shared'))
+        .catch((error) => console.log('Error sharing:', error));
+    } else {
+      // Fallback for browsers that don't support the Web Share API
+      navigator.clipboard.writeText(window.location.href)
+        .then(() => alert('Link copied to clipboard!'))
+        .catch((err) => console.error('Could not copy text: ', err));
+    }
+    setShowActionMenu(false);
+  }
+
+  // Report the message
+  const handleReport = () => {
+    // Implement reporting functionality
+    alert('Comment reported. Our team will review it shortly.');
+    setShowActionMenu(false);
+  }
+
+  // Delete the message (only if user is the author)
+  const handleDelete = async () => {
+    if (session?.user.id !== message.userId) return;
+
+    setIsDeleting(true);
+
+    try {
+      const res = await fetch(`/api/comment?id=${message.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) throw new Error('Failed to delete comment');
+
+      // Refresh the page or remove the comment from UI
+      // This depends on how your app handles updates
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      setIsDeleting(false);
+    }
+
+    setShowActionMenu(false);
   }
 
   // Extract stock symbols from content
@@ -207,12 +376,11 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
 
           formattedContent.push(
             <Link href={`/stock/${symbol}`} key={`stock-${i}`} className="inline-block relative group">
-            
               <span
                 className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${isPositive
                   ? 'bg-green-900/20 text-green-300 border border-green-700/30'
                   : 'bg-red-900/20 text-red-300 border border-red-700/30'
-                  } cursor-pointer`}
+                  } cursor-pointer hover:opacity-80 transition-opacity`}
               >
                 {symbol}
                 <span className="ml-1 font-mono">
@@ -243,6 +411,10 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
   };
 
   useEffect(() => {
+    fetchReactions();
+  }, [fetchReactions]);
+
+  useEffect(() => {
     fetch("/api/user/getUser", {
       method: "POST",
       headers: {
@@ -261,18 +433,18 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
       .catch(() => {
         console.error("Error fetching user");
       });
-  }, [message.userId])
+  }, [message.userId]);
 
   return (
     <div
       key={message.id}
-      className={`flex items-start gap-3 ${message.userId === session?.user?.id
-        ? 'bg-blue-600/20 rounded-xl p-3'
-        : 'bg-gray-700/30 rounded-xl p-3'
+      className={`flex items-start gap-3 p-4 ${message.userId === session?.user?.id
+        ? 'bg-blue-600/20 rounded-xl border border-blue-500/30'
+        : 'bg-gray-800/50 rounded-xl border border-gray-700/50 hover:bg-gray-800/80 transition-colors'
         }`}
     >
       <div
-        className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center cursor-pointer"
+        className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center cursor-pointer ring-2 ring-gray-700 hover:ring-blue-500 transition-all"
         onClick={handleProfileClick}
       >
         {poster?.image ? (
@@ -284,13 +456,13 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
             className="object-cover"
           />
         ) : (
-          <UserCircleIcon className="w-10 h-10 text-gray-400" />
+          <UserCircle className="w-10 h-10 text-gray-400" />
         )}
       </div>
 
       <div className="flex-grow">
         <div className="flex justify-between items-center mb-1">
-          <span
+          <div
             className="font-semibold text-white cursor-pointer hover:underline"
             onClick={handleProfileClick}
           >
@@ -298,24 +470,101 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
               <span className="font-semibold text-gray-200">{poster?.name || "Unknown User"}</span>
               <UserVerificationIcon userRole={poster?.role} className="h-3 w-3 text-blue-500" />
             </div>
-          </span>
+          </div>
           <span className="text-xs text-gray-400">{formatTimestamp(message.createdAt)}</span>
         </div>
+
         {message.content && (
-          <div className="text-white">{formatMessageContent(message.content)}</div>
+          <div className="text-white mb-2">{formatMessageContent(message.content)}</div>
         )}
+
         {message.image && (
-          <Image
-            src={message.image}
-            alt="Attached image"
-            width={400}
-            height={400}
-            className="mt-2 rounded-lg"
-          />
+          <div className="mt-2 rounded-lg overflow-hidden">
+            <Image
+              src={message.image}
+              alt="Attached image"
+              width={400}
+              height={400}
+              className="w-full object-cover hover:opacity-95 transition-opacity"
+            />
+          </div>
         )}
+
+        {/* Interaction bar */}
+        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-700/50">
+          {/* Reaction buttons */}
+          <div className="flex items-center space-x-4">
+            {/* Add reaction button */}
+            <div className="relative" ref={emojiPickerRef}>
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors py-1"
+                disabled={session?.user.id === message.userId}
+              >
+                <Smile size={16} className={session?.user.id === message.userId ? "text-gray-600" : ""} />
+                <span>React</span>
+              </button>
+
+              {showEmojiPicker && (
+                <div className="absolute z-20 top-full left-full">
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-2xl w-64">
+                    <div className="grid grid-cols-5 gap-2">
+                      {commonEmojis.map(({ emoji, label }) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleAddReaction(emoji)}
+                          className="flex items-center justify-center w-10 h-10 text-xl rounded-lg hover:bg-gray-700 transition-colors"
+                          title={label}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* More actions button */}
+          {session?.user.id === message.userId && (
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="w-full text-left px-4 py-2 text-sm text-red-400 flex items-center gap-2"
+            >
+              <Trash size={16} />
+              {isDeleting ? 'Deleting...' : 'Delete comment'}
+            </button>
+          )}
+        </div>
+
+
+        {/* Display reactions */}
+        {reactions && reactions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {reactions.map((reaction) => (
+              <button
+                key={reaction.emoji}
+                onClick={() => handleToggleReaction(reaction.emoji)}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium border transition
+          ${reaction.me
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
+                  }`}
+                disabled={session?.user.id === message.userId}
+              >
+                <span>{reaction.emoji}</span>
+                <span>{reaction.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default GlobalCommentCard
+export default GlobalCommentCard;
