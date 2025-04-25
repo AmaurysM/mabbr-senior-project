@@ -49,6 +49,10 @@ model User {
   commentLike    CommentLike[]
   commentDislike CommentDislike[]
   aiUsage        StockAIUsage[]
+  dailyDrawEntries DailyDrawEntry[]
+
+  dailyDrawNotifications DailyDrawNotification[]
+  activityFeedEntries    ActivityFeedEntry[]
 
   @@map("user")
 }
@@ -383,6 +387,44 @@ model StockAICache {
   @@index([createdAt])
   @@index([expiresAt])
   @@map("stock_ai_cache")
+}
+
+model DailyDrawEntry {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokens    Int
+  drawDate  String   // YYYY-MM-DD format
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, drawDate])
+  @@map("daily_draw_entry")
+}
+
+model DailyDrawNotification {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokens    Int
+  drawDate  String   // YYYY-MM-DD format
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+
+  @@map("daily_draw_notification")
+}
+
+model ActivityFeedEntry {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "DAILY_DRAW_WIN", "STOCK_BUY", "STOCK_SELL", "LOOTBOX_WIN"
+  data      Json     // Flexible data structure for different activity types
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_feed_entry")
 }
 
 
