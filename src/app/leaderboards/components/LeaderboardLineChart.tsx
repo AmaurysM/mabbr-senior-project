@@ -69,7 +69,7 @@ const LeaderboardLineChart = ({ topUsers }: { topUsers: LeaderboardEntry[] }) =>
 
         for (const user of topUsers) {
           const [portfolioRes, txRes] = await Promise.all([
-            fetch(`/api/user/portfolio/friend?userId=${user.id}`),
+            fetch(`/api/user/portfolio/friend?userId=${user.id}`, { cache: 'no-store' }),
             fetch('/api/user/transactions'),
           ]);
 
@@ -257,8 +257,14 @@ const LeaderboardLineChart = ({ topUsers }: { topUsers: LeaderboardEntry[] }) =>
     return null;
   };
 
-  if (!isClient) return null;
-
+  if (!isClient || loading) {
+    return (
+      <div className="space-y-4">
+        <SkeletonLoader height="20px" width="150px" className="mb-2" />
+        <SkeletonLoader height="400px" />
+      </div>
+    );
+  }
   return (
     <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
       {loading ? (
