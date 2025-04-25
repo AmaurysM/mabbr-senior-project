@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Toaster } from "@/app/components/ui/sonner";
-import { FaAngleLeft, FaAngleRight, FaGamepad, FaGift, FaTicketAlt, FaChartBar, FaCoins, FaRocket, FaChartLine, FaClock, FaHourglassHalf } from "react-icons/fa";
+import { FaAngleLeft, FaAngleRight, FaGamepad, FaGift, FaTicketAlt, FaChartBar, FaCoins, FaRocket, FaChartLine, FaClock, FaHourglassHalf, FaBomb } from "react-icons/fa";
 import TokenLeaderboard from "../components/TokenLeaderboard";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -12,7 +12,8 @@ enum Tab {
   scratchOffs = "scratch-offs",
   stocket = "stocket",
   stockPredictor = "stock-predictor",
-  tokenMarket = "token-market",
+  cryptoMinesweeper = "crypto-minesweeper",
+  tokenMarket = "token-market"
 }
 
 const getDailyDrawTimeRemaining = () => {
@@ -60,6 +61,7 @@ export default function GamesLayout({
     if (pathname.includes('scratch-offs')) return Tab.scratchOffs;
     if (pathname.includes('stocket')) return Tab.stocket;
     if (pathname.includes('stock-predictor')) return Tab.stockPredictor;
+    if (pathname.includes('crypto-minesweeper')) return Tab.cryptoMinesweeper;
     if (pathname.includes('token-market')) return Tab.tokenMarket;
     return Tab.dailyDraw; // default
   };
@@ -141,6 +143,8 @@ export default function GamesLayout({
         return "Stocket";
       case Tab.stockPredictor:
         return "Stock Predictor";
+      case Tab.cryptoMinesweeper:
+        return "Crypto Sweeper";
       case Tab.tokenMarket:
         return "Token Market";
       default:
@@ -160,6 +164,8 @@ export default function GamesLayout({
         return <FaRocket className="w-5 h-5" />;
       case Tab.stockPredictor:
         return <FaChartLine className="w-5 h-5" />;
+      case Tab.cryptoMinesweeper:
+        return <FaBomb className="w-5 h-5" />;
       case Tab.tokenMarket:
         return <FaCoins className="w-5 h-5" />;
       default:
