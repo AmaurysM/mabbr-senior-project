@@ -98,18 +98,15 @@ const OnlineFriendsList: React.FC = () => {
   ) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    const menuWidth = 150;
-    const menuHeight = 40;
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
   
-    let x = rect.right + 10;
-    let y = rect.top;
+    const menuWidth = 130;
+    const menuHeight = 36;
   
-    const maxX = window.innerWidth - menuWidth - 10;
-    const maxY = window.innerHeight - menuHeight - 10;
-  
-    // Prevent it from going off-screen
-    if (x > maxX) x = rect.left - menuWidth - 10;
-    if (y > maxY) y = maxY;
+    // Center horizontally over the button, vertically just above it
+    const x = scrollX + rect.left + rect.width / 2 - menuWidth / 2;
+    const y = scrollY + rect.top + rect.height / 2 - menuHeight; // shift up more
   
     setContextMenu({
       visible: true,
@@ -118,6 +115,7 @@ const OnlineFriendsList: React.FC = () => {
       friend,
     });
   };
+  
 
   const onlineFriends = friends.filter((f) => f.isOnline);
   const offlineFriends = friends.filter((f) => !f.isOnline);
@@ -216,59 +214,73 @@ const OnlineFriendsList: React.FC = () => {
         </>
       )}
 
-      {/* Context Menu */}
-      {contextMenu.visible && contextMenu.friend && (
-        <div
-          className="absolute custom-context-menu bg-gray-800 border border-gray-600 rounded shadow-md text-sm text-white z-50"
-          style={{
-            top: contextMenu.y,
-            left: contextMenu.x,
-            width: 150,
-          }}
-          onClick={() => {
-            setActiveChats((prev) =>
-              prev.some((f) => f.id === contextMenu.friend!.id)
-                ? prev
-                : [...prev, contextMenu.friend!]
-            );
-            setContextMenu({ visible: false, x: 0, y: 0, friend: null });
-          }}
-        >
-          <button className="p-2 hover:bg-gray-700 w-full text-left">💬 Message</button>
-        </div>
-      )}
+{/* Context Menu */}
+{contextMenu.visible && contextMenu.friend && (
+  <div
+    className="fixed custom-context-menu bg-gray-900 border border-gray-700 rounded-full px-3 py-1 shadow text-sm text-white z-50 transition-opacity duration-150"
+    style={{
+      top: contextMenu.y - 70,
+      left: contextMenu.x + 75,
+      width: 108,
+      textAlign: "center",
+    }}
+  >
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setActiveChats((prev) =>
+          prev.some((f) => f.id === contextMenu.friend!.id)
+            ? prev
+            : [...prev, contextMenu.friend!]
+        );
+        setContextMenu({ visible: false, x: 0, y: 0, friend: null });
+      }}
+      className="hover:bg-gray-700 w-full py-1 rounded-full flex justify-center items-center gap-2"
+    >
+      💬 Message
+    </button>
+  </div>
+)}
 
-      {/* Chat Popups */}
-      {activeChats.map((friend) => (
-        <div
-          key={friend.id}
-          className="fixed bottom-4 right-4 bg-gray-900 text-white w-64 p-3 rounded-lg shadow-lg z-40"
-        >
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-semibold text-sm truncate">
-              {friend.name || friend.email}
-            </span>
-            <button
-              className="text-sm text-red-400"
-              onClick={() =>
-                setActiveChats((prev) => prev.filter((f) => f.id !== friend.id))
-              }
-            >
-              ✕
-            </button>
-          </div>
-          <div className="bg-gray-800 p-2 h-32 mb-2 rounded overflow-y-auto text-sm">
-            <p className="text-gray-400 italic">
-              Chat with {friend.name || friend.email} coming soon...
-            </p>
-          </div>
-          <input
-            type="text"
-            className="w-full px-2 py-1 text-sm bg-gray-700 rounded border border-gray-600"
-            placeholder="Type a message..."
-          />
-        </div>
-      ))}
+
+
+{/* Chat Popups */}
+{activeChats.map((friend) => (
+  <div
+    key={friend.id}
+    className="fixed bottom-4 left-1 bg-gray-900 text-white w-[80vw] max-w-[235px] p-4 rounded-xl shadow-xl z-50"
+  >
+    {/* Header */}
+    <div className="flex justify-between items-center mb-3">
+      <span className="font-semibold text-sm truncate">
+        {friend.name || friend.email}
+      </span>
+      <button
+        className="text-white hover:text-red-400 text-xl px-2"
+        onClick={() =>
+          setActiveChats((prev) => prev.filter((f) => f.id !== friend.id))
+        }
+      >
+        &times;
+      </button>
+    </div>
+
+    {/* Message Area */}
+    <div className="bg-gray-800 px-3 py-2 h-32 mb-3 rounded-lg overflow-y-auto text-sm">
+      <p className="text-gray-400 italic">
+        Chat with {friend.name || friend.email} coming soon...
+      </p>
+    </div>
+
+    {/* Input */}
+    <input
+      type="text"
+      className="w-full px-3 py-2 text-sm bg-gray-700 text-white placeholder-gray-400 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      placeholder="Type a message..."
+    />
+  </div>
+))}
+
     </div>
   );
 };
