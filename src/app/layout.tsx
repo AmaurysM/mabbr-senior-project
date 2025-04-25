@@ -1,17 +1,27 @@
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Navbar from "./navbar";
+import ClientLayout from "./ClientLayout";
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>M.A.B.B.R.</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta charSet="utf-8" />
+        <meta name="description" content="Your personalized stock & social trading experience." />
+        
+        <meta name="apple-mobile-web-app-title" content="M.A.B.B.R." />
+      </head>
       <body className="h-screen bg-gray-800 flex flex-col">
         <Navbar />
-        
         <main className="flex-grow h-full overflow-auto">
-          {children}
+          <ClientLayout>
+            {children}
+          </ClientLayout>
         </main>
         <Toaster
           position="top-right"

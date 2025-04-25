@@ -14,7 +14,7 @@ interface PortfolioResponse {
 }
 
 const PortfolioTable = () => {
-  const [holdings, setHoldings] = useState<UserStocks>([]);
+  const [holdings, setHoldings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +31,8 @@ const PortfolioTable = () => {
 
         const data: PortfolioResponse = await res.json();
 
+        
+        // Map the positions from API to holdings including averagePrice
         const rawHoldings = Object.entries(data.positions)
           .filter(([_, position]) => position.shares > 0)
           .map(([symbol, position]) => ({
@@ -38,21 +40,26 @@ const PortfolioTable = () => {
             userId: "",
             stockId: "",
             quantity: position.shares,
+            averagePrice: position.averagePrice, // include averagePrice from API response
             stock: {
               id: "",
               name: symbol,
-              price: 0, // initially placeholder
+              price: 0, // placeholder, to be replaced with current price
             },
           }));
 
+        // Enrich each holding by fetching the current price from your stock API endpoint
         const enrichedHoldings = await Promise.all(
           rawHoldings.map(async (holding) => {
             try {
-              const priceRes = await fetch(`/api/stock?symbol=${holding.stock.name}`);
+              const priceRes = await fetch(
+                `/api/stock?symbol=${holding.stock.name}`
+              );
               if (!priceRes.ok) throw new Error("Price fetch failed");
 
               const stockData = await priceRes.json();
-              const price = stockData?.quoteResponse?.result?.[0]?.regularMarketPrice ?? 0;
+              const price =
+                stockData?.quoteResponse?.result?.[0]?.regularMarketPrice ?? 0;
 
               return {
                 ...holding,
@@ -62,7 +69,10 @@ const PortfolioTable = () => {
                 },
               };
             } catch (err) {
-              console.error(`Failed to fetch price for ${holding.stock.name}`, err);
+              console.error(
+                `Failed to fetch price for ${holding.stock.name}`,
+                err
+              );
               return holding; // fallback to original with price 0
             }
           })
@@ -94,21 +104,36 @@ const PortfolioTable = () => {
               <th className="text-left py-2 px-4 text-white">Quantity</th>
               <th className="text-left py-2 px-4 text-white">Current Price</th>
               <th className="text-left py-2 px-4 text-white">Total Value</th>
+              <th className="text-left py-2 px-4 text-white">Profit/Loss</th>
             </tr>
           </thead>
           <tbody>
-            {holdings.map((holding, index) => (
-              <tr key={index} className="border-b border-gray-700">
-                <td className="py-2 px-4 text-gray-200">{holding.stock.name}</td>
-                <td className="py-2 px-4 text-gray-200">{holding.quantity}</td>
-                <td className="py-2 px-4 text-gray-200">
-                  ${holding.stock.price.toFixed(2)}
-                </td>
-                <td className="py-2 px-4 text-gray-200">
-                  ${(holding.stock.price * holding.quantity).toFixed(2)}
-                </td>
-              </tr>
-            ))}
+            {holdings.map((holding) => {
+              // Calculate profit/loss: (Current Price - Average Price) * Quantity
+              const profitLoss =
+                (holding.stock.price - holding.averagePrice) *
+                holding.quantity;
+              return (
+                <tr key={holding.id} className="border-b border-gray-700">
+                  <td className="py-2 px-4 text-gray-200">{holding.stock.name}</td>
+                  <td className="py-2 px-4 text-gray-200">{holding.quantity}</td>
+                  <td className="py-2 px-4 text-gray-200">
+                    ${holding.stock.price.toFixed(2)}
+                  </td>
+                  <td className="py-2 px-4 text-gray-200">
+                    ${(holding.stock.price * holding.quantity).toFixed(2)}
+                  </td>
+                  <td
+                    className={`py-2 px-4 ${
+                      profitLoss >= 0 ? "text-green-400" : "text-red-400"
+                    }`}
+                  >
+                    {profitLoss >= 0 ? "+" : "-"}$
+                    {Math.abs(profitLoss).toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       ) : (

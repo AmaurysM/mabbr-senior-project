@@ -252,6 +252,8 @@ export type Comment = Omit<
   "children"
 > & { children?: Comment[] };
 
+export type SimpleComment = Prisma.CommentGetPayload<object>;
+
 // export type CommentWithChildren = Prisma.CommentGetPayload<{
 //   include: {
 //     user:true,

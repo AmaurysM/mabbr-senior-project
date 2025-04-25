@@ -3,85 +3,20 @@ import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 
-// Check if a user has already voted today
-async function hasUserVotedToday(userId: string): Promise<boolean> {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  
-  try {
-    // Use a raw query since new models may not be fully recognized by TypeScript yet
-    const existingVote = await prisma.$queryRaw`
-      MATCH (v:user_vote {userId: ${userId}, date: ${today}})
-      RETURN v LIMIT 1
-    `;
-    
-    return Array.isArray(existingVote) && existingVote.length > 0;
-  } catch (error) {
-    console.error('Error checking user vote:', error);
-    return false;
-  }
-}
-
 // Get today's date in YYYY-MM-DD format
 function getTodayDateString(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-// Update market sentiment based on vote
-async function updateMarketSentiment(
-  sentiment: string, 
-  topPick: string | null,
-  marketTrend: string | null
-) {
-  const today = getTodayDateString();
-  
-  try {
-    // Create a document with all the fields
-    const data = {
-      date: today,
-      bullishCount: sentiment === 'bullish' ? 1 : 0,
-      bearishCount: sentiment === 'bearish' ? 1 : 0,
-      mostDiscussed: JSON.stringify([]),
-      topPicks: JSON.stringify(topPick ? [{ symbol: topPick, count: 1 }] : []),
-      marketTrend: JSON.stringify(marketTrend ? [{ trend: marketTrend, count: 1 }] : [])
-    };
-    
-    // Use a direct MongoDB approach to upsert the sentiment
-    await prisma.$runCommandRaw({
-      findAndModify: "market_sentiment",
-      query: { date: today },
-      update: {
-        $setOnInsert: {
-          date: today,
-          mostDiscussed: JSON.stringify([])
-        },
-        $inc: sentiment === 'bullish' 
-          ? { bullishCount: 1 } 
-          : { bearishCount: 1 },
-        $set: {
-          topPicks: data.topPicks,
-          marketTrend: data.marketTrend,
-          updatedAt: new Date()
-        }
-      },
-      upsert: true,
-      new: true
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error updating market sentiment:', error);
-    return { success: false, error };
-  }
-}
-
 // Helper function to update top picks JSON
-function updateTopPicksJson(existingJson: any, newPick: string | null): any {
-  if (!newPick) return existingJson;
+function updateTopPicksJson(existingPicks: any, newPick: string | null): any {
+  if (!newPick) return existingPicks;
   
   try {
-    const picks = typeof existingJson === 'string' 
-      ? JSON.parse(existingJson) 
-      : existingJson;
+    // Parse JSON if it's a string
+    const picks = typeof existingPicks === 'string'
+      ? JSON.parse(existingPicks)
+      : Array.isArray(existingPicks) ? existingPicks : [];
     
     const existingPickIndex = picks.findIndex((p: any) => p.symbol === newPick);
     
@@ -96,21 +31,22 @@ function updateTopPicksJson(existingJson: any, newPick: string | null): any {
     // Sort by count descending
     picks.sort((a: any, b: any) => b.count - a.count);
     
-    return JSON.stringify(picks);
+    return picks;
   } catch (error) {
     console.error('Error updating top picks:', error);
-    return existingJson;
+    return Array.isArray(existingPicks) ? existingPicks : [];
   }
 }
 
 // Helper function to update market trend JSON
-function updateMarketTrendJson(existingJson: any, newTrend: string | null): any {
-  if (!newTrend) return existingJson;
+function updateMarketTrendJson(existingTrends: any, newTrend: string | null): any {
+  if (!newTrend) return existingTrends;
   
   try {
-    const trends = typeof existingJson === 'string' 
-      ? JSON.parse(existingJson) 
-      : existingJson;
+    // Parse JSON if it's a string
+    const trends = typeof existingTrends === 'string'
+      ? JSON.parse(existingTrends)
+      : Array.isArray(existingTrends) ? existingTrends : [];
     
     const existingTrendIndex = trends.findIndex((t: any) => t.trend === newTrend);
     
@@ -125,10 +61,10 @@ function updateMarketTrendJson(existingJson: any, newTrend: string | null): any 
     // Sort by count descending
     trends.sort((a: any, b: any) => b.count - a.count);
     
-    return JSON.stringify(trends);
+    return trends;
   } catch (error) {
     console.error('Error updating market trends:', error);
-    return existingJson;
+    return Array.isArray(existingTrends) ? existingTrends : [];
   }
 }
 
@@ -143,10 +79,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Instead of using the model directly, check the vote history with a simpler approach
-    const hasVoted = await hasUserVotedToday(session.user.id);
+    const today = getTodayDateString();
     
-    return NextResponse.json({ hasVoted });
+    // Check if user has voted today
+    const userVote = await prisma.userVote.findUnique({
+      where: {
+        userId_date: {
+          userId: session.user.id,
+          date: today
+        }
+      }
+    });
+    
+    return NextResponse.json({ 
+      hasVoted: !!userVote,
+      vote: userVote || null
+    });
   } catch (error) {
     console.error('Error checking vote status:', error);
     return NextResponse.json({ hasVoted: false, error: 'Failed to check vote status' }, { status: 500 });
@@ -174,21 +122,72 @@ export async function POST(req: NextRequest) {
     const today = getTodayDateString();
     
     // Check if user already voted today
-    const hasVoted = await hasUserVotedToday(userId);
+    const existingVote = await prisma.userVote.findUnique({
+      where: {
+        userId_date: {
+          userId,
+          date: today
+        }
+      }
+    });
     
-    if (hasVoted) {
+    if (existingVote) {
       return NextResponse.json({ error: 'You have already voted today' }, { status: 400 });
     }
     
-    // Create user vote with direct MongoDB query
-    await prisma.$executeRaw`
-      INSERT INTO user_vote (userId, date, sentiment, topPick, marketTrend, timestamp)
-      VALUES (${userId}, ${today}, ${sentiment}, ${topPick || null}, ${marketTrend || null}, ${new Date()})
-    `;
+    // Start a transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Record user vote
+      await tx.userVote.create({
+        data: {
+          userId,
+          date: today,
+          sentiment,
+          topPick,
+          marketTrend,
+        }
+      });
+      
+      // 2. Get or create today's market sentiment
+      let marketSentiment = await tx.marketSentiment.findUnique({
+        where: { date: today }
+      });
+      
+      if (marketSentiment) {
+        // Update existing sentiment
+        await tx.marketSentiment.update({
+          where: { id: marketSentiment.id },
+          data: {
+            bullishCount: sentiment === 'bullish' 
+              ? marketSentiment.bullishCount + 1 
+              : marketSentiment.bullishCount,
+            bearishCount: sentiment === 'bearish' 
+              ? marketSentiment.bearishCount + 1 
+              : marketSentiment.bearishCount,
+            topPicks: JSON.stringify(
+              updateTopPicksJson(marketSentiment.topPicks, topPick)
+            ),
+            marketTrend: JSON.stringify(
+              updateMarketTrendJson(marketSentiment.marketTrend, marketTrend)
+            )
+          }
+        });
+      } else {
+        // Create new sentiment for today
+        await tx.marketSentiment.create({
+          data: {
+            date: today,
+            bullishCount: sentiment === 'bullish' ? 1 : 0,
+            bearishCount: sentiment === 'bearish' ? 1 : 0,
+            topPicks: JSON.stringify(topPick ? [{ symbol: topPick, count: 1 }] : []),
+            marketTrend: JSON.stringify(marketTrend ? [{ trend: marketTrend, count: 1 }] : []),
+            mostDiscussed: JSON.stringify([])
+          }
+        });
+      }
+    });
     
-    // Update market sentiment
-    await updateMarketSentiment(sentiment, topPick, marketTrend);
-    
+    // Return success
     return NextResponse.json({ success: true, message: 'Vote recorded successfully' });
   } catch (error) {
     console.error('Error submitting vote:', error);

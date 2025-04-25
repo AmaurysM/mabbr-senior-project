@@ -16,6 +16,7 @@ model User {
   email          String        @unique
   emailVerified  Boolean       @default(false)
   image          String?
+  banner         String?
   backgroundImage String?
   badgeImage     String?
   premium        Boolean       @default(false)
@@ -48,6 +49,12 @@ model User {
   commentLike    CommentLike[]
   commentDislike CommentDislike[]
   aiUsage        StockAIUsage[]
+  dailyDrawEntries DailyDrawEntry[]
+
+  dailyDrawNotifications DailyDrawNotification[]
+  activityFeedEntries    ActivityFeedEntry[]
+
+  dailyDrawWinnings      DailyDrawWinner[]
 
   @@map("user")
 }
@@ -88,6 +95,20 @@ enum CommentableType {
   GLOBALCHAT
   FEED
   STOCKCHAT
+}
+
+model CommentReaction {
+  id         String   @id @default(cuid()) @map("_id")
+  emoji      String   
+  
+  userId     String
+
+  commentId  String
+
+
+  createdAt  DateTime @default(now())
+
+  @@unique([commentId, userId, emoji]) // prevents duplicate reactions from same user
 }
 
 
@@ -292,25 +313,25 @@ model AlphaVantageNews {
 
 model MarketSentiment {
   id            String   @id @default(cuid()) @map("_id")
+  date          String   @unique // Format: YYYY-MM-DD
   bullishCount  Int      @default(0)
   bearishCount  Int      @default(0)
-  timestamp     DateTime @default(now())
-  mostDiscussed Json 
-  topPicks      Json 
-  marketTrend   Json 
-  date          String   @unique 
+  topPicks      Json     // Array of { symbol: string, count: number }
+  marketTrend   Json     // Array of { trend: string, count: number }
+  mostDiscussed Json     // Array of { symbol: string, count: number }
+  timestamp     DateTime? // Make optional to handle existing null values
+  updatedAt     DateTime? // Make it optional to handle existing inconsistent data
 
-  @@index([timestamp])
   @@map("market_sentiment")
 }
 
 model UserVote {
   id          String   @id @default(cuid()) @map("_id")
   userId      String
-  date        String 
-  sentiment   String 
-  topPick     String? 
-  marketTrend String? 
+  date        String   // Format: YYYY-MM-DD
+  sentiment   String   // 'bullish' or 'bearish'
+  topPick     String?  // Stock symbol
+  marketTrend String?  // Index name
   timestamp   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -368,6 +389,57 @@ model StockAICache {
   @@index([createdAt])
   @@index([expiresAt])
   @@map("stock_ai_cache")
+}
+
+model DailyDrawEntry {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokens    Int
+  drawDate  String   // YYYY-MM-DD format
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, drawDate])
+  @@map("daily_draw_entry")
+}
+
+model DailyDrawNotification {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokens    Int
+  drawDate  String   // YYYY-MM-DD format
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+
+  @@map("daily_draw_notification")
+}
+
+model ActivityFeedEntry {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "DAILY_DRAW_WIN", "STOCK_BUY", "STOCK_SELL", "LOOTBOX_WIN"
+  data      Json     // Flexible data structure for different activity types
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_feed_entry")
+}
+
+model DailyDrawWinner {
+  id                String   @id @default(cuid()) @map("_id")
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  tokens            Int
+  drawDate          String   // YYYY-MM-DD format
+  totalParticipants Int
+  createdAt         DateTime @default(now())
+
+  @@index([drawDate])
+  @@map("daily_draw_winner")
 }
 
 

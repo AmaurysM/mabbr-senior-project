@@ -57,7 +57,7 @@ const UserLootboxListClient = () => {
   }
 
   const handleLootBoxClick = (lootboxId: string) =>{
-    router.push(`../../lootbox/redeem?lootboxid=${lootboxId}`)
+    router.push(`/lootbox/redeem?lootboxid=${lootboxId}`)
   }
 
   return (

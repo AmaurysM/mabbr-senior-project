@@ -25,7 +25,7 @@ interface HistoricalData {
   [userId: string]: {
     name: string;
     image?: string;
-    data: { time: string; value: number }[];
+    data: { time: string; value: number; profit: number; percentChange: number }[];
   };
 }
 
@@ -38,6 +38,10 @@ const LeaderboardPage = () => {
   const [timeframe, setTimeframe] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'global' | 'friends'>('global');
   const [historicalData, setHistoricalData] = useState<HistoricalData>({});
+  // Add state to track hidden users
+  const [hiddenUsers, setHiddenUsers] = useState<Set<string>>(new Set());
+  // Add state for the chart metric
+  const [chartMetric, setChartMetric] = useState<'totalValue' | 'profit' | 'percentChange'>('totalValue');
 
   const { data: session } = authClient.useSession();
   const user = session?.user;
@@ -150,6 +154,8 @@ const LeaderboardPage = () => {
         usersToGraph.forEach((entry, index) => {
           const dataPoints = [];
           let currentValue = entry.totalValue - (entry.profit * 0.8); // Starting value
+          let currentProfit = entry.profit * 0.2; // Starting profit (20% of final profit)
+          let currentPercentChange = entry.percentChange * 0.2; // Starting percent change
           
           for (let i = 30; i >= 0; i--) {
             const date = new Date(now);
@@ -160,14 +166,22 @@ const LeaderboardPage = () => {
             const movement = currentValue * volatilityFactor;
             currentValue += movement;
             
-            // Make sure the final value matches the current leaderboard value
+            // Update profit and percent change similarly
+            currentProfit += (entry.profit - currentProfit) * (1/30);
+            currentPercentChange += (entry.percentChange - currentPercentChange) * (1/30);
+            
+            // Make sure the final values match the current leaderboard values
             if (i === 0) {
               currentValue = entry.totalValue;
+              currentProfit = entry.profit;
+              currentPercentChange = entry.percentChange;
             }
             
             dataPoints.push({
               time: date.toISOString(),
-              value: currentValue
+              value: currentValue,
+              profit: currentProfit,
+              percentChange: currentPercentChange
             });
           }
           
@@ -211,12 +225,30 @@ const LeaderboardPage = () => {
     return timestamps.map((time, index) => {
       const dataPoint: any = { time };
       
-      // Add data for each user
+      // Add data for each user (only if they're not hidden)
       topUsers.forEach(user => {
+        // Skip hidden users
+        if (hiddenUsers.has(user.id)) return;
+        
         if (historicalData[user.id]) {
           const userData = historicalData[user.id].data[index];
-          // Handle negative values - set to 0 if negative
-          dataPoint[user.id] = userData && userData.value >= 0 ? userData.value : 0;
+          
+          // Get the appropriate value based on the selected metric
+          let value = 0;
+          if (chartMetric === 'totalValue') {
+            value = userData?.value || 0;
+          } else if (chartMetric === 'profit') {
+            value = userData?.profit || 0;
+          } else if (chartMetric === 'percentChange') {
+            value = userData?.percentChange || 0;
+          }
+          
+          // Handle negative values - set to 0 if negative for totalValue only
+          if (chartMetric === 'totalValue' && value < 0) {
+            value = 0;
+          }
+          
+          dataPoint[user.id] = value;
         }
       });
       
@@ -246,24 +278,55 @@ const LeaderboardPage = () => {
     }
   };
 
+  // Format y-axis values based on the selected metric
+  const formatYAxisValue = (value: number) => {
+    if (chartMetric === 'percentChange') {
+      return `${value.toFixed(1)}%`;
+    } else {
+      return formatCurrency(value);
+    }
+  };
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      // Format the date
+      const date = new Date(label);
+      const formattedDate = date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      
+      // Filter out hidden users from the tooltip
+      const visiblePayload = payload.filter((p: any) => !hiddenUsers.has(p.dataKey));
+      
+      // If no visible users, don't show tooltip
+      if (visiblePayload.length === 0) return null;
+      
       return (
-        <div className="bg-gray-800/90 backdrop-blur-sm p-3 border border-white/10 rounded-lg shadow-lg">
-          <p className="text-white font-medium">
-            {new Date(label).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-          </p>
-          <div className="space-y-1 mt-1">
-            {payload.map((entry: any, index: number) => {
+        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
+          <p className="text-gray-400 text-sm mb-2">{formattedDate}</p>
+          <div className="space-y-1">
+            {visiblePayload.map((entry: any, index: number) => {
               const user = topUsers.find(u => u.id === entry.dataKey);
-              // Ensure displayed value is never negative
-              const displayValue = Math.max(0, entry.value);
+              if (!user) return null;
+              
+              // Format the value based on the selected metric
+              let formattedValue = '';
+              if (chartMetric === 'percentChange') {
+                formattedValue = `${entry.value >= 0 ? '+' : ''}${entry.value.toFixed(2)}%`;
+              } else {
+                formattedValue = formatCurrency(entry.value);
+              }
+              
               return (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                  <span className="text-gray-300 text-sm">{user?.name}: </span>
-                  <span className="text-white font-medium">
-                    {formatCurrency(displayValue)}
+                <div key={`item-${index}`} className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.stroke }}></div>
+                    <span className="text-gray-200 text-sm">{user.name}</span>
+                  </div>
+                  <span className="text-sm font-semibold" style={{ color: entry.stroke }}>
+                    {formattedValue}
                   </span>
                 </div>
               );
@@ -273,6 +336,13 @@ const LeaderboardPage = () => {
       );
     }
     return null;
+  };
+
+  // Handle navigation to user profile - updated to use sessionStorage pattern
+  const navigateToProfile = (userId: string) => {
+    // Store the selected user ID in sessionStorage before navigation
+    sessionStorage.setItem("selectedUserId", userId);
+    router.push(`/friendsProfile`);
   };
 
   const CustomizedDot = (props: any) => {
@@ -295,8 +365,19 @@ const LeaderboardPage = () => {
     const imageSize = 16;
     const imageOffset = imageSize / 2;
     
+    // Create a larger invisible clickable area
+    const clickableAreaSize = 24;
+    
     return (
-      <g>
+      <g onClick={() => navigateToProfile(user.id)} style={{ cursor: 'pointer' }}>
+        {/* Invisible larger clickable circle */}
+        <circle 
+          cx={cx} 
+          cy={cy} 
+          r={clickableAreaSize} 
+          fill="transparent" 
+        />
+        
         {/* Circle background for the profile image */}
         <circle 
           cx={cx} 
@@ -332,41 +413,57 @@ const LeaderboardPage = () => {
     );
   };
 
-  // Add a function to calculate better Y-axis domain based on data points
+  // Calculate Y-axis domain based on visible user data and selected metric
   const calculateYAxisDomain = () => {
-    if (chartData.length === 0 || topUsers.length === 0) {
-      return [0, 'auto'];
+    // Default values if no data
+    if (!topUsers || topUsers.length === 0 || !chartData || chartData.length === 0) {
+      return [0, 100000];
     }
 
-    // Find min and max values across all user data
-    let minValue = Infinity;
-    let maxValue = -Infinity;
-
-    // Get the last few data points to identify the cluster
-    const recentDataPoints = chartData.slice(-10);
+    // Get max and min values from chart data, but only for visible users
+    let allValues: number[] = [];
     
-    // Find the min/max values in the recent data
-    recentDataPoints.forEach(dataPoint => {
+    chartData.forEach(dataPoint => {
       topUsers.forEach(user => {
-        const value = dataPoint[user.id];
-        if (typeof value === 'number') {
-          minValue = Math.min(minValue, value);
-          maxValue = Math.max(maxValue, value);
+        // Skip hidden users
+        if (hiddenUsers.has(user.id)) return;
+        
+        if (dataPoint[user.id] !== undefined) {
+          allValues.push(dataPoint[user.id]);
         }
       });
     });
-
-    // If we couldn't find valid min/max, use defaults
-    if (minValue === Infinity || maxValue === -Infinity) {
-      return [0, 'auto'];
+    
+    // If no visible users, return default
+    if (allValues.length === 0) {
+      return chartMetric === 'percentChange' ? [-5, 5] : [0, 100000];
     }
 
-    // Add padding to focus on the cluster
-    const valueRange = maxValue - minValue;
-    const paddedMin = Math.max(0, minValue - valueRange * 0.1); // 10% padding below, but never go below 0
-    const paddedMax = maxValue + valueRange * 0.1; // 10% padding above
-
+    let min = Math.min(...allValues);
+    let max = Math.max(...allValues);
+    
+    // Add some padding for better visualization
+    const padding = (max - min) * 0.1;
+    
+    // For percent change, we can allow negative values
+    // For other metrics, don't go below 0 unless all values are negative
+    const paddedMin = chartMetric === 'percentChange' ? min - padding : Math.max(0, min - padding);
+    const paddedMax = max + padding;
+    
     return [paddedMin, paddedMax];
+  };
+
+  // Toggle user visibility in the chart
+  const toggleUserVisibility = (userId: string) => {
+    setHiddenUsers(prev => {
+      const newHidden = new Set(prev);
+      if (newHidden.has(userId)) {
+        newHidden.delete(userId);
+      } else {
+        newHidden.add(userId);
+      }
+      return newHidden;
+    });
   };
 
   return (
@@ -485,7 +582,8 @@ const LeaderboardPage = () => {
                       currentLeaderboard.map((entry) => (
                         <tr 
                           key={entry.id}
-                          className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                          className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+                          onClick={() => navigateToProfile(entry.id)}
                         >
                           <td className="px-4 py-3">
                             <span className={`
@@ -501,7 +599,13 @@ const LeaderboardPage = () => {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <div className="relative flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-600">
+                              <div 
+                                className="relative flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-600 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigateToProfile(entry.id);
+                                }}
+                              >
                                 {entry.image ? (
                                   <Image 
                                     src={entry.image} 
@@ -580,7 +684,43 @@ const LeaderboardPage = () => {
             
             {/* Right Column - Performance Graph */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col self-start">
-              <h2 className="text-xl font-bold text-white mb-4">Top Traders Performance</h2>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
+                <h2 className="text-xl font-bold text-white mb-2 sm:mb-0">Top Traders Performance</h2>
+                
+                {/* Metric Toggle */}
+                <div className="bg-gray-700/50 rounded-lg flex items-center p-1 shadow-md">
+                  <button 
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      chartMetric === 'totalValue' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setChartMetric('totalValue')}
+                  >
+                    Net Worth
+                  </button>
+                  <button 
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      chartMetric === 'profit' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setChartMetric('profit')}
+                  >
+                    Profit
+                  </button>
+                  <button 
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      chartMetric === 'percentChange' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setChartMetric('percentChange')}
+                  >
+                    % Change
+                  </button>
+                </div>
+              </div>
               
               {topUsers.length > 0 && chartData.length > 0 ? (
                 <>
@@ -601,50 +741,72 @@ const LeaderboardPage = () => {
                         />
                         <YAxis 
                           tick={{ fill: '#9CA3AF' }}
-                          tickFormatter={(value) => formatCurrency(value)}
+                          tickFormatter={(value) => formatYAxisValue(value)}
                           domain={calculateYAxisDomain()}
                           padding={{ top: 20 }}
                         />
                         <Tooltip content={<CustomTooltip />} />
                         
-                        {topUsers.map((user, index) => (
-                          <Line 
-                            key={user.id}
-                            type="monotone" 
-                            dataKey={user.id} 
-                            name={user.name}
-                            stroke={lineColors[index % lineColors.length]}
-                            strokeWidth={2}
-                            activeDot={{ r: 6 }}
-                            isAnimationActive={true}
-                            animationDuration={1500}
-                            connectNulls={true}
-                            dot={<CustomizedDot />}
-                          />
-                        ))}
+                        {topUsers.map((user, index) => {
+                          // Only render lines for users that aren't hidden
+                          return !hiddenUsers.has(user.id) ? (
+                            <Line 
+                              key={user.id}
+                              type="monotone" 
+                              dataKey={user.id} 
+                              name={user.name}
+                              stroke={lineColors[index % lineColors.length]}
+                              strokeWidth={2}
+                              activeDot={{ r: 6 }}
+                              isAnimationActive={true}
+                              animationDuration={1500}
+                              connectNulls={true}
+                              dot={<CustomizedDot />}
+                            />
+                          ) : null;
+                        })}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                   
-                  {/* Color legend - Make it more compact */}
+                  {/* Color legend - Make it interactive */}
                   <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-x-2 gap-y-1">
-                    {topUsers.map((user, index) => (
-                      <div key={user.id} className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: lineColors[index % lineColors.length] }}></div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
-                            {user.image ? (
-                              <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="flex items-center justify-center w-full h-full text-gray-400 text-[8px]">
-                                {user.name.substring(0, 2).toUpperCase()}
-                              </div>
-                            )}
+                    {topUsers.map((user, index) => {
+                      const isHidden = hiddenUsers.has(user.id);
+                      return (
+                        <div 
+                          key={user.id} 
+                          className={`flex items-center gap-1 py-1 px-1 rounded cursor-pointer transition-colors hover:bg-gray-700/40 ${isHidden ? 'opacity-50' : ''}`}
+                          onClick={() => toggleUserVisibility(user.id)}
+                        >
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ 
+                              backgroundColor: isHidden ? '#6B7280' : lineColors[index % lineColors.length],
+                              opacity: isHidden ? 0.5 : 1 
+                            }}
+                          ></div>
+                          <div className="flex items-center gap-1">
+                            <div 
+                              className={`w-4 h-4 rounded-full overflow-hidden bg-gray-700 flex-shrink-0 ${isHidden ? 'grayscale' : ''}`}
+                            >
+                              {user.image ? (
+                                <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="flex items-center justify-center w-full h-full text-gray-400 text-[8px]">
+                                  {user.name.substring(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <span 
+                              className={`text-gray-300 text-xs truncate ${isHidden ? 'line-through text-gray-500' : ''}`}
+                            >
+                              {user.name}
+                            </span>
                           </div>
-                          <span className="text-gray-300 text-xs truncate">{user.name}</span>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               ) : (

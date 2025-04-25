@@ -32,7 +32,10 @@ const OnlineFriendsList: React.FC = () => {
   useEffect(() => {
     const fetchFriends = async () => {
       try {
-        if (!session?.user?.id) return;
+        if (!session?.user?.id) {
+          setLoading(false);
+          return;
+        }
         
         const res = await fetch("/api/user/friends", { credentials: "include" });
         
@@ -114,6 +117,15 @@ const OnlineFriendsList: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return (
+      <div className="space-y-1 px-1">
+        <h3 className="text-sm font-semibold text-gray-300 mb-2">Friends</h3>
+        <p className="text-xs text-gray-500">Please log in to see friends</p>
       </div>
     );
   }

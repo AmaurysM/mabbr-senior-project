@@ -13,9 +13,31 @@ const StockNotesList = (
         <ul className="divide-y divide-white/5">
             {transactions.map((transaction) => {
                 const isBuy = transaction.type === 'BUY';
-                const bgColor = isBuy ? 'bg-green-900/20' : 'bg-red-900/20';
-                const textColor = isBuy ? 'text-green-300' : 'text-red-300';
-                const borderColor = isBuy ? 'border-green-700/30' : 'border-red-700/30';
+                const isSell = transaction.type === 'SELL';
+                const isLootbox = transaction.type === 'LOOTBOX';
+                const isLootboxRedeem = transaction.type === 'LOOTBOX_REDEEM';
+                
+                // Determine styling based on transaction type
+                let bgColor = 'bg-gray-900/20';
+                let textColor = 'text-gray-300';
+                let borderColor = 'border-gray-700/30';
+                
+                if (isBuy) {
+                    bgColor = 'bg-green-900/20';
+                    textColor = 'text-green-300';
+                    borderColor = 'border-green-700/30';
+                } else if (isSell) {
+                    bgColor = 'bg-red-900/20';
+                    textColor = 'text-red-300';
+                    borderColor = 'border-red-700/30';
+                } else if (isLootbox || isLootboxRedeem) {
+                    bgColor = 'bg-blue-900/20';
+                    textColor = 'text-blue-300';
+                    borderColor = 'border-blue-700/30';
+                }
+                
+                // Determine display text
+                const displayType = isLootboxRedeem ? 'REDEEMED LOOTBOX' : transaction.type;
 
                 return (
                     <li
@@ -32,7 +54,7 @@ const StockNotesList = (
                                 {transaction.stockSymbol}
                             </span>
                             <span className={`px-2 py-0.5 rounded border text-xs font-medium ${bgColor} ${textColor} ${borderColor}`}>
-                                {transaction.type}
+                                {displayType}
                             </span>
                         </div>
                         <div className="text-sm text-gray-400">

@@ -31,37 +31,39 @@ export async function POST(req: NextRequest) {
   const { email } = requestBody;
 
   try {
-    // Create a new Request for arcjet using the original headers and body.
-    const arcjetReq = new Request(req.url, {
-      method: req.method,
-      headers: req.headers,
-      body: JSON.stringify(requestBody),
-    });
+    // Only protect the request if email is provided
+    if (email) {
+      const arcjetReq = new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: JSON.stringify(requestBody),
+      });
+      const decision = await aj.protect(arcjetReq, { email });
 
-    const decision = await aj.protect(arcjetReq, { email });
+      if (decision.isDenied()) {
+        if (decision.reason.isEmail()) {
+          let message = "";
+          if (decision.reason.emailTypes.includes("INVALID")) {
+            message = "Email address format is invalid. Is there a typo?";
+          } else if (decision.reason.emailTypes.includes("DISPOSABLE")) {
+            message = "We do not allow disposable email addresses.";
+          } else if (decision.reason.emailTypes.includes("NO_MX_RECORDS")) {
+            message =
+              "Your email domain does not have an MX record. Is there a typo?";
+          } else {
+            message = "Invalid email.";
+          }
 
-    if (decision.isDenied()) {
-      if (decision.reason.isEmail()) {
-        let message = "";
-        if (decision.reason.emailTypes.includes("INVALID")) {
-          message = "Email address format is invalid. Is there a typo?";
-        } else if (decision.reason.emailTypes.includes("DISPOSABLE")) {
-          message = "We do not allow disposable email addresses.";
-        } else if (decision.reason.emailTypes.includes("NO_MX_RECORDS")) {
-          message = "Your email domain does not have an MX record. Is there a typo?";
+          return NextResponse.json(
+            {
+              message,
+              reason: decision.reason,
+            },
+            { status: 400 }
+          );
         } else {
-          message = "Invalid email.";
+          return NextResponse.json({ message: "Forbidden" }, { status: 403 });
         }
-
-        return NextResponse.json(
-          {
-            message,
-            reason: decision.reason,
-          },
-          { status: 400 }
-        );
-      } else {
-        return NextResponse.json({ message: "Forbidden" }, { status: 403 });
       }
     }
 
