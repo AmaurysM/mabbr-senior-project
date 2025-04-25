@@ -147,16 +147,18 @@ const StockTooltip = ({ symbol, children }: { symbol: string; children: React.Re
 
 const MarketSentimentTable = () => {
   const { sentiment, isLoading } = useMarketSentiment();
+  
+  // Make sure topPicks and marketTrend are always arrays even if they're undefined or not arrays
+  const topPicks = Array.isArray(sentiment?.topPicks) ? sentiment.topPicks : [];
+  const marketTrend = Array.isArray(sentiment?.marketTrend) ? sentiment.marketTrend : [];
 
   if (isLoading) {
     return <div className="text-white"><LoadingStateAnimation /></div>;
   }
 
-  // Calculate bullish percentage safely
   const calculateBullishPercentage = () => {
     const total = (sentiment?.bullishCount || 0) + (sentiment?.bearishCount || 0);
-    if (total === 0) return null;
-    return Math.round((sentiment?.bullishCount || 0) / total * 100);
+    return sentiment && total === 0 ? null : Math.round(((sentiment?.bullishCount || 0) / total) * 100);
   };
 
   const bullishPercentage = calculateBullishPercentage();
@@ -196,24 +198,25 @@ const MarketSentimentTable = () => {
         <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-300">Most Likely to Outperform</span>
-            {sentiment?.topPicks[0] && (
-              <StockTooltip symbol={sentiment.topPicks[0].symbol}>
-                <span className="text-blue-400">{sentiment.topPicks[0].symbol}</span>
+            {topPicks.length > 0 && (
+              <StockTooltip symbol={topPicks[0].symbol}>
+                <span className="text-blue-400">{topPicks[0].symbol}</span>
               </StockTooltip>
             )}
           </div>
           <div className="flex gap-2 mt-1 flex-wrap">
-            {sentiment?.topPicks.map(stock => (
-              <StockTooltip key={stock.symbol} symbol={stock.symbol}>
-                <Link href={`/stock/${stock.symbol}`} className="inline-block relative group">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-900/20 text-green-300 border border-green-700/30 cursor-pointer hover:bg-green-900/30 transition-colors`}>
-                    {stock.symbol}
-                    <span className="ml-1 font-mono">↑</span>
-                  </span>
-                </Link>
-              </StockTooltip>
-            ))}
-            {(!sentiment?.topPicks || sentiment.topPicks.length === 0) && (
+            {topPicks.length > 0 ? (
+              topPicks.map(stock => (
+                <StockTooltip key={stock.symbol} symbol={stock.symbol}>
+                  <Link href={`/stock/${stock.symbol}`} className="inline-block relative group">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-900/20 text-green-300 border border-green-700/30 cursor-pointer hover:bg-green-900/30 transition-colors`}>
+                      {stock.symbol}
+                      <span className="ml-1 font-mono">↑</span>
+                    </span>
+                  </Link>
+                </StockTooltip>
+              ))
+            ) : (
               <span className="text-xs text-gray-400">No top picks yet - be the first to vote!</span>
             )}
           </div>
@@ -223,17 +226,18 @@ const MarketSentimentTable = () => {
         <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-300">Top Index Prediction</span>
-            {sentiment?.marketTrend[0] && (
-              <span className="text-yellow-400">{sentiment.marketTrend[0].trend}</span>
+            {marketTrend.length > 0 && marketTrend[0]?.trend && (
+              <span className="text-yellow-400">{marketTrend[0].trend}</span>
             )}
           </div>
           <div className="flex gap-2 mt-1 flex-wrap">
-            {sentiment?.marketTrend.map(trend => (
-              <span key={trend.trend} className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">
-                {trend.trend}
-              </span>
-            ))}
-            {(!sentiment?.marketTrend || sentiment.marketTrend.length === 0) && (
+            {marketTrend.length > 0 ? (
+              marketTrend.map(trend => (
+                <span key={trend.trend} className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">
+                  {trend.trend}
+                </span>
+              ))
+            ) : (
               <span className="text-xs text-gray-400">No index predictions yet - be the first to vote!</span>
             )}
           </div>
