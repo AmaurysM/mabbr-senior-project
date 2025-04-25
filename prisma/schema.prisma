@@ -54,6 +54,8 @@ model User {
   dailyDrawNotifications DailyDrawNotification[]
   activityFeedEntries    ActivityFeedEntry[]
 
+  dailyDrawWinnings      DailyDrawWinner[]
+
   @@map("user")
 }
 
@@ -411,6 +413,19 @@ model ActivityFeedEntry {
   @@index([userId])
   @@index([createdAt])
   @@map("activity_feed_entry")
+}
+
+model DailyDrawWinner {
+  id                String   @id @default(cuid()) @map("_id")
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  tokens            Int
+  drawDate          String   // YYYY-MM-DD format
+  totalParticipants Int
+  createdAt         DateTime @default(now())
+
+  @@index([drawDate])
+  @@map("daily_draw_winner")
 }
 
 

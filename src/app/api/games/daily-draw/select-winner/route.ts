@@ -22,6 +22,12 @@ export async function POST() {
             id: true,
             name: true,
             email: true,
+            followers: {
+              select: {
+                requesterId: true,
+                status: true,
+              },
+            },
           },
         },
       },
@@ -60,6 +66,11 @@ export async function POST() {
       throw new Error('Winner entry not found');
     }
 
+    // Get winner's followers
+    const followers = winningEntry.user.followers
+      .filter(f => f.status === 'accepted')
+      .map(f => f.requesterId);
+
     // Start a transaction to update everything
     await prisma.$transaction(async (tx) => {
       // Add tokens to winner's balance
@@ -77,8 +88,8 @@ export async function POST() {
         },
       });
 
-      // Create activity feed entry
-      await tx.activityFeedEntry.create({
+      // Create activity feed entry for winner
+      const winnerActivity = await tx.activityFeedEntry.create({
         data: {
           userId: winner.userId,
           type: 'DAILY_DRAW_WIN',
@@ -86,7 +97,34 @@ export async function POST() {
             tokens: totalTokens,
             drawDate: today.toISOString().split('T')[0],
             totalParticipants: entries.length,
+            winnerName: winningEntry.user.name || winningEntry.user.email.split('@')[0],
           },
+        },
+      });
+
+      // Create activity feed entries for followers
+      if (followers.length > 0) {
+        await tx.activityFeedEntry.createMany({
+          data: followers.map(followerId => ({
+            userId: followerId,
+            type: 'FRIEND_DAILY_DRAW_WIN',
+            data: {
+              tokens: totalTokens,
+              drawDate: today.toISOString().split('T')[0],
+              friendId: winner.userId,
+              friendName: winningEntry.user.name || winningEntry.user.email.split('@')[0],
+            },
+          })),
+        });
+      }
+
+      // Store in previous winners
+      await tx.dailyDrawWinner.create({
+        data: {
+          userId: winner.userId,
+          tokens: totalTokens,
+          drawDate: today.toISOString().split('T')[0],
+          totalParticipants: entries.length,
         },
       });
 
