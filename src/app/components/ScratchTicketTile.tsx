@@ -128,10 +128,10 @@ const ScratchTicketTile: React.FC<ScratchTicketTileProps> = ({ ticket, onClick }
         </div>
       </div>
 
-      {/* Purchased overlay */}
+      {/* Purchased overlay - improved to be more visible and persistent */}
       {ticket.purchased && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-gray-800 bg-opacity-80 text-white px-4 py-2 rounded-lg font-bold">
+        <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-20">
+          <div className="bg-gray-800 border-2 border-gray-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
             Purchased
           </div>
         </div>

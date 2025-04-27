@@ -149,12 +149,12 @@ TOKEN_AMOUNTS.forEach((amount, index) => {
 });
 
 // Combine all symbols
-const SYMBOLS: Record<SymbolType, Symbol> = {
+const SYMBOLS = {
   ...baseSymbols,
   ...stockSymbols,
   ...cashSymbols,
   ...tokenSymbols
-};
+} as Record<SymbolType, Symbol>;
 
 // Function to generate a random symbol based on probabilities and ticket type
 const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol => {
@@ -237,14 +237,15 @@ const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol =
     }
     
     // Randomly assign colors to stocks for this ticket
-    const tempSymbols = { ...SYMBOLS };
+    const tempSymbols = { ...SYMBOLS } as Record<string, Symbol>;
     selectedStocks.forEach((stock, index) => {
       const colorIndex = Math.floor(Math.random() * stockColors.length);
       const color = stockColors[colorIndex];
       
       // Create a temporary version of the symbol with a custom color
-      tempSymbols[`stock_${stock.symbol}`] = {
-        ...tempSymbols[`stock_${stock.symbol}`],
+      const key = `stock_${stock.symbol}` as string;
+      tempSymbols[key] = {
+        ...tempSymbols[key],
         color: color
       };
     });
@@ -1102,6 +1103,7 @@ const ScratchOffPlay = () => {
       toast({
         title: "You Won!",
         description: `Congratulations! You've won ${prizeText.trim()}`,
+        duration: 5000, // Longer duration for win messages
       });
       
       // Send API request to update the user's tokens/assets
@@ -1139,10 +1141,21 @@ const ScratchOffPlay = () => {
         });
       }
     } else {
-      toast({
-        title: "Better luck next time!",
-        description: "No winning combinations found. Try again with another ticket!",
-      });
+      // Only show the "Better luck next time!" toast once
+      // Use localStorage to track if we've already shown this toast for this ticket
+      const toastShownKey = `no-win-toast-${ticketId}`;
+      const toastAlreadyShown = localStorage.getItem(toastShownKey);
+      
+      if (!toastAlreadyShown) {
+        toast({
+          title: "Better luck next time!",
+          description: "No winning combinations found. Try again with another ticket!",
+          duration: 3000,
+        });
+        
+        // Mark that we've shown this toast
+        localStorage.setItem(toastShownKey, "true");
+      }
     }
   };
 
@@ -1310,11 +1323,13 @@ const ScratchOffPlay = () => {
                         // Show the sum of all token values, then multiplier
                         const totalValue = win.cellValues.reduce((sum, val) => sum + val, 0);
                         const individualValues = win.cellValues.join(' + ');
-                        displayValue = `${win.count} in a row (${individualValues}) = ${totalValue}${win.multiplier > 1 ? ` × ${win.multiplier}x = ${totalValue * win.multiplier}` : ''} tokens`;
+                        const multipliedValue = totalValue * win.multiplier;
+                        displayValue = `${win.count} in a row (${individualValues}) = ${totalValue}${win.multiplier > 1 ? ` × ${win.multiplier}x = ${multipliedValue}` : ''} tokens`;
                       } else {
                         const tokenAmount = parseInt(symbolType.replace('token_', ''));
                         const totalValue = win.count * tokenAmount;
-                        displayValue = `${win.count} in a row - ${totalValue}${win.multiplier > 1 ? ` × ${win.multiplier}x = ${totalValue * win.multiplier}` : ''} tokens`;
+                        const multipliedValue = totalValue * win.multiplier;
+                        displayValue = `${win.count} in a row - ${totalValue}${win.multiplier > 1 ? ` × ${win.multiplier}x = ${multipliedValue}` : ''} tokens`;
                       }
                     }
                     else if (symbolType.startsWith('stock_')) {
@@ -1349,24 +1364,57 @@ const ScratchOffPlay = () => {
                 {prize && (
                   <div className="mt-4 p-3 bg-gray-800 rounded-lg">
                     <p className="text-white font-bold mb-2">Your Prize:</p>
+                    {ticket?.isBonus && (
+                      <div className="bg-yellow-900/30 border border-yellow-600/30 rounded-md p-2 mb-3">
+                        <p className="text-yellow-400 font-semibold flex items-center">
+                          <FaStar className="mr-2 text-yellow-400" /> 25% Bonus Applied to All Winnings!
+                        </p>
+                      </div>
+                    )}
                     <div className="space-y-1">
                       {prize.tokens > 0 && (
-                        <p className="text-yellow-400 flex items-center text-lg"><FaCoins className="mr-2" /> {prize.tokens} Tokens</p>
+                        <p className="text-yellow-400 flex items-center text-lg">
+                          <FaCoins className="mr-2" /> {prize.tokens} Tokens
+                          {ticket?.isBonus && (
+                            <span className="ml-2 text-sm text-yellow-300 bg-yellow-900/30 px-2 py-0.5 rounded">
+                              +25% Bonus Applied
+                            </span>
+                          )}
+                        </p>
                       )}
                       {prize.cash > 0 && (
-                        <p className="text-green-400 flex items-center text-lg"><FaMoneyBillWave className="mr-2" /> ${prize.cash} Cash</p>
+                        <p className="text-green-400 flex items-center text-lg">
+                          <FaMoneyBillWave className="mr-2" /> ${prize.cash} Cash
+                          {ticket?.isBonus && (
+                            <span className="ml-2 text-sm text-green-300 bg-green-900/30 px-2 py-0.5 rounded">
+                              +25% Bonus Applied
+                            </span>
+                          )}
+                        </p>
                       )}
                       
-                      {/* Display individual stock shares */}
+                      {/* Display individual stock shares with improved bonus indicators */}
                       {prize.stockShares && Object.entries(prize.stockShares).length > 0 ? (
                         Object.entries(prize.stockShares).map(([symbol, info], idx) => (
                           <p key={idx} className="text-blue-400 flex items-center text-lg">
                             <FaChartLine className="mr-2" /> 
                             {info.shares.toFixed(2)} shares of {symbol} (${(info.shares * info.value).toFixed(2)})
+                            {ticket?.isBonus && (
+                              <span className="ml-2 text-sm text-blue-300 bg-blue-900/30 px-2 py-0.5 rounded">
+                                +25% Bonus Applied
+                              </span>
+                            )}
                           </p>
                         ))
                       ) : prize.stocks > 0 ? (
-                        <p className="text-blue-400 flex items-center text-lg"><FaChartLine className="mr-2" /> {prize.stocks} Stock Points</p>
+                        <p className="text-blue-400 flex items-center text-lg">
+                          <FaChartLine className="mr-2" /> {prize.stocks} Stock Points
+                          {ticket?.isBonus && (
+                            <span className="ml-2 text-sm text-blue-300 bg-blue-900/30 px-2 py-0.5 rounded">
+                              +25% Bonus Applied
+                            </span>
+                          )}
+                        </p>
                       ) : null}
                     </div>
                   </div>

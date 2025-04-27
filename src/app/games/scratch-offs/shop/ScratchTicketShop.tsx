@@ -28,10 +28,65 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
   const [selectedTicket, setSelectedTicket] = useState<ScratchTicket | null>(null);
   const [shopTickets, setShopTickets] = useState<ScratchTicket[]>(tickets);
 
-  // Mark any purchased tickets
+  // Function to check which tickets the user has already purchased
+  const checkPurchasedTickets = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch user's purchased tickets - include both scratched and unscratched tickets
+      const response = await fetch('/api/users/scratch-tickets?includeScratched=true', {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.tickets && Array.isArray(data.tickets)) {
+          // Get the ticket IDs that the user has already purchased (using ticketId not ticket.id)
+          const purchasedTicketIds = new Set();
+          
+          // Track both ticket.id (for shop tickets) and ticketId (referencing ScratchTicket)
+          data.tickets.forEach((t: any) => {
+            if (t.ticket?.id) purchasedTicketIds.add(t.ticket.id);
+            if (t.ticketId) purchasedTicketIds.add(t.ticketId);
+          });
+          
+          // Update shop tickets with purchased status
+          setShopTickets(prev => 
+            prev.map(ticket => ({
+              ...ticket,
+              purchased: purchasedTicketIds.has(ticket.id)
+            }))
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error checking purchased tickets:', error);
+    }
+  };
+
+  // Mark any purchased tickets when component loads or tickets change
   useEffect(() => {
     setShopTickets(tickets);
-  }, [tickets]);
+    if (user) {
+      checkPurchasedTickets();
+    }
+  }, [tickets, user]);
+
+  // Listen for ticket updates from other components
+  useEffect(() => {
+    const handleStorageChange = () => {
+      checkPurchasedTickets();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('tickets-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('tickets-updated', handleStorageChange);
+    };
+  }, [user]);
 
   if (!shopTickets || !Array.isArray(shopTickets)) {
     return <p className="text-white">No scratch tickets available.</p>;
@@ -49,6 +104,12 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
         throw new Error("Ticket not found in shop");
       }
       
+      // Double check if the ticket is already purchased
+      if (ticketToBuy.purchased) {
+        setSelectedTicket(null);
+        return; // Silently return without showing error toast
+      }
+      
       const response = await fetch(`/api/users/scratch-tickets?id=${ticketId}`, {
         method: "POST",
         headers: {
@@ -64,6 +125,17 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Purchase failed");
 
+      // Check if the API returned an "already own" message - in this case, just close silently
+      if (data.message && data.message.includes("already own")) {
+        // Mark the ticket as purchased in the shop without showing a toast
+        const updatedTickets = shopTickets.map(ticket => 
+          ticket.id === ticketId ? { ...ticket, purchased: true } : ticket
+        );
+        setShopTickets(updatedTickets);
+        setSelectedTicket(null);
+        return;
+      }
+
       // Mark the ticket as purchased in the shop
       const updatedTickets = shopTickets.map(ticket => 
         ticket.id === ticketId ? { ...ticket, purchased: true } : ticket
@@ -71,25 +143,39 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       setShopTickets(updatedTickets);
 
       // Pass the purchased ticket to the parent component
-      const purchasedTicket = shopTickets.find(ticket => ticket.id === ticketId);
+      const purchasedTicket = updatedTickets.find(ticket => ticket.id === ticketId);
       if (purchasedTicket && onPurchase) {
-        handlePurchaseClick(purchasedTicket);
+        onPurchase(purchasedTicket);
       }
 
       toast({
         title: "Success!",
-        description: `You purchased a ${selectedTicket?.name || "scratch ticket"}!`,
+        description: `You purchased a ${purchasedTicket?.name || "scratch ticket"}!`,
       });
 
-      setSelectedTicket(null); 
+      // Notify other components about the purchase
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('tickets-updated', Date.now().toString());
+        // Trigger both storage event and custom event
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'tickets-updated',
+          newValue: Date.now().toString()
+        }));
+        window.dispatchEvent(new CustomEvent('tickets-updated'));
+      }
+
+      setSelectedTicket(null);
     } catch (error: any) {
       console.error("Error buying scratch ticket:", error);
       setError(error.message);
 
-      toast({
-        title: "Error",
-        description: error.message || "Failed to purchase ticket",
-      });
+      // Only show error toast for actual errors, not for "already purchased" conditions
+      if (error.message && !error.message.includes("already purchased")) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to purchase ticket",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -169,23 +255,23 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
                 </button>
                 {user && (
                   <button
-                    onClick={() => selectedTicket && handlePurchaseClick(selectedTicket)}
+                    onClick={() => selectedTicket && buyTicket(selectedTicket.id)}
                     className={`px-4 py-2 rounded font-medium text-white ${
                       loading || (selectedTicket && selectedTicket.purchased)
                         ? 'bg-gray-500 cursor-not-allowed' 
-                        : selectedTicket?.type === 'tokens' 
+                        : selectedTicket.type === 'tokens' 
                           ? 'bg-yellow-500 hover:bg-yellow-600' 
-                          : selectedTicket?.type === 'money'
+                          : selectedTicket.type === 'money'
                           ? 'bg-green-500 hover:bg-green-600'
-                          : selectedTicket?.type === 'stocks'
+                          : selectedTicket.type === 'stocks'
                           ? 'bg-blue-500 hover:bg-blue-600'
-                          : selectedTicket?.type === 'random'
+                          : selectedTicket.type === 'random'
                           ? 'bg-purple-500 hover:bg-purple-600'
                           : 'bg-pink-500 hover:bg-pink-600'
                     }`}
                     disabled={loading || (selectedTicket && selectedTicket.purchased)}
                   >
-                    {loading ? "Buying..." : selectedTicket?.purchased ? "Purchased" : "Buy Ticket"}
+                    {loading ? "Buying..." : selectedTicket.purchased ? "Purchased" : "Buy Ticket"}
                   </button>
                 )}
               </div>
