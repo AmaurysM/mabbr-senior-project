@@ -98,5 +98,85 @@
     "dailyVolume": 6085,
     "createdAt": "2025-04-27T20:38:56.371Z",
     "updatedAt": "2025-04-27T20:38:56.371Z"
+  },
+  {
+    "id": "1781fcc5-7eca-4131-b34a-459eea746a98",
+    "date": "2025-04-27T21:32:15.373Z",
+    "tokenValue": 2.5889784508975073,
+    "totalSupply": 121711,
+    "holdersCount": 6,
+    "dailyVolume": 6085,
+    "createdAt": "2025-04-27T21:32:15.373Z",
+    "updatedAt": "2025-04-27T21:32:15.373Z"
+  },
+  {
+    "id": "d62bde7f-c271-41f6-8746-dcf5a0588f85",
+    "date": "2025-04-27T21:37:02.165Z",
+    "tokenValue": 2.5954589943287565,
+    "totalSupply": 121686,
+    "holdersCount": 6,
+    "dailyVolume": 6084,
+    "createdAt": "2025-04-27T21:37:02.165Z",
+    "updatedAt": "2025-04-27T21:37:02.165Z"
+  },
+  {
+    "id": "ad0ecaa1-4fb8-42a0-bb27-9640616941be",
+    "date": "2025-04-27T21:37:49.642Z",
+    "tokenValue": 2.6084687866775518,
+    "totalSupply": 121636,
+    "holdersCount": 6,
+    "dailyVolume": 6081,
+    "createdAt": "2025-04-27T21:37:49.642Z",
+    "updatedAt": "2025-04-27T21:37:49.642Z"
+  },
+  {
+    "id": "89c2f1ff-3c2a-4483-8990-f2d799690662",
+    "date": "2025-04-27T21:43:33.008Z",
+    "tokenValue": 2.628105849514627,
+    "totalSupply": 121561,
+    "holdersCount": 6,
+    "dailyVolume": 6078,
+    "createdAt": "2025-04-27T21:43:33.008Z",
+    "updatedAt": "2025-04-27T21:43:33.008Z"
+  },
+  {
+    "id": "d4baec9a-e118-4fe9-8168-52b1908b08d6",
+    "date": "2025-04-27T21:43:35.065Z",
+    "tokenValue": 2.6412792849060303,
+    "totalSupply": 121511,
+    "holdersCount": 6,
+    "dailyVolume": 6075,
+    "createdAt": "2025-04-27T21:43:35.065Z",
+    "updatedAt": "2025-04-27T21:43:35.065Z"
+  },
+  {
+    "id": "f22fb24e-a9fc-4f64-8bee-5b6512fac9de",
+    "date": "2025-04-27T21:43:37.175Z",
+    "tokenValue": 2.6611633515864024,
+    "totalSupply": 121436,
+    "holdersCount": 6,
+    "dailyVolume": 6071,
+    "createdAt": "2025-04-27T21:43:37.175Z",
+    "updatedAt": "2025-04-27T21:43:37.175Z"
+  },
+  {
+    "id": "f48b108d-74ee-40b8-b707-c7e39c8b4931",
+    "date": "2025-04-27T21:45:34.795Z",
+    "tokenValue": 2.68790848790811,
+    "totalSupply": 121336,
+    "holdersCount": 6,
+    "dailyVolume": 6066,
+    "createdAt": "2025-04-27T21:45:34.795Z",
+    "updatedAt": "2025-04-27T21:45:34.795Z"
+  },
+  {
+    "id": "28c41693-ef9a-491a-add2-49398cca2e18",
+    "date": "2025-04-27T21:45:48.459Z",
+    "tokenValue": 2.6946366658460468,
+    "totalSupply": 121311,
+    "holdersCount": 6,
+    "dailyVolume": 6065,
+    "createdAt": "2025-04-27T21:45:48.459Z",
+    "updatedAt": "2025-04-27T21:45:48.459Z"
   }
 ]
