@@ -12,7 +12,7 @@ export async function GET(
         // const params = await context.params;
 
         const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id') || '';
+        const id = searchParams.get('id');
 
         // Get the session using the auth object
         const session = await auth.api.getSession({ headers: await headers() });
@@ -20,9 +20,12 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        // If no ID is provided, return the current user's information
+        const userId = id || session.user.id;
+
         // Fetch user data
         const user = await prisma.user.findUnique({
-            where: { id },
+            where: { id: userId },
             // Only select fields we need and that exist in the schema
             select: {
                 id: true,
@@ -33,6 +36,7 @@ export async function GET(
                 role: true,
                 premium: true,
                 balance: true,
+                tokenCount: true,
                 createdAt: true,
                 bio: true,
             },

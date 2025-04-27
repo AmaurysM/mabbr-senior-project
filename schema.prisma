@@ -1,0 +1,26 @@
+// Add or update the User model to include token tracking fields
+model User {
+  // ... existing fields
+  tokenCount    Int     @default(0)
+  // ... other existing fields
+}
+
+// Add TokenMarketHistory model to track historical token values
+model TokenMarketHistory {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  tokenValue    Float
+  totalSupply   Int
+  holdersCount  Int
+  dailyVolume   Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Make sure Transaction model has token exchange type
+model Transaction {
+  // ... existing fields
+  // Make sure it has a type field that can be TOKEN_EXCHANGE
+  // If not already defined, add it like:
+  // type          String // Can be "TOKEN_EXCHANGE", "PURCHASE", etc.
+} 

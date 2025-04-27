@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Current tokenCount:', currentUser.tokenCount);
 
-    const newTokenCount = (currentUser.tokenCount || 0) + 1;
+    const newTokenCount = (currentUser.tokenCount || 0) + 50;
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
