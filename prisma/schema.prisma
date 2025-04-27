@@ -490,4 +490,18 @@ model UserScratchTicket {
   @@map("user_scratch_ticket")
 }
 
+// Add TokenMarketHistory model after existing models
+model TokenMarketHistory {
+  id            String   @id @default(cuid()) @map("_id")
+  date          DateTime @default(now())
+  tokenValue    Float
+  totalSupply   Int
+  holdersCount  Int
+  dailyVolume   Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("token_market_history")
+}
+
 

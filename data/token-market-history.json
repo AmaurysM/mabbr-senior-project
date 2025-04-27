@@ -1,0 +1,102 @@
+[
+  {
+    "id": "c6b47cae-716f-4b4f-9606-698e5324f00d",
+    "date": "2025-04-27T20:05:13.738Z",
+    "tokenValue": 2.3192952718611153,
+    "totalSupply": 122811,
+    "holdersCount": 6,
+    "dailyVolume": 6140,
+    "createdAt": "2025-04-27T20:05:13.738Z",
+    "updatedAt": "2025-04-27T20:05:13.738Z"
+  },
+  {
+    "id": "990ed34f-e456-4759-9da6-368e6dd70420",
+    "date": "2025-04-27T20:05:13.894Z",
+    "tokenValue": 2.3192952718611153,
+    "totalSupply": 122811,
+    "holdersCount": 6,
+    "dailyVolume": 6140,
+    "createdAt": "2025-04-27T20:05:13.894Z",
+    "updatedAt": "2025-04-27T20:05:13.894Z"
+  },
+  {
+    "id": "fbe94636-0d7c-4f70-be47-3eb016797948",
+    "date": "2025-04-27T20:05:27.011Z",
+    "tokenValue": 2.563217684891256,
+    "totalSupply": 121811,
+    "holdersCount": 6,
+    "dailyVolume": 6090,
+    "createdAt": "2025-04-27T20:05:27.011Z",
+    "updatedAt": "2025-04-27T20:05:27.011Z"
+  },
+  {
+    "id": "ce7f8fcd-f594-465d-a89f-14af9c2c7a39",
+    "date": "2025-04-27T20:14:36.834Z",
+    "tokenValue": 2.563217684891256,
+    "totalSupply": 121811,
+    "holdersCount": 6,
+    "dailyVolume": 6090,
+    "createdAt": "2025-04-27T20:14:36.834Z",
+    "updatedAt": "2025-04-27T20:14:36.834Z"
+  },
+  {
+    "id": "5f45bbfe-4062-416f-ad4b-929c4a829562",
+    "date": "2025-04-27T20:14:36.879Z",
+    "tokenValue": 2.563217684891256,
+    "totalSupply": 121811,
+    "holdersCount": 6,
+    "dailyVolume": 6090,
+    "createdAt": "2025-04-27T20:14:36.879Z",
+    "updatedAt": "2025-04-27T20:14:36.879Z"
+  },
+  {
+    "id": "57783cc1-beb0-42c6-b41a-8c2dfe65a475",
+    "date": "2025-04-27T20:32:30.709Z",
+    "tokenValue": 2.563217684891256,
+    "totalSupply": 121811,
+    "holdersCount": 6,
+    "dailyVolume": 6090,
+    "createdAt": "2025-04-27T20:32:30.709Z",
+    "updatedAt": "2025-04-27T20:32:30.709Z"
+  },
+  {
+    "id": "17bb7133-58cf-4bfc-91cf-599691a19d4a",
+    "date": "2025-04-27T20:32:34.166Z",
+    "tokenValue": 2.5696337458379688,
+    "totalSupply": 121786,
+    "holdersCount": 6,
+    "dailyVolume": 6089,
+    "createdAt": "2025-04-27T20:32:34.166Z",
+    "updatedAt": "2025-04-27T20:32:34.166Z"
+  },
+  {
+    "id": "a2c6fcd0-733e-4862-8f66-b7d3da41ac32",
+    "date": "2025-04-27T20:36:23.241Z",
+    "tokenValue": 2.5825140885900044,
+    "totalSupply": 121736,
+    "holdersCount": 6,
+    "dailyVolume": 6086,
+    "createdAt": "2025-04-27T20:36:23.241Z",
+    "updatedAt": "2025-04-27T20:36:23.241Z"
+  },
+  {
+    "id": "7cf7a9f9-a7a5-4abc-be78-97653612dedd",
+    "date": "2025-04-27T20:38:56.334Z",
+    "tokenValue": 2.5889784508975073,
+    "totalSupply": 121711,
+    "holdersCount": 6,
+    "dailyVolume": 6085,
+    "createdAt": "2025-04-27T20:38:56.334Z",
+    "updatedAt": "2025-04-27T20:38:56.334Z"
+  },
+  {
+    "id": "39f50f0b-63a6-405f-9710-73ee74c024f2",
+    "date": "2025-04-27T20:38:56.371Z",
+    "tokenValue": 2.5889784508975073,
+    "totalSupply": 121711,
+    "holdersCount": 6,
+    "dailyVolume": 6085,
+    "createdAt": "2025-04-27T20:38:56.371Z",
+    "updatedAt": "2025-04-27T20:38:56.371Z"
+  }
+]

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { ScratchTicket } from "@/app/components/ScratchTicketTile";
 
+// Get the day key for storing daily shop
+function getDayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
 // Generate a simple UUID
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -64,8 +70,12 @@ function generateDailyShop(): ScratchTicket[] {
     }
   ];
   
-  // Generate 8 random tickets for the shop
-  const totalShopSlots = 8;
+  // Verify that probabilities sum to 100%
+  const totalChance = ticketTypes.reduce((sum, type) => sum + type.chance, 0);
+  console.log(`Total chance: ${totalChance}%`); // Should be 100%
+  
+  // Generate 12 random tickets for the shop (increased from 8)
+  const totalShopSlots = 12;
   const shopTickets: ScratchTicket[] = [];
   
   // Create a function to select a random ticket type based on weighted chances
@@ -106,13 +116,16 @@ function generateDailyShop(): ScratchTicket[] {
     });
   }
   
+  // Log the distribution of tickets for verification
+  const distribution = shopTickets.reduce((acc: any, ticket) => {
+    acc[ticket.type] = (acc[ticket.type] || 0) + 1;
+    return acc;
+  }, {});
+  
+  console.log('Daily shop distribution:', distribution);
+  console.log('Bonus tickets:', shopTickets.filter(t => t.isBonus).length);
+  
   return shopTickets;
-}
-
-// Function to get the day key for storing the shop
-function getDayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 }
 
 // GET /api/daily-shop

@@ -8,6 +8,7 @@ import LoadingStateAnimation from "@/app/components/LoadingState";
 import { useToast } from "@/app/hooks/use-toast";
 import { authClient } from "@/lib/auth-client";
 import { IoTicket } from "react-icons/io5";
+import { UserScratchTicket } from "@/app/components/OwnedScratchTicket";
 
 // Generate a simple UUID
 function generateUUID() {
@@ -32,14 +33,13 @@ const generateDailyShop = (): ScratchTicket[] => {
   const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
   const seededRandom = createSeededRandom(seed);
   
-  // Define all possible ticket types
+  // Define all possible ticket types with proper probabilities
   const ticketTypes = [
     {
       type: "tokens" as const,
       name: "Golden Fortune",
       price: 25,
       description: "Win tokens! Try your luck with this golden ticket.",
-      // Diamond is 1%, others are 24.75% each
       chance: 24.75,
     },
     {
@@ -68,12 +68,16 @@ const generateDailyShop = (): ScratchTicket[] => {
       name: "Diamond Scratch",
       price: 200,
       description: "1% Chance of appearing, win anything with a 300x multiplier! The ultimate premium ticket!",
-      chance: 1,
+      chance: 1.0, // Explicitly set to 1.0% chance
     }
   ];
   
-  // Generate 8 random tickets for the shop
-  const totalShopSlots = 8;
+  // Verify that probabilities sum to 100%
+  const totalChance = ticketTypes.reduce((sum, type) => sum + type.chance, 0);
+  console.log(`Total chance: ${totalChance}%`); // Should be 100%
+  
+  // Generate 12 random tickets for the shop (was previously 8)
+  const totalShopSlots = 12;
   const shopTickets: ScratchTicket[] = [];
   
   // Create a function to select a random ticket type based on weighted chances
@@ -114,6 +118,15 @@ const generateDailyShop = (): ScratchTicket[] => {
     });
   }
   
+  // Log the distribution of tickets for verification
+  const distribution = shopTickets.reduce((acc: any, ticket) => {
+    acc[ticket.type] = (acc[ticket.type] || 0) + 1;
+    return acc;
+  }, {});
+  
+  console.log('Daily shop distribution:', distribution);
+  console.log('Bonus tickets:', shopTickets.filter(t => t.isBonus).length);
+  
   return shopTickets;
 };
 
@@ -125,7 +138,7 @@ const getDayKey = () => {
 
 export default function ScratchOffs() {
   const [shopTickets, setShopTickets] = useState<ScratchTicket[]>([]);
-  const [purchasedTickets, setPurchasedTickets] = useState<ScratchTicket[]>([]);
+  const [purchasedTickets, setPurchasedTickets] = useState<UserScratchTicket[]>([]);
   const [userTokens, setUserTokens] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
@@ -134,44 +147,6 @@ export default function ScratchOffs() {
   // Load purchased tickets from localStorage and the API
   useEffect(() => {
     if (typeof window !== 'undefined' && session?.user?.id) {
-      const fetchUserTickets = async () => {
-        try {
-          // First try to get tickets from API
-          const response = await fetch('/api/users/scratch-tickets', {
-            credentials: 'include',
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.tickets && Array.isArray(data.tickets)) {
-              // Filter out played tickets
-              const activeTickets = data.tickets.filter((ticket: { scratched: boolean }) => !ticket.scratched);
-              setPurchasedTickets(activeTickets);
-              return;
-            }
-          } else {
-            throw new Error('Failed to fetch tickets from API');
-          }
-        } catch (error) {
-          console.error('Error fetching user tickets:', error);
-          
-          // Only fallback to localStorage if API fails
-          const userId = session.user.id;
-          const savedTickets = localStorage.getItem(`user-${userId}-tickets`);
-          
-          if (savedTickets) {
-            try {
-              const tickets = JSON.parse(savedTickets);
-              // Filter out played tickets
-              const activeTickets = tickets.filter((ticket: { scratched: boolean }) => !ticket.scratched);
-              setPurchasedTickets(activeTickets);
-            } catch (error) {
-              console.error('Error parsing saved tickets:', error);
-            }
-          }
-        }
-      };
-      
       fetchUserTickets();
       
       // Set up event listener for ticket refresh
@@ -212,15 +187,23 @@ export default function ScratchOffs() {
           localStorage.setItem('shop-day-key', data.dayKey);
           localStorage.setItem('daily-shop', JSON.stringify(data.tickets));
           
-          // Mark tickets as purchased if they're in the user's purchased tickets
-          let shopData = data.tickets;
+          // Get unique purchased ticket IDs for more accurate marking
+          const purchasedIds = new Set();
           if (purchasedTickets.length > 0) {
-            const purchasedIds = new Set(purchasedTickets.map(ticket => ticket.id));
-            shopData = shopData.map((ticket: ScratchTicket) => ({
-              ...ticket,
-              purchased: purchasedIds.has(ticket.id)
-            }));
+            purchasedTickets.forEach(ticket => {
+              purchasedIds.add(ticket.id);
+              // Only add ticketId if it's not a ScratchTicket (which doesn't have ticketId)
+              if ('ticketId' in ticket) {
+                purchasedIds.add((ticket as any).ticketId);
+              }
+            });
           }
+          
+          // Mark tickets as purchased if they're in the user's purchased tickets
+          let shopData = data.tickets.map((ticket: ScratchTicket) => ({
+            ...ticket,
+            purchased: purchasedIds.has(ticket.id)
+          }));
           
           setShopTickets(shopData);
         } else {
@@ -253,13 +236,22 @@ export default function ScratchOffs() {
         }
         
         // Mark tickets as purchased if they're in the user's purchased tickets
+        // Get unique purchased ticket IDs
+        const purchasedIds = new Set();
         if (purchasedTickets.length > 0) {
-          const purchasedIds = new Set(purchasedTickets.map(ticket => ticket.id));
-          shopData = shopData.map((ticket: ScratchTicket) => ({
-            ...ticket,
-            purchased: purchasedIds.has(ticket.id)
-          }));
+          purchasedTickets.forEach(ticket => {
+            purchasedIds.add(ticket.id);
+            // Only add ticketId if it's not a ScratchTicket (which doesn't have ticketId)
+            if ('ticketId' in ticket) {
+              purchasedIds.add((ticket as any).ticketId);
+            }
+          });
         }
+        
+        shopData = shopData.map((ticket: ScratchTicket) => ({
+          ...ticket,
+          purchased: purchasedIds.has(ticket.id)
+        }));
         
         setShopTickets(shopData);
       } finally {
@@ -347,6 +339,15 @@ export default function ScratchOffs() {
       });
       return;
     }
+
+    // Check if ticket is already marked as purchased
+    if (ticket.purchased) {
+      toast({
+        title: "Already Purchased",
+        description: "You've already purchased this ticket.",
+      });
+      return;
+    }
     
     setIsSyncing(true);
     
@@ -375,13 +376,29 @@ export default function ScratchOffs() {
       // Update token count from server response
       setUserTokens(data.tokenCount);
       
-      // Add to purchased tickets with client-side data
-      const newTicket = {
-        ...ticket,
+      // Add to purchased tickets with server-side data
+      const newTicket: UserScratchTicket = {
+        id: data.ticket.id,
+        ticketId: data.ticket.id,
+        userId: session.user.id,
         purchased: true,
+        scratched: false,
+        createdAt: new Date().toISOString(),
+        isBonus: data.ticket.isBonus,
+        ticket: {
+          id: data.ticket.id,
+          name: data.ticket.name,
+          type: data.ticket.type as any, // Handle any TicketType conversion
+          price: data.ticket.price,
+        }
       };
       
-      setPurchasedTickets(prev => [...prev, newTicket]);
+      // Check if ticket already exists in purchasedTickets by ID
+      const ticketExists = purchasedTickets.some(t => t.id === data.ticket.id);
+      
+      if (!ticketExists) {
+        setPurchasedTickets(prev => [...prev, newTicket]);
+      }
       
       // Mark shop ticket as purchased
       setShopTickets(prev => 
@@ -392,6 +409,15 @@ export default function ScratchOffs() {
         title: "Purchase Successful",
         description: `You bought a ${ticket.name} ticket! Find it in your tickets.`,
       });
+      
+      // Force an immediate refresh of tickets to ensure the My Tickets section updates
+      await fetchUserTickets();
+      
+      // Trigger the storage event to notify other components about the change
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('tickets-updated', Date.now().toString());
+        window.dispatchEvent(new Event('storage'));
+      }
     } catch (error) {
       console.error('Error purchasing ticket:', error);
       toast({
@@ -400,6 +426,65 @@ export default function ScratchOffs() {
       });
     } finally {
       setIsSyncing(false);
+    }
+  };
+  
+  // Extract the fetchUserTickets function to be reusable
+  const fetchUserTickets = async () => {
+    try {
+      // First try to get tickets from API
+      const response = await fetch('/api/users/scratch-tickets', {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.tickets && Array.isArray(data.tickets)) {
+          // Filter out played tickets and deduplicate by ID
+          const activeTickets = data.tickets
+            .filter((ticket: { scratched: boolean }) => !ticket.scratched)
+            .reduce((acc: any[], ticket: any) => {
+              // Check if we already have this ticket ID
+              if (!acc.some((t: any) => t.id === ticket.id)) {
+                acc.push(ticket);
+              }
+              return acc;
+            }, []);
+          
+          setPurchasedTickets(activeTickets);
+          return;
+        }
+      } else {
+        throw new Error('Failed to fetch tickets from API');
+      }
+    } catch (error) {
+      console.error('Error fetching user tickets:', error);
+      
+      // Only fallback to localStorage if API fails
+      if (session?.user?.id) {
+        const userId = session.user.id;
+        const savedTickets = localStorage.getItem(`user-${userId}-tickets`);
+        
+        if (savedTickets) {
+          try {
+            const tickets = JSON.parse(savedTickets);
+            // Filter out played tickets and deduplicate
+            const activeTickets = tickets
+              .filter((ticket: { scratched: boolean }) => !ticket.scratched)
+              .reduce((acc: any[], ticket: any) => {
+                // Check if we already have this ticket ID
+                if (!acc.some((t: any) => t.id === ticket.id)) {
+                  acc.push(ticket);
+                }
+                return acc;
+              }, []);
+            
+            setPurchasedTickets(activeTickets);
+          } catch (error) {
+            console.error('Error parsing saved tickets:', error);
+          }
+        }
+      }
     }
   };
   

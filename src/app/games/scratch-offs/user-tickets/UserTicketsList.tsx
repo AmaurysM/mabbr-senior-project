@@ -32,7 +32,16 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
         const data = await response.json();
         // Parse the tickets from the API response
         if (data.tickets && Array.isArray(data.tickets)) {
-          setTickets(data.tickets);
+          // Deduplicate tickets by ID
+          const uniqueTickets = data.tickets.reduce((acc: UserScratchTicket[], ticket: UserScratchTicket) => {
+            // Check if we already have this ticket in our accumulator
+            if (!acc.some(t => t.id === ticket.id)) {
+              acc.push(ticket);
+            }
+            return acc;
+          }, []);
+          
+          setTickets(uniqueTickets);
         } else {
           setTickets([]);
         }
@@ -48,8 +57,16 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
           if (savedTickets) {
             try {
               const tickets = JSON.parse(savedTickets);
-              // Filter out played tickets
-              const activeTickets = tickets.filter((ticket: { scratched: boolean }) => !ticket.scratched);
+              // Filter out played tickets and deduplicate
+              const activeTickets = tickets
+                .filter((ticket: { scratched: boolean }) => !ticket.scratched)
+                .reduce((acc: any[], ticket: any) => {
+                  if (!acc.some(t => t.id === ticket.id)) {
+                    acc.push(ticket);
+                  }
+                  return acc;
+                }, []);
+                
               setTickets(activeTickets);
             } catch (error) {
               console.error('Error parsing saved tickets:', error);
@@ -65,15 +82,23 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
     
     // Set up event listener for tickets updates
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'ticket-played') {
+      if (e.key === 'ticket-played' || e.key === 'tickets-updated') {
         fetchTickets();
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
+    // Also listen for custom events from other components in the same window
+    const handleCustomEvent = () => {
+      fetchTickets();
+    };
+    
+    window.addEventListener('storage', handleCustomEvent);
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', handleCustomEvent);
     };
   }, [session?.user?.id]);
 
@@ -115,7 +140,7 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
   };
 
   return (
-    <div className="w-full bg-gray-800 p-6">
+    <div className="w-full bg-gray-800 p-6" id="my-tickets-section">
       <h2 className="text-2xl font-bold text-white mb-2">My Tickets</h2>
       <p className="text-gray-400 mb-6">Click on a ticket to scratch it</p>
 
