@@ -154,7 +154,7 @@ const CryptoSweeper = () => {
         const bonusData = await bonusResponse.json();
 
         // Show toast after API call with token count
-        toast.success(`Success: You beat Crypto Sweeper! You earned 1 token. Current tokens: ${bonusData.tokenCount}`);
+        toast.success(`Success: You beat Crypto Sweeper! You earned 50 tokens. Current tokens: ${bonusData.tokenCount}`);
 
         // Disable New Game button before delay
         setIsNewGameDisabled(true);
@@ -177,7 +177,7 @@ const CryptoSweeper = () => {
         Crypto Sweeper
       </p>
       <p className="text-center text-md mb-4">
-        Free to play! Win to earn a token! Good luck.
+        Free to play! Win to earn 50 tokens! Good luck.
       </p>
       <button
         onClick={initializeGrid}
@@ -224,14 +224,14 @@ const CryptoSweeper = () => {
             <li>Tap to reveal a tile.</li>
             <li>Tap the Flag Mode button to toggle flagging, then tap tiles to flag suspected bombs.</li>
             <li>Avoid revealing bombs to stay in the game.</li>
-            <li>Win by revealing all non-bomb tiles to earn a token!</li>
+            <li>Win by revealing all non-bomb tiles to earn 50 tokens!</li>
           </ul>
         ) : (
           <ul className="list-disc list-inside text-left max-w-xs mx-auto">
             <li>Left-click to reveal a tile.</li>
             <li>Right-click to flag suspected bombs.</li>
             <li>Avoid revealing bombs to stay in the game.</li>
-            <li>Win by revealing all non-bomb tiles to earn a token!</li>
+            <li>Win by revealing all non-bomb tiles to earn 50 tokens!</li>
           </ul>
         )}
       </div>
