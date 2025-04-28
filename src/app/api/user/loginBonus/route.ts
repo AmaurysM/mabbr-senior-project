@@ -13,34 +13,40 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('User ID:', session.user.id);
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { tokenCount: true },
-    });
+    
+    // Use a transaction to ensure database consistency
+    const result = await prisma.$transaction(async (tx) => {
+      const currentUser = await tx.user.findUnique({
+        where: { id: session.user.id },
+        select: { tokenCount: true },
+      });
 
-    if (!currentUser) {
-      console.log('User not found');
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+      if (!currentUser) {
+        console.log('User not found');
+        throw new Error('User not found');
+      }
 
-    console.log('Current tokenCount:', currentUser.tokenCount);
+      console.log('Current tokenCount:', currentUser.tokenCount);
 
-    const newTokenCount = (currentUser.tokenCount || 0) + 50;
-    const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        tokenCount: newTokenCount,
-        updatedAt: new Date(),
-      },
-      select: {
-        id: true,
-        tokenCount: true,
-      },
+      const newTokenCount = (currentUser.tokenCount || 0) + 50;
+      const updatedUser = await tx.user.update({
+        where: { id: session.user.id },
+        data: {
+          tokenCount: newTokenCount,
+          updatedAt: new Date(),
+        },
+        select: {
+          id: true,
+          tokenCount: true,
+        },
+      });
+      
+      return updatedUser;
     });
 
     return NextResponse.json({
       message: 'Login bonus applied successfully',
-      tokenCount: updatedUser.tokenCount,
+      tokenCount: result.tokenCount,
     });
   } catch (error) {
     console.error('Error applying login bonus:', error);

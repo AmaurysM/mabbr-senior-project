@@ -174,6 +174,11 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
       // Set hasVoted to true instead of closing the panel
       setHasVoted(true);
       
+      // Trigger a token update event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('token-update'));
+      }
+      
       // Call the callback if provided
       if (onVoteSubmit) {
         onVoteSubmit();
