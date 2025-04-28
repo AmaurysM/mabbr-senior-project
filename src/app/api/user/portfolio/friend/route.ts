@@ -20,7 +20,9 @@ async function computeAveragePrice(userId: string, stockSymbol: string): Promise
 }
 
 export async function GET(req: NextRequest) {
+  console.log("11111111111111111111111111111");
   try {
+
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
 
@@ -34,11 +36,12 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-
     const userStocks: UserStocks = await prisma.userStock.findMany({
       where: { userId },
       include: { stock: true }
     });
+
+    
 
     const positions: Record<string, { shares: number; averagePrice: number }> = {};
     await Promise.all(
@@ -50,6 +53,7 @@ export async function GET(req: NextRequest) {
         };
       })
     );
+
 
     return NextResponse.json({
       balance: user.balance,

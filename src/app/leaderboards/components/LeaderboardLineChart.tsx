@@ -1,26 +1,19 @@
 "use client";
 
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import SkeletonLoader from '@/app/components/SkeletonLoader';
-import { Transaction } from '@prisma/client';
-import React, { useState, useEffect } from 'react';
-import {
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
 import Image from 'next/image';
-
-interface PortfolioData {
-  date: string;
-  netWorth: number;
-  cash: number;
-  holdings: number;
-}
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
+import { format, isValid, subDays, subWeeks, subMonths } from 'date-fns';
 
 interface LeaderboardEntry {
   id: string;
@@ -35,221 +28,252 @@ interface LeaderboardEntry {
   holdingsValue: number;
 }
 
-type ChartView = 'netWorth' | 'cash' | 'holdings';
+// Enhanced color palette with better visual distinction
+const colorPalette = [
+  '#4CC9F0', '#F72585', '#7209B7', '#3A0CA3', '#F94144', 
+  '#F3722C', '#F8961E', '#F9C74F', '#90BE6D', '#43AA8B', 
+  '#277DA1', '#3CAEA3', '#F4A261', '#E76F51', '#9D4EDD'
+];
 
-const LeaderboardLineChart = ({ topUsers }: { topUsers: LeaderboardEntry[] }) => {
+export default function LeaderboardLineChart({ topUsers }: { topUsers: LeaderboardEntry[] }) {
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [chartView, setChartView] = useState<ChartView>('netWorth');
-  const [mergedChartData, setMergedChartData] = useState<any[]>([]);
+  const [userPortfolios, setUserPortfolios] = useState<Record<string, [string, number][]>>({});
   const [visibleUsers, setVisibleUsers] = useState<Record<string, boolean>>({});
-  
-  // Generate a color palette for users
-  const colorPalette = [
-    '#4CC9F0', '#4895EF', '#3A0CA3', '#F72585', '#7209B7', 
-    '#F94144', '#F3722C', '#F8961E', '#F9C74F', '#90BE6D',
-    '#43AA8B', '#577590', '#277DA1', '#3CAEA3', '#F4A261',
-  ];
+  const [timeRange, setTimeRange] = useState<'1d' | '1w' | '1m' | '3m' | '6m' | '1y' | 'all'>('1m');
+  const [syncTooltips, setSyncTooltips] = useState(true);
+  const [showLegend, setShowLegend] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    // Initialize all users to be visible
-    const initialVisibleUsers = topUsers.reduce((acc, user) => {
-      acc[user.name] = true;
-      return acc;
-    }, {} as Record<string, boolean>);
-    setVisibleUsers(initialVisibleUsers);
+    const vis: Record<string, boolean> = {};
+    topUsers.forEach((u, idx) => { vis[u.id] = idx < topUsers.length });
+    setVisibleUsers(vis);
   }, [topUsers]);
 
+  function isoDate(d: Date) {
+    return d.toISOString().slice(0, 10);
+  }
+
   useEffect(() => {
-    const fetchData = async () => {
+    let isMounted = true;
+    
+    async function fetchUserData() {
+      if (!isMounted) return;
+      setLoading(true);
+      
       try {
-        const userChartDataMap: Record<string, PortfolioData[]> = {};
+        const promises = topUsers.map(async (user) => {
+          const res = await fetch(`/api/user/transactions/stockHistory?userId=${user.id}`);
+          if (!res.ok) throw new Error(`Failed to load ${user.name}'s data`);
+          const data = await res.json();
+          return { userId: user.id, data };
+        });
 
-        for (const user of topUsers) {
-          const [portfolioRes, txRes] = await Promise.all([
-            fetch(`/api/user/portfolio/friend?userId=${user.id}`),
-            fetch('/api/user/transactions'),
-          ]);
-
-          if (!portfolioRes.ok || !txRes.ok) {
-            throw new Error('Failed to fetch portfolio or transactions.');
+        const results = await Promise.allSettled(promises);
+        
+        if (!isMounted) return;
+        
+        const portfolios: Record<string, [string, number][]> = {};
+        let hasErrors = false;
+        
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            portfolios[result.value.userId] = result.value.data;
+          } else {
+            console.error(`Failed to load data for ${topUsers[index].name}:`, result.reason);
+            hasErrors = true;
           }
-
-          const portfolio = await portfolioRes.json();
-          const txData = await txRes.json();
-
-          const currentBalance: number = portfolio.balance;
-          const currentHoldings = Object.entries(portfolio.positions).reduce(
-            (total, [_, position]: [string, any]) =>
-              total + position.shares * position.averagePrice,
-            0
-          );
-
-          const userTx: Transaction[] = txData.transactions
-            .filter((tx: any) => tx.userId === user.id)
-            .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-          const dataMap = new Map<string, PortfolioData>();
-
-          const startDate = userTx.length > 0
-            ? new Date(userTx[0].timestamp)
-            : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-          startDate.setDate(startDate.getDate() - 5);
-          const today = new Date();
-
-          let runningCash = 100000;
-          let runningHoldings = 0;
-
-          const addDataPoint = (date: string, cash: number, holdings: number) => {
-            dataMap.set(date, {
-              date,
-              cash,
-              holdings,
-              netWorth: cash + holdings,
-            });
-          };
-
-          addDataPoint(startDate.toISOString().split('T')[0], runningCash, 0);
-
-          userTx.forEach((tx: Transaction) => {
-            const dateStr = new Date(tx.timestamp).toISOString().split('T')[0];
-
-            if (tx.type === 'BUY') {
-              runningCash -= tx.totalCost;
-              runningHoldings += tx.totalCost;
-            } else if (tx.type === 'SELL') {
-              runningCash += tx.totalCost;
-              runningHoldings -= tx.totalCost;
-            }
-
-            addDataPoint(dateStr, runningCash, runningHoldings);
-          });
-
-          addDataPoint(today.toISOString().split('T')[0], currentBalance, currentHoldings);
-
-          const sortedData = Array.from(dataMap.values()).sort(
-            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-          );
-
-          // Interpolation
-          const filledData: PortfolioData[] = [];
-          for (let i = 0; i < sortedData.length - 1; i++) {
-            const current = sortedData[i];
-            const next = sortedData[i + 1];
-
-            filledData.push(current);
-
-            const currentDate = new Date(current.date);
-            const nextDate = new Date(next.date);
-            const daysDiff = Math.floor((+nextDate - +currentDate) / (1000 * 60 * 60 * 24));
-
-            for (let day = 1; day < daysDiff; day++) {
-              const date = new Date(currentDate);
-              date.setDate(date.getDate() + day);
-
-              const ratio = day / daysDiff;
-              const interpolatedCash = current.cash + (next.cash - current.cash) * ratio;
-              const interpolatedHoldings = current.holdings + (next.holdings - current.holdings) * ratio;
-
-              filledData.push({
-                date: date.toISOString().split('T')[0],
-                cash: interpolatedCash,
-                holdings: interpolatedHoldings,
-                netWorth: interpolatedCash + interpolatedHoldings,
-              });
-            }
-          }
-
-          if (sortedData.length > 0) {
-            filledData.push(sortedData[sortedData.length - 1]);
-          }
-
-          userChartDataMap[user.name] = filledData;
+        });
+        
+        setUserPortfolios(portfolios);
+        
+        if (hasErrors && Object.keys(portfolios).length === 0) {
+          setError("Failed to load user data. Please try again later.");
+        } else if (hasErrors) {
+          setError("Some user data couldn't be loaded completely.");
+        } else {
+          setError(null);
         }
-
-        // Merge all user data into one array keyed by date
-        const dateMap: Record<string, any> = {};
-
-        for (const [username, data] of Object.entries(userChartDataMap)) {
-          for (const entry of data) {
-            if (!dateMap[entry.date]) {
-              dateMap[entry.date] = { date: entry.date };
-            }
-            dateMap[entry.date][username] = entry[chartView];
-          }
-        }
-
-        const merged = Object.values(dateMap).sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-
-        setMergedChartData(merged);
-      } catch (err) {
-        setError((err as Error).message);
+      } catch (e) {
+        if (!isMounted) return;
+        setError("Failed to load chart data. Please try again later.");
+        console.error("Chart data loading error:", e);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
-    };
-
-    if (topUsers.length > 0) {
-      fetchData();
     }
-  }, [topUsers, chartView]);
+    
+    if (topUsers.length > 0) {
+      fetchUserData();
+    }
+    
+    return () => { isMounted = false; };
+  }, [topUsers]);
 
-  const formatXAxis = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
+  // Prepare time-filtered data for chart
+  const chartData = useMemo(() => {
+    if (loading || Object.keys(userPortfolios).length === 0) return [];
+    
+    // Generate a combined dataset for all users
+    const activeUserIds = Object.keys(visibleUsers).filter(id => visibleUsers[id]);
+    
+    if (activeUserIds.length === 0) return [];
+    
+    // Find the earliest start date across all datasets
+    let earliestDate = new Date();
+    for (const userId of activeUserIds) {
+      const portfolio = userPortfolios[userId];
+      if (portfolio?.length > 0) {
+        const startDate = new Date(portfolio[0][0]);
+        if (startDate < earliestDate) earliestDate = startDate;
+      }
+    }
+    
+    // Apply time range filter
+    let startDate = earliestDate;
+    const now = new Date();
+    
+    switch (timeRange) {
+      case '1d':
+        startDate = subDays(now, 1);
+        break;
+      case '1w':
+        startDate = subDays(now, 7);
+        break;
+      case '1m':
+        startDate = subMonths(now, 1);
+        break;
+      case '3m':
+        startDate = subMonths(now, 3);
+        break;
+      case '6m':
+        startDate = subMonths(now, 6);
+        break;
+      case '1y':
+        startDate = subMonths(now, 12);
+        break;
+      // 'all' uses earliestDate as is
+    }
+    
+
+    // Generate all dates in range
+    const allDates: string[] = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= now) {
+      allDates.push(isoDate(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Create daily series for each user
+    const userSeries: Record<string, Record<string, number>> = {};
+    
+    for (const userId of activeUserIds) {
+      const portfolio = userPortfolios[userId];
+      if (!portfolio?.length) continue;
+      
+      const dailyValues: Record<string, number | null> = {};
+      
+      // Process time series data to get daily values
+      for (const [timestamp, balance] of portfolio) {
+        const dateStr = timestamp.slice(0, 10);
+        dailyValues[dateStr] = balance;
+      }
+      
+      const portfolioDates = portfolio.map(entry => entry[0].slice(0, 10)).sort();
+      const userFirstDate = portfolioDates[0];
+      const userLastDate = portfolioDates[portfolioDates.length - 1];
+      
+      for (const date of allDates) {
+
+        if (date < userFirstDate || date > userLastDate) {
+          dailyValues[date] = null;
+          continue;
+        }
+        
+        if (dailyValues[date] === undefined) {
+          const validDates = Object.keys(dailyValues)
+            .filter(d => d < date && dailyValues[d] !== null)
+            .sort();
+          
+          if (validDates.length > 0) {
+            dailyValues[date] = dailyValues[validDates[validDates.length - 1]];
+          } else {
+            const nextDates = portfolioDates.filter(d => d > date).sort();
+            if (nextDates.length > 0) {
+              dailyValues[date] = null;
+            } else {
+              dailyValues[date] = null;
+            }
+          }
+        }
+      }
+      
+      userSeries[userId] = Object.fromEntries(
+        Object.entries(dailyValues).map(([key, value]) => [key, value ?? 0])
+      );
+    }
+    
+    return allDates.map(date => {
+      const dataPoint: Record<string, any> = { date };
+      for (const userId of activeUserIds) {
+        const user = topUsers.find(u => u.id === userId);
+        if (user && userSeries[userId]?.[date] !== undefined) {
+          dataPoint[user.id] = userSeries[userId][date];
+          dataPoint[`${user.id}-name`] = user.name; 
+        }
+      }
+      return dataPoint;
+    });
+  }, [userPortfolios, visibleUsers, timeRange, loading, topUsers]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(value);
   };
 
-  const formatYAxis = (value: number) => {
-    return `$${Math.round(value / 1000)}k`;
-  };
-
-  const toggleUserVisibility = (userName: string) => {
-    setVisibleUsers(prev => ({
-      ...prev,
-      [userName]: !prev[userName]
-    }));
-  };
-
-  const toggleAllUsers = (visible: boolean) => {
-    const newVisibility = topUsers.reduce((acc, user) => {
-      acc[user.name] = visible;
-      return acc;
-    }, {} as Record<string, boolean>);
-    setVisibleUsers(newVisibility);
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      if (isValid(date)) {
+        return format(date, 'MMM d, yyyy');
+      }
+      return dateStr;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateStr;
+    }
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-gray-800 p-3 border border-gray-700 rounded shadow-lg">
-          <p className="text-white font-medium mb-2">{new Date(label).toLocaleDateString()}</p>
-          <div className="space-y-2">
-            {payload.map((entry: any, index: number) => {
-              const user = topUsers.find(u => u.name === entry.dataKey);
-              return (
-                <div key={index} className="flex items-center">
-                  {user && user.image && (
-                    <div className="h-5 w-5 rounded-full overflow-hidden mr-2 bg-gray-600">
-                      <Image 
-                        src={user.image} 
-                        alt={user.name}
-                        width={10}
-                        height={10}
-                        className="h-full w-full object-cover"
+        <div className="bg-gray-900 p-3 rounded-md shadow-lg border border-gray-700">
+          <p className="text-gray-300 mb-2">{formatDate(label)}</p>
+          <div className="space-y-1">
+            {payload
+              .sort((a: any, b: any) => b.value - a.value)
+              .map((entry: any, index: number) => {
+                const userId = entry.dataKey;
+                const userName = payload[0].payload[`${userId}-name`] || 'Unknown';
+                return (
+                  <div key={index} className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: entry.color }}
                       />
+                      <span className="text-white">{userName}</span>
                     </div>
-                  )}
-                  <span className="text-gray-200">{entry.dataKey}:</span>
-                  <span className="ml-2 text-blue-400 font-bold">
-                    ${entry.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-              );
-            })}
+                    <span className="font-medium text-white">{formatCurrency(entry.value)}</span>
+                  </div>
+                );
+              })
+            }
           </div>
         </div>
       );
@@ -257,152 +281,284 @@ const LeaderboardLineChart = ({ topUsers }: { topUsers: LeaderboardEntry[] }) =>
     return null;
   };
 
-  if (!isClient) return null;
+
+  
+  const toggleUser = (id: string) => {
+    setVisibleUsers(vis => ({ ...vis, [id]: !vis[id] }));
+  };
+  
+  const toggleAllUsers = (state: boolean) => {
+    const newVisibility: Record<string, boolean> = {};
+    topUsers.forEach(u => { newVisibility[u.id] = state });
+    setVisibleUsers(newVisibility);
+  };
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
-      {loading ? (
-        <div className="space-y-4">
-          <SkeletonLoader height="20px" width="150px" className="mb-2" />
-          <SkeletonLoader height="400px" />
-        </div>
-      ) : error ? (
-        <p className="text-red-400">{error}</p>
-      ) : (
-        <>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <h2 className="text-xl font-bold text-white">
-              {chartView === 'netWorth' ? 'Portfolio Net Worth' : 
-               chartView === 'cash' ? 'Cash Balance' : 'Holdings Value'}
-            </h2>
-            
-            <div className="inline-flex bg-gray-700 rounded-lg p-1">
-              {(['netWorth', 'cash', 'holdings'] as const).map((view) => (
-                <button
-                  key={view}
-                  onClick={() => setChartView(view)}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    chartView === view
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  {view === 'netWorth' ? 'Net Worth' :
-                    view === 'cash' ? 'Cash' : 'Holdings'}
-                </button>
-              ))}
-            </div>
+    <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-xl">
+      <div className="flex flex-wrap justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-white mb-2 md:mb-0">Portfolio Performance</h3>
+        
+        <div className="flex flex-wrap gap-2 items-center justify-end w-full md:w-auto">
+          <div className="bg-gray-700 rounded-lg p-1 flex flex-wrap text-sm">
+            <button 
+              onClick={() => setTimeRange('1d')}
+              className={`px-3 py-1 rounded-md ${timeRange === '1d' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              1D
+            </button>
+            <button 
+              onClick={() => setTimeRange('1w')}
+              className={`px-3 py-1 rounded-md ${timeRange === '1w' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              1W
+            </button>
+            <button 
+              onClick={() => setTimeRange('1m')}
+              className={`px-3 py-1 rounded-md ${timeRange === '1m' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              1M
+            </button>
+            <button 
+              onClick={() => setTimeRange('3m')}
+              className={`px-3 py-1 rounded-md ${timeRange === '3m' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              3M
+            </button>
+            <button 
+              onClick={() => setTimeRange('6m')}
+              className={`px-3 py-1 rounded-md ${timeRange === '6m' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              6M
+            </button>
+            <button 
+              onClick={() => setTimeRange('1y')}
+              className={`px-3 py-1 rounded-md ${timeRange === '1y' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              1Y
+            </button>
+            <button 
+              onClick={() => setTimeRange('all')}
+              className={`px-3 py-1 rounded-md ${timeRange === 'all' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              All
+            </button>
           </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSyncTooltips(!syncTooltips)}
+              className={`px-3 py-1 rounded-md ${syncTooltips ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+              title="Sync tooltips across the chart"
+            >
+              Sync
+            </button>
+            <button
+              onClick={() => setShowLegend(!showLegend)}
+              className={`px-3 py-1 rounded-md ${showLegend ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+              title="Show/hide chart legend"
+            >
+              Legend
+            </button>
+          </div>
+        </div>
+      </div>
 
-          <div className="mb-6">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="text-gray-300 text-sm mr-1">Toggle:</span>
+      {/* User toggles */}
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="text-white font-medium">Users</h4>
+          <div className="flex gap-2 text-xs">
+            <button 
+              onClick={() => toggleAllUsers(true)}
+              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+            >
+              Show All
+            </button>
+            <button 
+              onClick={() => toggleAllUsers(false)}
+              className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded"
+            >
+              Hide All
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          {topUsers.map((user, idx) => {
+            const colorIndex = idx % colorPalette.length;
+            return (
               <button
-                onClick={() => toggleAllUsers(true)}
-                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                key={user.id}
+                onClick={() => toggleUser(user.id)}
+                className={`flex items-center gap-2 p-2 rounded-lg text-left transition-all ${
+                  visibleUsers[user.id] 
+                    ? 'border-l-4' 
+                    : 'bg-gray-700 opacity-70'
+                }`}
+                style={{
+                  backgroundColor: visibleUsers[user.id] ? `${colorPalette[colorIndex]}20` : '',
+                  borderLeftColor: visibleUsers[user.id] ? colorPalette[colorIndex] : ''
+                }}
               >
-                All
-              </button>
-              <button
-                onClick={() => toggleAllUsers(false)}
-                className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-              >
-                None
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {topUsers.map((user, index) => (
-                <button
-                  key={user.id}
-                  onClick={() => toggleUserVisibility(user.name)}
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-all ${
-                    visibleUsers[user.name] 
-                      ? `bg-opacity-20 border ${user.name in visibleUsers ? 'opacity-100' : 'opacity-50'}`
-                      : `bg-gray-700 text-gray-400 opacity-50`
-                  }`}
-                  style={{
-                    backgroundColor: visibleUsers[user.name] ? `${colorPalette[index % colorPalette.length]}20` : '',
-                    borderColor: visibleUsers[user.name] ? colorPalette[index % colorPalette.length] : 'transparent'
-                  }}
-                >
+                <div className="relative flex-shrink-0">
                   {user.image ? (
-                    <div className="h-6 w-6 rounded-full overflow-hidden mr-2 bg-gray-600 ring-2 ring-offset-1 ring-offset-gray-800"
-                      style={{ 
-                        ringColor: visibleUsers[user.name] ? colorPalette[index % colorPalette.length] : 'gray' 
-                      }}>
-                      <Image 
-                        src={user.image} 
-                        alt={user.name}
-                        width={10}
-                        height={10}
-                        className="h-full w-full object-cover"
+                    <Image
+                      src={user.image}
+                      alt={user.name}
+                      width={24}
+                      height={24}
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">
+                      {user.name.charAt(0)}
+                    </div>
+                  )}
+                  {user.badgeImage && (
+                    <div className="absolute -bottom-1 -right-1">
+                      <Image
+                        src={user.badgeImage}
+                        alt="Badge"
+                        width={12}
+                        height={12}
+                        className="rounded-full"
                       />
                     </div>
-                  ) : (
-                    <span 
-                      className="w-6 h-6 rounded-full mr-2 flex items-center justify-center text-xs bg-gray-700"
-                      style={{ backgroundColor: colorPalette[index % colorPalette.length] }}
-                    >
-                      {user.name.charAt(0).toUpperCase()}
-                    </span>
                   )}
-                  <span className={visibleUsers[user.name] ? "text-white" : "text-gray-400"}>
-                    {user.name}
-                  </span>
-                </button>
-              ))}
+                </div>
+                <span className="text-white text-sm truncate">{user.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Chart container */}
+      <div className="relative h-80 md:h-96">
+        {loading && <SkeletonLoader />}
+        
+        {!loading && error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-lg">
+            <div className="text-center p-4">
+              <div className="text-red-400 mb-2">⚠️ {error}</div>
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm"
+              >
+                Retry
+              </button>
             </div>
           </div>
-
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mergedChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fill: '#9CA3AF' }} 
-                  tickFormatter={formatXAxis} 
-                  minTickGap={50}
-                  axisLine={{ stroke: '#4B5563' }}
-                  tickLine={{ stroke: '#4B5563' }}
-                  padding={{ left: 20, right: 20 }}
-                />
-                <YAxis 
-                  tick={{ fill: '#9CA3AF' }} 
-                  tickFormatter={formatYAxis}
-                  axisLine={{ stroke: '#4B5563' }}
-                  tickLine={{ stroke: '#4B5563' }}
-                  width={60}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                
-                {topUsers.map((user, index) => (
-                  visibleUsers[user.name] && (
-                    <Line
-                      key={user.name}
-                      type="monotone"
-                      dataKey={user.name}
-                      name={user.name}
-                      stroke={colorPalette[index % colorPalette.length]}
-                      strokeWidth={3}
-                      dot={false}
-                      activeDot={{ 
-                        r: 6, 
-                        stroke: '#1F2937', 
-                        strokeWidth: 2,
-                        fill: colorPalette[index % colorPalette.length]
-                      }}
-                    />
-                  )
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+        )}
+        
+        {!loading && !error && chartData.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-gray-400">No data available</p>
           </div>
-        </>
-      )}
+        )}
+        
+        {!loading && !error && chartData.length > 0 && (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis 
+                dataKey="date" 
+                stroke="rgba(255,255,255,0.7)"
+                tickFormatter={(tick) => {
+                  const date = new Date(tick);
+                  const rangeTickFormat = timeRange === '1d' ? 'HH:mm' : 
+                                        timeRange === '1w' ? 'MMM d' :
+                                        timeRange === '1m' ? 'MMM d' :
+                                        'MMM yyyy';
+                  return format(date, rangeTickFormat);
+                }}
+              />
+              <YAxis 
+                stroke="rgba(255,255,255,0.7)"
+                tickFormatter={(tick) => {
+                  if (tick >= 1000000) return `$${(tick/1000000).toFixed(1)}M`;
+                  if (tick >= 1000) return `$${(tick/1000).toFixed(1)}K`;
+                  return `$${tick}`;
+                }}
+              />
+              <Tooltip 
+                content={<CustomTooltip />}
+                isAnimationActive={false}
+              />
+              {showLegend && (
+                <Legend 
+                  layout="horizontal"
+                  verticalAlign="top"
+                  align="center"
+                  wrapperStyle={{ paddingBottom: '10px' }}
+                />
+              )}
+              {topUsers
+                .filter(user => visibleUsers[user.id])
+                .map((user, idx) => {
+                  const colorIndex = idx % colorPalette.length;
+                  return (
+                    <Line
+                      key={user.id}
+                      type="monotone"
+                      dataKey={user.id}
+                      name={user.name}
+                      stroke={colorPalette[colorIndex]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 6, fill: colorPalette[colorIndex], stroke: 'white' }}
+                      isAnimationActive={false}
+                      connectNulls={false}
+                    />
+                  );
+                })
+              }
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Portfolio stats */}
+      <div className="mt-4 bg-gray-700 rounded-lg p-3">
+        {visibleUsers && Object.keys(visibleUsers).filter(id => visibleUsers[id]).length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {topUsers
+              .filter(user => visibleUsers[user.id])
+              .slice(0, 3)
+              .map((user, idx) => {
+                const colorIndex = idx % colorPalette.length;
+                const latestData = chartData.length > 0 ? chartData[chartData.length - 1][user.id] : null;
+                const firstData = chartData.length > 0 ? chartData[0][user.id] : null;
+                const percentChange = (firstData && latestData) 
+                  ? ((latestData - firstData) / firstData * 100) 
+                  : 0;
+                
+                return (
+                  <div key={user.id} className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colorPalette[colorIndex] }} />
+                      <span className="text-white font-medium">{user.name}</span>
+                    </div>
+                    <div className="text-lg font-bold text-white">
+                      {latestData ? formatCurrency(latestData) : 'N/A'}
+                    </div>
+                    {firstData && latestData && (
+                      <div className={`text-sm ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {percentChange >= 0 ? '↑' : '↓'} {Math.abs(percentChange).toFixed(2)}%
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            }
+          </div>
+        ) : (
+          <p className="text-gray-400 text-center">Select users to view portfolio stats</p>
+        )}
+      </div>
     </div>
   );
-};
-
-export default LeaderboardLineChart;
+}
