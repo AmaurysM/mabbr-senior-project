@@ -36,6 +36,7 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       // Fetch user's purchased tickets - include both scratched and unscratched tickets
       const response = await fetch('/api/users/scratch-tickets?includeScratched=true', {
         credentials: 'include',
+        cache: 'no-store', // Prevent caching to ensure fresh data
       });
       
       if (response.ok) {
@@ -165,6 +166,9 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
         title: "Success!",
         description: `You purchased a ${purchasedTicket?.name || "scratch ticket"}!`,
       });
+
+      // Refresh tickets to ensure UI is up to date
+      checkPurchasedTickets();
 
       // Notify other components about the purchase
       if (typeof window !== 'undefined') {

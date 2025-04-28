@@ -110,7 +110,7 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
   // Function to handle play action (redirects to scratch off page)
   const playTicket = (ticketId: string) => {
     try {
-      window.location.href = `/games/scratch-offs/play?id=${ticketId}`;
+      window.location.href = `/games/scratch-offs/play?ticketId=${ticketId}`;
     } catch (error) {
       console.error("Error navigating to play page:", error);
       setLoadingError("Failed to navigate to the game page. Please try again.");
@@ -155,44 +155,22 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
     );
   }
 
-  if (purchasedTickets.length === 0) {
-    return (
-      <div id="my-tickets-section" className="w-full bg-gray-800 p-6 mb-6 rounded-lg">
-        <h2 className="text-2xl font-bold text-white mb-4">My Tickets</h2>
-        <div className="text-center p-8 border border-gray-700 rounded-lg bg-gray-800/50">
-          <p className="text-gray-400">You don't have any scratch tickets yet. Purchase some from the shop below!</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div id="my-tickets-section" className="w-full bg-gray-800 p-6 mb-6 rounded-lg">
       <h2 className="text-2xl font-bold text-white mb-4">My Tickets</h2>
       
-      {Object.entries(ticketGroups).map(([type, tickets]) => (
-        <div key={type} className="mb-6 last:mb-0">
-          <h3 className="text-xl font-semibold text-white mb-3 capitalize">{type} Tickets</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {tickets.map((ticket) => (
-              <div key={ticket.id} className="relative">
-                <div 
-                  onClick={() => playTicket(ticket.id)}
-                  className="cursor-pointer transform transition hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <OwnedScratchTicket userTicket={ticket} onClick={() => playTicket(ticket.id)} />
-                </div>
-                <button
-                  onClick={() => playTicket(ticket.id)}
-                  className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-md transition-colors"
-                >
-                  Play Now
-                </button>
-              </div>
-            ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {tickets.map((ticket) => (
+          <div key={ticket.id} className="relative">
+            <div 
+              onClick={() => playTicket(ticket.id)}
+              className="cursor-pointer transform transition hover:-translate-y-1 hover:shadow-lg"
+            >
+              <OwnedScratchTicket userTicket={ticket} onClick={() => playTicket(ticket.id)} />
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
