@@ -6,6 +6,7 @@ import * as React from "react"
 type ToastProps = {
   title?: React.ReactNode
   description?: React.ReactNode
+  duration?: number
   action?: {
     label: string
     onClick: () => void

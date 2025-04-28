@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import LoadingStateAnimation from "@/app/components/LoadingState";
 import { getTicketTypeStyles } from "@/app/components/ScratchTicketTile";
@@ -546,7 +546,8 @@ const checkWinningPatterns = (grid: ScratchCell[]): {
   };
 };
 
-const ScratchOffPlay = () => {
+// Create a separate component that uses useSearchParams
+const ScratchOffPlayContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const ticketId = searchParams.get("ticketId");
@@ -627,10 +628,11 @@ const ScratchOffPlay = () => {
         
         // Generate grid based on ticket type
         setGrid(generateGrid(data.ticket.type, data.isBonus));
+        
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching scratch ticket:", error);
         setError("Failed to load your scratch ticket. Please try again later.");
-      } finally {
         setLoading(false);
       }
     };
@@ -1457,6 +1459,15 @@ const ScratchOffPlay = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Main component that renders the content inside a Suspense boundary
+const ScratchOffPlay = () => {
+  return (
+    <Suspense fallback={<div className="w-full h-screen flex justify-center items-center"><LoadingStateAnimation /></div>}>
+      <ScratchOffPlayContent />
+    </Suspense>
   );
 };
 
