@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect, lazy } from "react";
 import { ScratchTicket } from "@/app/components/ScratchTicketTile";
 import ScratchTicketShop from "./shop/ScratchTicketShop";
 import UserTicketsList from "./user-tickets/UserTicketsList";
@@ -141,8 +141,18 @@ export default function ScratchOffs() {
   const [purchasedTickets, setPurchasedTickets] = useState<UserScratchTicket[]>([]);
   const [userTokens, setUserTokens] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [hasError, setHasError] = useState<string | null>(null);
+  
   const { toast } = useToast();
   const { data: session } = authClient.useSession();
+  
+  // Dynamic import of fallback component
+  const ScratchOffsFallback = lazy(() => import('./ScratchOffsFallback'));
+  
+  const handlePageRetry = () => {
+    setHasError(null);
+    window.location.reload();
+  };
   
   // Load purchased tickets from localStorage and the API
   useEffect(() => {
@@ -211,6 +221,11 @@ export default function ScratchOffs() {
         }
       } catch (error) {
         console.error('Error fetching daily shop:', error);
+        
+        if (error instanceof Error && error.message.includes('500')) {
+          // Set error state for server errors
+          setHasError("We're having trouble connecting to the shop right now. Please try again later.");
+        }
         
         // Fallback to local generation if API fails
         let shopData: ScratchTicket[] = [];
@@ -486,25 +501,30 @@ export default function ScratchOffs() {
         credentials: 'include',
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.tickets && Array.isArray(data.tickets)) {
-          // Filter out played tickets and deduplicate by ID
-          const activeTickets = data.tickets
-            .filter((ticket: { scratched: boolean }) => !ticket.scratched)
-            .reduce((acc: any[], ticket: any) => {
-              // Check if we already have this ticket ID
-              if (!acc.some((t: any) => t.id === ticket.id)) {
-                acc.push(ticket);
-              }
-              return acc;
-            }, []);
-          
-          setPurchasedTickets(activeTickets);
-          return;
+      if (!response.ok) {
+        // Set error for server errors
+        if (response.status === 500) {
+          console.error('Server error fetching tickets:', response.status, response.statusText);
+          setHasError("We're having trouble loading your scratch tickets. Please try again later.");
+          throw new Error('Failed to fetch tickets from API');
         }
-      } else {
-        throw new Error('Failed to fetch tickets from API');
+      }
+      
+      const data = await response.json();
+      if (data.tickets && Array.isArray(data.tickets)) {
+        // Filter out played tickets and deduplicate by ID
+        const activeTickets = data.tickets
+          .filter((ticket: { scratched: boolean }) => !ticket.scratched)
+          .reduce((acc: any[], ticket: any) => {
+            // Check if we already have this ticket ID
+            if (!acc.some((t: any) => t.id === ticket.id)) {
+              acc.push(ticket);
+            }
+            return acc;
+          }, []);
+        
+        setPurchasedTickets(activeTickets);
+        return;
       }
     } catch (error) {
       console.error('Error fetching user tickets:', error);
@@ -531,11 +551,32 @@ export default function ScratchOffs() {
             setPurchasedTickets(activeTickets);
           } catch (error) {
             console.error('Error parsing saved tickets:', error);
+            setPurchasedTickets([]);
           }
         }
       }
     }
   };
+  
+  if (hasError) {
+    return (
+      <React.Suspense fallback={
+        <div className="space-y-6 max-w-screen-2xl mx-auto px-4 py-8">
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-white mb-4">Scratch Offs</h1>
+          </div>
+          <div className="bg-gray-800 p-6 rounded-lg text-white text-center">
+            Loading...
+          </div>
+        </div>
+      }>
+        <ScratchOffsFallback 
+          onRetry={handlePageRetry} 
+          errorMessage={hasError}
+        />
+      </React.Suspense>
+    );
+  }
   
   return (
     <div className="space-y-6 max-w-screen-2xl mx-auto px-4">

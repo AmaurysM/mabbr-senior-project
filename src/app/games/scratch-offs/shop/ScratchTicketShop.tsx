@@ -110,7 +110,13 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
         return; // Silently return without showing error toast
       }
       
-      const response = await fetch(`/api/users/scratch-tickets?id=${ticketId}`, {
+      // Set a timeout to prevent indefinite loading state
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Request timed out. Please try again.")), 10000);
+      });
+      
+      // Attempt to purchase the ticket
+      const fetchPromise = fetch(`/api/users/scratch-tickets?id=${ticketId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -121,9 +127,22 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
           name: ticketToBuy.name
         })
       });
+      
+      // Race between the fetch and the timeout
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Purchase failed");
+      // Check if response is ok
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Error response:", errorData);
+        throw new Error(errorData.error || `Server error (${response.status})`);
+      }
+
+      const data = await response.json().catch(() => ({ error: "Failed to parse response" }));
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
       // Check if the API returned an "already own" message - in this case, just close silently
       if (data.message && data.message.includes("already own")) {
