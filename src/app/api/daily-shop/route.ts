@@ -25,6 +25,8 @@ function createSeededRandom(seed: number) {
 
 // Generate a daily shop of tickets with randomized rarities
 function generateDailyShop(): ScratchTicket[] {
+  console.log('[API DAILY-SHOP] Generating a new shop');
+  
   // Create a daily seed based on the current date for consistent shop across users
   const now = new Date();
   const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
@@ -72,10 +74,12 @@ function generateDailyShop(): ScratchTicket[] {
   
   // Verify that probabilities sum to 100%
   const totalChance = ticketTypes.reduce((sum, type) => sum + type.chance, 0);
-  console.log(`Total chance: ${totalChance}%`); // Should be 100%
+  console.log(`[API DAILY-SHOP] Total chance: ${totalChance}%`); // Should be 100%
   
-  // Generate 12 random tickets for the shop (increased from 8)
-  const totalShopSlots = 12;
+  // HARD-CODE THE SHOP SIZE TO ENSURE CONSISTENCY
+  const TOTAL_SHOP_SLOTS = 12;
+  console.log(`[API DAILY-SHOP] Creating shop with ${TOTAL_SHOP_SLOTS} tickets`);
+  
   const shopTickets: ScratchTicket[] = [];
   
   // Create a function to select a random ticket type based on weighted chances
@@ -95,7 +99,7 @@ function generateDailyShop(): ScratchTicket[] {
   };
   
   // Fill the shop with random tickets
-  for (let i = 0; i < totalShopSlots; i++) {
+  for (let i = 0; i < TOTAL_SHOP_SLOTS; i++) {
     const selectedTicketType = selectRandomTicketType();
     
     // Determine if this is a bonus ticket (25% chance)
@@ -116,14 +120,42 @@ function generateDailyShop(): ScratchTicket[] {
     });
   }
   
+  // Verify the length of the shop
+  console.log(`[API DAILY-SHOP] Generated ${shopTickets.length} tickets`);
+  
   // Log the distribution of tickets for verification
   const distribution = shopTickets.reduce((acc: any, ticket) => {
     acc[ticket.type] = (acc[ticket.type] || 0) + 1;
     return acc;
   }, {});
   
-  console.log('Daily shop distribution:', distribution);
-  console.log('Bonus tickets:', shopTickets.filter(t => t.isBonus).length);
+  console.log('[API DAILY-SHOP] Distribution:', distribution);
+  console.log('[API DAILY-SHOP] Bonus tickets:', shopTickets.filter(t => t.isBonus).length);
+  
+  // Ensure the shop has EXACTLY the right number of tickets
+  if (shopTickets.length !== TOTAL_SHOP_SLOTS) {
+    console.warn(`[API DAILY-SHOP] Wrong number of tickets: ${shopTickets.length}, fixing...`);
+    
+    // If we have too many, remove extras
+    if (shopTickets.length > TOTAL_SHOP_SLOTS) {
+      shopTickets.splice(TOTAL_SHOP_SLOTS);
+    }
+    
+    // If we have too few, add more of the default token tickets
+    while (shopTickets.length < TOTAL_SHOP_SLOTS) {
+      shopTickets.push({
+        id: `tokens-${generateUUID()}`,
+        name: "Golden Fortune",
+        price: 25,
+        type: "tokens",
+        description: "Win tokens! Try your luck with this golden ticket.",
+        createdAt: new Date().toISOString(),
+        isBonus: false
+      });
+    }
+    
+    console.log(`[API DAILY-SHOP] Fixed shop size: ${shopTickets.length}`);
+  }
   
   return shopTickets;
 }
@@ -132,16 +164,21 @@ function generateDailyShop(): ScratchTicket[] {
 // Get the daily scratch ticket shop that's consistent for all users
 export async function GET() {
   try {
+    console.log('[API DAILY-SHOP] GET request received');
+    
     // Generate the daily shop data based on today's date
     const shopTickets = generateDailyShop();
     
+    const dayKey = getDayKey();
+    console.log(`[API DAILY-SHOP] Returning shop for day: ${dayKey} with ${shopTickets.length} tickets`);
+    
     // Return the shop tickets
     return NextResponse.json({
-      dayKey: getDayKey(),
+      dayKey: dayKey,
       tickets: shopTickets
     });
   } catch (error) {
-    console.error("Error generating daily shop:", error);
+    console.error("[API DAILY-SHOP] Error generating daily shop:", error);
     return NextResponse.json(
       { error: "Failed to generate daily shop" },
       { status: 500 }

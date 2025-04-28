@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 
 interface UserTicketsListProps {
   // This is now optional and used as fallback
-  purchasedTickets?: any[];
+  purchasedTickets?: UserScratchTicket[];
 }
 
 const UserTicketsList: React.FC<UserTicketsListProps> = ({ 
@@ -21,16 +21,36 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
   const { data: session } = authClient.useSession();
   const [loadingError, setLoadingError] = useState<string | null>(null);
   
+  // Handle tickets passed as props
+  useEffect(() => {
+    if (purchasedTickets.length > 0) {
+      console.log("UserTicketsList: received purchasedTickets via props:", purchasedTickets.length);
+      // If we have tickets from props, use them
+      setTickets(purchasedTickets);
+      setLoading(false);
+    }
+  }, [purchasedTickets]);
+  
   useEffect(() => {
     const fetchTickets = async () => {
+      if (loading) {
+        console.log("UserTicketsList: fetching tickets from API");
+      }
       setLoading(true);
       try {
-        const response = await fetch("/api/users/scratch-tickets");
+        const response = await fetch("/api/users/scratch-tickets", {
+          credentials: 'include',
+          cache: 'no-store' // Prevent caching to ensure fresh data
+        });
+        
         if (!response.ok) {
+          console.error("UserTicketsList: API error response:", response.status, response.statusText);
           throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
+        console.log("UserTicketsList: received tickets from API:", data?.tickets?.length || 0);
+        
         // Parse the tickets from the API response
         if (data.tickets && Array.isArray(data.tickets)) {
           // Deduplicate tickets by ID
@@ -44,33 +64,54 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
           
           setTickets(uniqueTickets);
         } else {
+          console.log("UserTicketsList: No tickets found in API response");
           setTickets([]);
         }
       } catch (error) {
-        console.error("Error fetching scratch tickets:", error);
+        console.error("UserTicketsList: Error fetching scratch tickets:", error);
         setError("Failed to load your scratch tickets. Please try again later.");
+        
+        // If API fails but we have purchasedTickets, use those as fallback
+        if (purchasedTickets.length > 0) {
+          console.log("UserTicketsList: Using purchasedTickets as fallback after API error");
+          setTickets(purchasedTickets);
+        }
       } finally {
         setLoading(false);
       }
     };
     
-    fetchTickets();
+    // Only fetch if we have a session and no tickets from props
+    if (session?.user?.id) {
+      fetchTickets();
+    }
     
-    // Set up event listener for ticket updates
-    const handleStorageChange = (e: StorageEvent) => {
+    // Set up event listeners for ticket updates
+    const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'tickets-updated') {
+        console.log("UserTicketsList: Storage event triggered refresh");
         fetchTickets();
       }
     };
     
-    window.addEventListener('storage', handleStorageChange);
+    // Custom event handler for ticket updates
+    const handleTicketsUpdated = () => {
+      console.log("UserTicketsList: Custom event triggered refresh");
+      fetchTickets();
+    };
+    
+    // Add both storage and custom event listeners
+    window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('tickets-updated', handleTicketsUpdated as EventListener);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('tickets-updated', handleTicketsUpdated as EventListener);
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, purchasedTickets]);
 
-  if (loading && tickets.length === 0) {
+  // Show loading state only when we have no tickets and are still loading
+  if (loading && tickets.length === 0 && purchasedTickets.length === 0) {
     return (
       <div className="w-full bg-gray-800 p-6 mb-8 flex justify-center items-center h-40">
         <LoadingStateAnimation />
@@ -79,10 +120,20 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
   }
     
   if (error) {
-    console.error("Error fetching scratch tickets:", error);
+    console.error("UserTicketsList: Error fetching scratch tickets:", error);
   }
+  
+  // Combine tickets from API and props, removing duplicates
+  const allTickets = [...tickets];
+  
+  // Add any tickets from props that aren't already in the API-fetched tickets
+  purchasedTickets.forEach(propTicket => {
+    if (!allTickets.some(t => t.id === propTicket.id)) {
+      allTickets.push(propTicket);
+    }
+  });
     
-  if (tickets.length === 0) {
+  if (allTickets.length === 0) {
     return (
       <div className="w-full bg-gray-800 p-6 mb-8">
         <h2 className="text-2xl font-bold text-white mb-2">My Tickets</h2>
@@ -91,48 +142,16 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
     );
   }
 
-  const handleTicketClick = (ticketId: string) => {
-    // Check if we have saved results for this ticket
-    if (typeof window !== 'undefined') {
-      // First check if the ticket has saved results (was already revealed)
-      const savedResults = localStorage.getItem(`ticket-result-${ticketId}`);
-      if (savedResults) {
-        // If ticket was already revealed, still allow viewing it
-        router.push(`/games/scratch-offs/play?ticketId=${ticketId}`);
-        return;
-      }
-    }
-    
-    // If no saved results, proceed to play
-    router.push(`/games/scratch-offs/play?ticketId=${ticketId}`);
-  };
-
   // Function to handle play action (redirects to scratch off page)
   const playTicket = (ticketId: string) => {
     try {
+      console.log("UserTicketsList: Playing ticket:", ticketId);
       window.location.href = `/games/scratch-offs/play?ticketId=${ticketId}`;
     } catch (error) {
-      console.error("Error navigating to play page:", error);
+      console.error("UserTicketsList: Error navigating to play page:", error);
       setLoadingError("Failed to navigate to the game page. Please try again.");
     }
   };
-
-  // Group tickets by type for presentation
-  const groupTicketsByType = () => {
-    const groups: Record<string, UserScratchTicket[]> = {};
-    
-    tickets.forEach(ticket => {
-      const type = ticket.ticket?.type || 'unknown';
-      if (!groups[type]) {
-        groups[type] = [];
-      }
-      groups[type].push(ticket);
-    });
-    
-    return groups;
-  };
-  
-  const ticketGroups = groupTicketsByType();
 
   // If there's an error, show a friendly error message with retry option
   if (loadingError) {
@@ -160,7 +179,7 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
       <h2 className="text-2xl font-bold text-white mb-4">My Tickets</h2>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {tickets.map((ticket) => (
+        {allTickets.map((ticket) => (
           <div key={ticket.id} className="relative">
             <div 
               onClick={() => playTicket(ticket.id)}

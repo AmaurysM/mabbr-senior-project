@@ -28,6 +28,8 @@ function createSeededRandom(seed: number) {
 
 // Generate a daily shop of tickets with randomized rarities
 const generateDailyShop = (): ScratchTicket[] => {
+  console.log('Generating local daily shop');
+  
   // Create a daily seed based on the current date for consistent shop across users
   const now = new Date();
   const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
@@ -76,8 +78,10 @@ const generateDailyShop = (): ScratchTicket[] => {
   const totalChance = ticketTypes.reduce((sum, type) => sum + type.chance, 0);
   console.log(`Total chance: ${totalChance}%`); // Should be 100%
   
-  // Generate 12 random tickets for the shop (was previously 8)
-  const totalShopSlots = 12;
+  // IMPORTANT: Hard-code shop size to ensure consistency between environments
+  const TOTAL_SHOP_SLOTS = 12; // Always generate exactly 12 tickets
+  console.log(`Creating shop with ${TOTAL_SHOP_SLOTS} tickets`);
+  
   const shopTickets: ScratchTicket[] = [];
   
   // Create a function to select a random ticket type based on weighted chances
@@ -97,7 +101,7 @@ const generateDailyShop = (): ScratchTicket[] => {
   };
   
   // Fill the shop with random tickets
-  for (let i = 0; i < totalShopSlots; i++) {
+  for (let i = 0; i < TOTAL_SHOP_SLOTS; i++) {
     const selectedTicketType = selectRandomTicketType();
     
     // Determine if this is a bonus ticket (25% chance)
@@ -118,6 +122,9 @@ const generateDailyShop = (): ScratchTicket[] => {
     });
   }
   
+  // Verify the length of the shop
+  console.log(`Generated ${shopTickets.length} tickets`);
+  
   // Log the distribution of tickets for verification
   const distribution = shopTickets.reduce((acc: any, ticket) => {
     acc[ticket.type] = (acc[ticket.type] || 0) + 1;
@@ -126,6 +133,31 @@ const generateDailyShop = (): ScratchTicket[] => {
   
   console.log('Daily shop distribution:', distribution);
   console.log('Bonus tickets:', shopTickets.filter(t => t.isBonus).length);
+  
+  // Ensure the shop has EXACTLY the right number of tickets
+  if (shopTickets.length !== TOTAL_SHOP_SLOTS) {
+    console.warn(`Wrong number of tickets: ${shopTickets.length}, fixing...`);
+    
+    // If we have too many, remove extras
+    if (shopTickets.length > TOTAL_SHOP_SLOTS) {
+      shopTickets.splice(TOTAL_SHOP_SLOTS);
+    }
+    
+    // If we have too few, add more of the default token tickets
+    while (shopTickets.length < TOTAL_SHOP_SLOTS) {
+      shopTickets.push({
+        id: `tokens-${generateUUID()}`,
+        name: "Golden Fortune",
+        price: 25,
+        type: "tokens",
+        description: "Win tokens! Try your luck with this golden ticket.",
+        createdAt: new Date().toISOString(),
+        isBonus: false
+      });
+    }
+    
+    console.log(`Fixed shop size: ${shopTickets.length}`);
+  }
   
   return shopTickets;
 };

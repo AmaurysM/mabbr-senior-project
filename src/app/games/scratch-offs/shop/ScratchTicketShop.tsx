@@ -187,11 +187,13 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       const purchasedTicket = updatedTickets.find(ticket => ticket.id === ticketId);
       if (purchasedTicket && onPurchase) {
         console.log("Calling onPurchase with ticket:", purchasedTicket);
+        // Call the parent's onPurchase handler to update ticket lists
         onPurchase(purchasedTicket);
       } else {
         console.warn("Not calling onPurchase:", !!purchasedTicket, !!onPurchase);
       }
 
+      // Show success toast
       toast({
         title: "Success!",
         description: `You purchased a ${purchasedTicket?.name || "scratch ticket"}!`,
@@ -201,27 +203,31 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       console.log("Refreshing purchased tickets");
       await checkPurchasedTickets();
 
-      // Notify other components about the purchase
+      // Notify other components about the purchase using both events
       if (typeof window !== 'undefined') {
-        const timestamp = Date.now().toString();
-        console.log("Updating localStorage with timestamp:", timestamp);
-        localStorage.setItem('tickets-updated', timestamp);
-        
-        // Trigger both storage event and custom event for better compatibility
+        // First try custom event
         try {
+          console.log("Dispatching custom event");
+          window.dispatchEvent(new CustomEvent('tickets-updated'));
+        } catch (eventError) {
+          console.error("Error dispatching custom event:", eventError);
+        }
+        
+        // Then try storage event as backup
+        try {
+          const timestamp = Date.now().toString();
+          console.log("Setting localStorage and dispatching storage event");
+          localStorage.setItem('tickets-updated', timestamp);
           window.dispatchEvent(new StorageEvent('storage', {
             key: 'tickets-updated',
             newValue: timestamp
           }));
-          console.log("Storage event dispatched");
-          
-          window.dispatchEvent(new CustomEvent('tickets-updated'));
-          console.log("Custom event dispatched");
         } catch (eventError) {
-          console.error("Error dispatching events:", eventError);
+          console.error("Error dispatching storage event:", eventError);
         }
       }
 
+      // Close modal
       setSelectedTicket(null);
     } catch (error: any) {
       console.error("Error buying scratch ticket:", error);
@@ -240,8 +246,10 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
     // Close ticket details modal
     setSelectedTicket(null);
     
-    // Call parent handler for purchase
-    onPurchase?.(ticket);
+    // Call buyTicket directly instead of onPurchase to ensure consistent behavior
+    buyTicket(ticket.id).catch(error => {
+      console.error("Error in handlePurchaseClick:", error);
+    });
     
     // Scroll to the My Tickets section after a short delay
     setTimeout(() => {
