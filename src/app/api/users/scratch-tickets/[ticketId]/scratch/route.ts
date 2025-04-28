@@ -7,7 +7,7 @@ import { headers } from "next/headers";
 // Mark a scratch ticket as scratched
 export async function POST(
   request: NextRequest,
-  { params }: { params: { ticketId: string } }
+  context: { params: { ticketId: string } }
 ) {
   try {
     // Get authenticated session first
@@ -22,8 +22,15 @@ export async function POST(
       );
     }
 
-    // Get the ticketId from the route params - await params first
-    const { ticketId } = await params;
+    // Properly access the dynamic route params in Next.js App Router
+    const { ticketId } = context.params;
+    
+    if (!ticketId) {
+      return NextResponse.json(
+        { error: "Invalid ticket ID" },
+        { status: 400 }
+      );
+    }
     
     // Update the ticket in the database - use the camelCase name
     const updatedTicket = await (prisma as any).userScratchTicket.update({

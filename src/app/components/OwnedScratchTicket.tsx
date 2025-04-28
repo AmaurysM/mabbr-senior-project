@@ -1,7 +1,10 @@
 "use client";
 
 import React from "react";
-import { getTicketTypeStyles, ScratchTicket, TicketType } from "./ScratchTicketTile";
+import { getTicketTypeStyles, ScratchTicket } from "./ScratchTicketTile";
+
+// Define ScratchTicketType since we can't import from Prisma directly in client components
+type ScratchTicketType = 'tokens' | 'money' | 'stocks' | 'random' | 'diamond';
 
 export interface UserScratchTicket {
   id: string;
@@ -10,12 +13,22 @@ export interface UserScratchTicket {
   purchased: boolean;
   scratched: boolean;
   createdAt: string;
+  scratchedAt?: string;
   isBonus?: boolean;
+  dayKey: string;
+  shopTicketId?: string; // ID of the ticket in the daily shop UI (for purchase tracking)
+  prizeTokens?: number;
+  prizeCash?: number;
+  prizeStocks?: number;
+  prizeStockShares?: any;
   ticket: {
     id: string;
     name: string;
-    type: TicketType;
+    type: ScratchTicketType;
     price: number;
+    description?: string;
+    isDailyShop?: boolean;
+    dayKey?: string;
   };
 }
 
