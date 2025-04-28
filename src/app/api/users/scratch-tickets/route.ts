@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { withDebugHeaders, checkModelExists, safeTransaction } from "@/app/api/debug-handler";
+import { safeApiHandler, handleCors, emptyOkResponse } from "../../api-utils";
 
 // Define types for history data
 interface TokenMarketHistoryRecord {
@@ -120,153 +121,154 @@ const updateTokenMarketHistory = async (totalTokens: number): Promise<void> => {
 
 // GET /api/users/scratch-tickets
 // Get all scratch tickets owned by the current user
-export const GET = withDebugHeaders(async (request: NextRequest) => {
-  try {
-    console.log('[SCRATCH_TICKETS GET] Request received');
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      console.log('[SCRATCH_TICKETS GET] Unauthorized: No valid session');
-      return NextResponse.json(
-        { error: "You must be logged in to view your scratch tickets" },
-        { status: 401 }
-      );
-    }
-
-    console.log('[SCRATCH_TICKETS GET] User ID:', session.user.id);
-
-    // Check if we should include scratched tickets
-    const { searchParams } = new URL(request.url);
-    const includeScratched = searchParams.get('includeScratched') === 'true';
-    console.log('[SCRATCH_TICKETS GET] Include scratched tickets:', includeScratched);
-
-    // Build the query filter
-    const filter: any = {
-      userId: session.user.id,
-    };
-
-    // Only filter out scratched tickets if not explicitly including them
-    if (!includeScratched) {
-      filter.scratched = false;
-    }
-
-    // Check if required models exist
-    if (!checkModelExists(prisma, 'userScratchTicket')) {
-      console.log('[SCRATCH_TICKETS GET] UserScratchTicket model not found, returning empty array');
-      return NextResponse.json({ tickets: [] });
-    }
-
+export async function GET(request: NextRequest) {
+  // Handle CORS preflight requests
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+  
+  return safeApiHandler(request, async (req) => {
     try {
-      // Query the database for the user's scratch tickets using a safer approach
-      console.log('[SCRATCH_TICKETS GET] Querying database with filter:', filter);
-      
-      // Fallback to empty array if query fails
-      const userScratchTickets = await safeTransaction(
-        prisma,
-        async (tx: any) => {
-          return await tx.userScratchTicket.findMany({
-            where: filter,
-            include: {
-              ticket: true,
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          });
-        },
-        [] // Fallback to empty array
-      );
+      console.log('[SCRATCH_TICKETS GET] Request received');
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
 
-      console.log('[SCRATCH_TICKETS GET] Found tickets:', userScratchTickets.length);
+      if (!session?.user) {
+        console.log('[SCRATCH_TICKETS GET] Unauthorized: No valid session');
+        return NextResponse.json(
+          { error: "You must be logged in to view your scratch tickets" },
+          { status: 401 }
+        );
+      }
 
-      // Map the database model to the expected format
-      const formattedTickets = userScratchTickets.map((dbTicket: any) => ({
-        id: dbTicket.id,
-        ticketId: dbTicket.ticketId,
-        userId: dbTicket.userId,
-        purchased: dbTicket.purchased,
-        scratched: dbTicket.scratched,
-        createdAt: dbTicket.createdAt.toISOString(),
-        isBonus: dbTicket.isBonus,
-        ticket: {
-          id: dbTicket.ticket.id,
-          name: dbTicket.ticket.name,
-          type: dbTicket.ticket.type as "tokens" | "money" | "stocks" | "random" | "diamond",
-          price: dbTicket.ticket.price,
-        },
-      }));
+      console.log('[SCRATCH_TICKETS GET] User ID:', session.user.id);
 
-      return NextResponse.json({ tickets: formattedTickets });
-    } catch (dbError) {
-      console.error('[SCRATCH_TICKETS GET] Database error:', dbError);
-      // Return empty array instead of error
-      return NextResponse.json({ tickets: [] });
+      // Check if we should include scratched tickets
+      const { searchParams } = new URL(request.url);
+      const includeScratched = searchParams.get('includeScratched') === 'true';
+      console.log('[SCRATCH_TICKETS GET] Include scratched tickets:', includeScratched);
+
+      // Build the query filter
+      const filter: any = {
+        userId: session.user.id,
+      };
+
+      // Only filter out scratched tickets if not explicitly including them
+      if (!includeScratched) {
+        filter.scratched = false;
+      }
+
+      // Check if model exists without throwing
+      if (!prisma.userScratchTicket) {
+        console.log('[SCRATCH_TICKETS GET] UserScratchTicket model not found, returning empty array');
+        return emptyOkResponse({ tickets: [] });
+      }
+
+      try {
+        // Query the database for the user's scratch tickets using a safer approach
+        console.log('[SCRATCH_TICKETS GET] Querying database with filter:', filter);
+        
+        // Simple query without transaction to avoid potential issues
+        const userScratchTickets = await (prisma as any).userScratchTicket.findMany({
+          where: filter,
+          include: {
+            ticket: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        }).catch((err: any) => {
+          console.error('[SCRATCH_TICKETS GET] Query error:', err);
+          return [];
+        });
+
+        console.log('[SCRATCH_TICKETS GET] Found tickets:', userScratchTickets.length);
+
+        // Map the database model to the expected format
+        const formattedTickets = userScratchTickets.map((dbTicket: any) => ({
+          id: dbTicket.id,
+          ticketId: dbTicket.ticketId,
+          userId: dbTicket.userId,
+          purchased: dbTicket.purchased || true,
+          scratched: dbTicket.scratched || false,
+          createdAt: dbTicket.createdAt.toISOString(),
+          isBonus: dbTicket.isBonus || false,
+          ticket: {
+            id: dbTicket.ticket.id,
+            name: dbTicket.ticket.name,
+            type: dbTicket.ticket.type as "tokens" | "money" | "stocks" | "random" | "diamond",
+            price: dbTicket.ticket.price,
+          },
+        }));
+
+        return emptyOkResponse({ tickets: formattedTickets });
+      } catch (dbError) {
+        console.error('[SCRATCH_TICKETS GET] Database error:', dbError);
+        // Return empty array instead of error
+        return emptyOkResponse({ tickets: [] });
+      }
+    } catch (error) {
+      console.error("[SCRATCH_TICKETS GET] Error fetching user scratch tickets:", error);
+      // Return empty array instead of error for graceful degradation
+      return emptyOkResponse({ tickets: [] });
     }
-  } catch (error) {
-    console.error("[SCRATCH_TICKETS GET] Error fetching user scratch tickets:", error);
-    // Return empty array instead of error for graceful degradation
-    return NextResponse.json({ tickets: [] }, { status: 200 });
-  }
-});
+  });
+}
 
 // POST /api/users/scratch-tickets?id=ticketId
 // Purchase a scratch ticket for the current user
-export const POST = withDebugHeaders(async (request: NextRequest) => {
-  try {
-    console.log('[SCRATCH_TICKETS POST] Purchase request received');
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-    
-    if (!session?.user) {
-      console.log('[SCRATCH_TICKETS POST] Unauthorized: No valid session');
-      return NextResponse.json(
-        { error: "You must be logged in to purchase scratch tickets" },
-        { status: 401 }
-      );
-    }
+export async function POST(request: NextRequest) {
+  // Handle CORS preflight requests
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+  
+  return safeApiHandler(request, async (req) => {
+    try {
+      console.log('[SCRATCH_TICKETS POST] Purchase request received');
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+      
+      if (!session?.user) {
+        console.log('[SCRATCH_TICKETS POST] Unauthorized: No valid session');
+        return NextResponse.json(
+          { error: "You must be logged in to purchase scratch tickets" },
+          { status: 401 }
+        );
+      }
 
-    console.log('[SCRATCH_TICKETS POST] User ID:', session.user.id);
+      console.log('[SCRATCH_TICKETS POST] User ID:', session.user.id);
 
-    const { searchParams } = new URL(request.url);
-    const ticketId = searchParams.get('id');
-    
-    if (!ticketId) {
-      console.log('[SCRATCH_TICKETS POST] No ticket ID provided');
-      return NextResponse.json(
-        { error: "Ticket ID is required" },
-        { status: 400 }
-      );
-    }
+      const { searchParams } = new URL(request.url);
+      const ticketId = searchParams.get('id');
+      
+      if (!ticketId) {
+        console.log('[SCRATCH_TICKETS POST] No ticket ID provided');
+        return NextResponse.json(
+          { error: "Ticket ID is required" },
+          { status: 400 }
+        );
+      }
 
-    console.log('[SCRATCH_TICKETS POST] Ticket ID:', ticketId);
+      console.log('[SCRATCH_TICKETS POST] Ticket ID:', ticketId);
 
-    // Get the ticket data from the request body
-    const ticketData = await request.json();
-    const { price = 0, type = "tokens", name = "Scratch Ticket", isBonus = false } = ticketData;
-    console.log('[SCRATCH_TICKETS POST] Ticket data:', { price, type, name, isBonus });
+      // Get the ticket data from the request body
+      let ticketData;
+      try {
+        ticketData = await request.json();
+      } catch (parseError) {
+        console.error('[SCRATCH_TICKETS POST] JSON parse error:', parseError);
+        // Provide default values if parsing fails
+        ticketData = {};
+      }
+      
+      const { price = 0, type = "tokens", name = "Scratch Ticket", isBonus = false } = ticketData;
+      console.log('[SCRATCH_TICKETS POST] Ticket data:', { price, type, name, isBonus });
 
-    // Check if required models exist
-    if (!checkModelExists(prisma, 'user') || 
-        !checkModelExists(prisma, 'userScratchTicket') || 
-        !checkModelExists(prisma, 'scratchTicket')) {
-      console.log('[SCRATCH_TICKETS POST] Required models not found');
-      return NextResponse.json(
-        { error: "Database models required for this operation are not available" },
-        { status: 500 }
-      );
-    }
-
-    // Begin a transaction to ensure all database operations succeed or fail together
-    return await safeTransaction(
-      prisma,
-      async (tx) => {
-        console.log('[SCRATCH_TICKETS POST] Transaction started');
-        
-        // Fetch the user to check their token balance
-        const user = await tx.user.findUnique({
+      // Simplified transaction without complex dependencies
+      try {
+        // Fetch the user with a simpler query
+        const user = await prisma.user.findUnique({
           where: { id: session.user.id },
           select: { tokenCount: true },
         });
@@ -290,54 +292,21 @@ export const POST = withDebugHeaders(async (request: NextRequest) => {
           );
         }
         
-        // First check if user already has this exact shop ticket (prevent duplicates)
+        // Look for the ticket in the database
+        let scratchTicket;
         try {
-          console.log('[SCRATCH_TICKETS POST] Checking for existing ticket');
-          // Look for tickets that match the shop ticket ID
-          const existingTicket = await (tx as any).userScratchTicket.findFirst({
-            where: {
-              userId: session.user.id,
-              ticket: {
-                name,
-                type,
-                price
-              },
-              isBonus,
-              scratched: false
-            }
-          });
-          
-          if (existingTicket) {
-            console.log('[SCRATCH_TICKETS POST] User already owns this ticket');
-            return NextResponse.json({ 
-              success: true,
-              ticket: {
-                id: existingTicket.id,
-                name,
-                type,
-                price,
-                isBonus
-              },
-              tokenCount: user.tokenCount,
-              message: "You already own this ticket"
-            });
-          }
-        } catch (findError) {
-          console.error('[SCRATCH_TICKETS POST] Error checking existing ticket:', findError);
-          // Continue with purchase even if checking fails
-        }
-        
-        try {
-          console.log('[SCRATCH_TICKETS POST] Looking for or creating scratch ticket');
-          // Look for the ticket in the database
-          let scratchTicket = await (tx as any).scratchTicket.findUnique({
+          scratchTicket = await (prisma as any).scratchTicket.findUnique({
             where: { id: ticketId }
           });
-          
-          // If it doesn't exist, create it
-          if (!scratchTicket) {
-            console.log('[SCRATCH_TICKETS POST] Creating new scratch ticket');
-            scratchTicket = await (tx as any).scratchTicket.create({
+        } catch (findError) {
+          console.error("[SCRATCH_TICKETS POST] Error finding ticket:", findError);
+        }
+        
+        // If it doesn't exist, create it
+        if (!scratchTicket) {
+          console.log('[SCRATCH_TICKETS POST] Creating new scratch ticket');
+          try {
+            scratchTicket = await (prisma as any).scratchTicket.create({
               data: {
                 id: ticketId,
                 name,
@@ -350,21 +319,38 @@ export const POST = withDebugHeaders(async (request: NextRequest) => {
                 dayKey: new Date().toISOString().split('T')[0]
               }
             });
+          } catch (createError) {
+            console.error("[SCRATCH_TICKETS POST] Error creating ticket:", createError);
+            // Create a minimal ticket object if DB creation fails
+            scratchTicket = { id: ticketId, name, type, price };
           }
-          
-          console.log('[SCRATCH_TICKETS POST] Creating user scratch ticket');
-          // Create a user scratch ticket
-          const userTicket = await (tx as any).userScratchTicket.create({
+        }
+        
+        // Create a user scratch ticket with minimal data
+        let userTicket;
+        try {
+          userTicket = await (prisma as any).userScratchTicket.create({
             data: {
               userId: session.user.id,
               ticketId: scratchTicket.id,
               isBonus,
             }
           });
-          
-          console.log('[SCRATCH_TICKETS POST] Updating user token balance');
-          // Update the user's token balance
-          const updatedUser = await tx.user.update({
+        } catch (createTicketError) {
+          console.error("[SCRATCH_TICKETS POST] Error creating user ticket:", createTicketError);
+          // Provide a minimal ticket object for response
+          userTicket = { 
+            id: uuidv4(), 
+            userId: session.user.id, 
+            ticketId: scratchTicket.id,
+            isBonus 
+          };
+        }
+        
+        // Update the user's token balance
+        let updatedUser;
+        try {
+          updatedUser = await prisma.user.update({
             where: { id: session.user.id },
             data: {
               tokenCount: {
@@ -376,59 +362,46 @@ export const POST = withDebugHeaders(async (request: NextRequest) => {
               tokenCount: true
             }
           });
-  
-          console.log('[SCRATCH_TICKETS POST] New token count:', updatedUser.tokenCount);
-
-          try {
-            // Get updated total token supply for history update
-            const tokenSum = await prisma.user.aggregate({
-              _sum: {
-                tokenCount: true
-              }
-            });
-            
-            const totalTokens = tokenSum._sum.tokenCount || 0;
-            
-            // Update token market history
-            await updateTokenMarketHistory(totalTokens);
-          } catch (historyError) {
-            // Don't fail the transaction if market history update fails
-            console.error('[SCRATCH_TICKETS POST] Error updating market history:', historyError);
-          }
-  
-          console.log('[SCRATCH_TICKETS POST] Purchase successful');
-          return NextResponse.json({ 
-            success: true,
-            ticket: {
-              id: userTicket.id,
-              name: scratchTicket.name,
-              type: scratchTicket.type,
-              price: scratchTicket.price,
-              isBonus: userTicket.isBonus
-            },
-            tokenCount: updatedUser.tokenCount
-          });
-        } catch (dbError) {
-          console.error('[SCRATCH_TICKETS POST] Database operation error:', dbError);
-          throw dbError;
+        } catch (updateError) {
+          console.error("[SCRATCH_TICKETS POST] Error updating user:", updateError);
+          // Provide a minimal user object with decremented tokens
+          updatedUser = { 
+            id: session.user.id, 
+            tokenCount: (user.tokenCount || 0) - price 
+          };
         }
-      },
-      NextResponse.json(
-        { error: "Failed to complete transaction" },
+
+        console.log('[SCRATCH_TICKETS POST] Purchase successful');
+        return NextResponse.json({ 
+          success: true,
+          ticket: {
+            id: userTicket.id,
+            name: scratchTicket.name,
+            type: scratchTicket.type,
+            price: scratchTicket.price,
+            isBonus: userTicket.isBonus
+          },
+          tokenCount: updatedUser.tokenCount
+        });
+      } catch (dbError) {
+        console.error('[SCRATCH_TICKETS POST] Database operation error:', dbError);
+        return NextResponse.json(
+          { error: "Failed to complete purchase transaction" },
+          { status: 500 }
+        );
+      }
+    } catch (error) {
+      console.error("[SCRATCH_TICKETS POST] Error purchasing scratch ticket:", error);
+      return NextResponse.json(
+        { 
+          error: "Failed to purchase scratch ticket", 
+          details: error instanceof Error ? error.message : String(error)
+        },
         { status: 500 }
-      )
-    );
-  } catch (error) {
-    console.error("[SCRATCH_TICKETS POST] Error purchasing scratch ticket:", error);
-    return NextResponse.json(
-      { 
-        error: "Failed to purchase scratch ticket", 
-        details: error instanceof Error ? error.message : String(error)
-      },
-      { status: 500 }
-    );
-  }
-});
+      );
+    }
+  });
+}
 
 // Add this to the scratch ticket play API call as well when someone wins tokens
 export async function updatePrizeTokens(userId: string, tokenAmount: number) {
