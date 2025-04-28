@@ -250,13 +250,25 @@ export async function POST(request: NextRequest) {
       let ticketData;
       try {
         ticketData = await request.json();
+        console.log('[SCRATCH_TICKETS POST] Parsed request body successfully');
       } catch (parseError) {
         console.error('[SCRATCH_TICKETS POST] JSON parse error:', parseError);
-        ticketData = {};
+        return NextResponse.json(
+          { error: "Invalid request body - could not parse JSON" },
+          { status: 400 }
+        );
       }
       
       const { price = 0, type = "tokens", name = "Scratch Ticket", isBonus = false } = ticketData;
       console.log('[SCRATCH_TICKETS POST] Ticket data:', { price, type, name, isBonus });
+
+      if (!price || price <= 0) {
+        console.error('[SCRATCH_TICKETS POST] Invalid price:', price);
+        return NextResponse.json(
+          { error: "Invalid ticket price" },
+          { status: 400 }
+        );
+      }
 
       // Database transaction for ticket purchase
       try {
@@ -289,12 +301,14 @@ export async function POST(request: NextRequest) {
         let scratchTicket = null;
         try {
           // Check if the ticket already exists
+          console.log('[SCRATCH_TICKETS POST] Checking if ticket exists:', ticketId);
           scratchTicket = await (prisma as any).scratchTicket.findUnique({
             where: { id: ticketId }
           });
           
           // Create if it doesn't exist
           if (!scratchTicket) {
+            console.log('[SCRATCH_TICKETS POST] Creating new ticket:', ticketId);
             scratchTicket = await (prisma as any).scratchTicket.create({
               data: {
                 id: ticketId,
@@ -306,6 +320,9 @@ export async function POST(request: NextRequest) {
                   : `Win big with this ${type} scratch ticket!`
               }
             });
+            console.log('[SCRATCH_TICKETS POST] Ticket created successfully');
+          } else {
+            console.log('[SCRATCH_TICKETS POST] Ticket already exists');
           }
         } catch (ticketError) {
           console.error('[SCRATCH_TICKETS POST] Error with scratchTicket:', ticketError);
@@ -316,6 +333,7 @@ export async function POST(request: NextRequest) {
         let userTicket = null;
         try {
           const uniqueUserTicketId = randomUUID(); // Generate a unique ID for the user ticket
+          console.log('[SCRATCH_TICKETS POST] Creating user ticket with ID:', uniqueUserTicketId);
           
           userTicket = await (prisma as any).userScratchTicket.create({
             data: {
@@ -327,9 +345,10 @@ export async function POST(request: NextRequest) {
               scratched: false
             }
           });
+          console.log('[SCRATCH_TICKETS POST] User ticket created successfully');
         } catch (userTicketError) {
           console.error('[SCRATCH_TICKETS POST] Error with userScratchTicket:', userTicketError);
-          // Continue even if user ticket creation fails
+          // Continue even if user ticket creation fails - we'll handle it without DB
         }
         
         // Create the ticket data to return to the client
@@ -349,6 +368,8 @@ export async function POST(request: NextRequest) {
           }
         };
         
+        console.log('[SCRATCH_TICKETS POST] Updating user token balance, decrementing by:', price);
+        
         // Update the user's token balance
         const updatedUser = await prisma.user.update({
           where: { id: session.user.id },
@@ -363,7 +384,7 @@ export async function POST(request: NextRequest) {
           }
         });
           
-        console.log('[SCRATCH_TICKETS POST] Purchase successful');
+        console.log('[SCRATCH_TICKETS POST] Purchase successful, new token balance:', updatedUser.tokenCount);
         return NextResponse.json({ 
           success: true,
           ticket: ticketToReturn,
@@ -372,7 +393,7 @@ export async function POST(request: NextRequest) {
       } catch (dbError) {
         console.error('[SCRATCH_TICKETS POST] Database operation error:', dbError);
         return NextResponse.json(
-          { error: "Failed to complete purchase transaction" },
+          { error: "Failed to complete purchase transaction", details: dbError instanceof Error ? dbError.message : String(dbError) },
           { status: 500 }
         );
       }

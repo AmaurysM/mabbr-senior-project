@@ -115,36 +115,63 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       const ticketToBuy = shopTickets.find(t => t.id === ticketId);
       
       if (!ticketToBuy) {
+        console.error("Ticket not found in shop:", ticketId);
         throw new Error("Ticket not found in shop");
       }
       
       // Double check if the ticket is already purchased
       if (ticketToBuy.purchased) {
+        console.log("Ticket already purchased:", ticketId);
         setSelectedTicket(null);
         return; // Silently return without showing error toast
       }
+      
+      console.log("Attempting to purchase ticket:", ticketId, "with data:", {
+        price: ticketToBuy.price,
+        type: ticketToBuy.type,
+        name: ticketToBuy.name,
+        isBonus: ticketToBuy.isBonus
+      });
       
       // Attempt to purchase the ticket
       const response = await fetch(`/api/users/scratch-tickets?id=${ticketId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache"
         },
         body: JSON.stringify({
           price: ticketToBuy.price,
           type: ticketToBuy.type,
-          name: ticketToBuy.name
-        })
+          name: ticketToBuy.name,
+          isBonus: ticketToBuy.isBonus || false
+        }),
+        credentials: 'include' // Ensure cookies are sent with the request
       });
+      
+      console.log("Purchase response status:", response.status);
       
       // Check if response is ok
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        console.error("Error response:", errorData);
-        throw new Error(errorData.error || `Server error (${response.status})`);
+        let errorMsg = `Server error (${response.status})`;
+        try {
+          const errorData = await response.json();
+          console.error("Error response:", errorData);
+          errorMsg = errorData.error || errorMsg;
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+        }
+        throw new Error(errorMsg);
       }
 
-      const data = await response.json().catch(() => ({ error: "Failed to parse response" }));
+      let data;
+      try {
+        data = await response.json();
+        console.log("Purchase response data:", data);
+      } catch (parseError) {
+        console.error("Failed to parse successful response:", parseError);
+        throw new Error("Failed to parse response");
+      }
       
       if (data.error) {
         throw new Error(data.error);
@@ -159,7 +186,10 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       // Pass the purchased ticket to the parent component
       const purchasedTicket = updatedTickets.find(ticket => ticket.id === ticketId);
       if (purchasedTicket && onPurchase) {
+        console.log("Calling onPurchase with ticket:", purchasedTicket);
         onPurchase(purchasedTicket);
+      } else {
+        console.warn("Not calling onPurchase:", !!purchasedTicket, !!onPurchase);
       }
 
       toast({
@@ -168,16 +198,28 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       });
 
       // Refresh tickets to ensure UI is up to date
-      checkPurchasedTickets();
+      console.log("Refreshing purchased tickets");
+      await checkPurchasedTickets();
 
       // Notify other components about the purchase
       if (typeof window !== 'undefined') {
-        localStorage.setItem('tickets-updated', Date.now().toString());
-        // Trigger storage event
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'tickets-updated',
-          newValue: Date.now().toString()
-        }));
+        const timestamp = Date.now().toString();
+        console.log("Updating localStorage with timestamp:", timestamp);
+        localStorage.setItem('tickets-updated', timestamp);
+        
+        // Trigger both storage event and custom event for better compatibility
+        try {
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'tickets-updated',
+            newValue: timestamp
+          }));
+          console.log("Storage event dispatched");
+          
+          window.dispatchEvent(new CustomEvent('tickets-updated'));
+          console.log("Custom event dispatched");
+        } catch (eventError) {
+          console.error("Error dispatching events:", eventError);
+        }
       }
 
       setSelectedTicket(null);

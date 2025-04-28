@@ -336,7 +336,10 @@ export default function ScratchOffs() {
   
   // Handle ticket purchase
   const handleTicketPurchase = async (ticket: ScratchTicket) => {
+    console.log("handleTicketPurchase called with ticket:", ticket);
+    
     if (!session?.user) {
+      console.error("No user session for purchase");
       toast({
         title: "Error",
         description: "You must be logged in to purchase tickets",
@@ -344,10 +347,14 @@ export default function ScratchOffs() {
       return;
     }
     
-    if (userTokens === null || isSyncing) return;
+    if (userTokens === null || isSyncing) {
+      console.log("Purchase aborted: tokens null or already syncing", { userTokens, isSyncing });
+      return;
+    }
     
     // Check if user has enough tokens
     if (userTokens < ticket.price) {
+      console.log("Insufficient tokens for purchase", { userTokens, price: ticket.price });
       toast({
         title: "Insufficient Tokens",
         description: `You need ${ticket.price} tokens to purchase this ticket.`,
@@ -357,6 +364,7 @@ export default function ScratchOffs() {
 
     // Check if ticket is already marked as purchased
     if (ticket.purchased) {
+      console.log("Ticket already purchased", ticket.id);
       toast({
         title: "Already Purchased",
         description: "You've already purchased this ticket.",
@@ -364,43 +372,75 @@ export default function ScratchOffs() {
       return;
     }
     
+    console.log("Starting purchase process for ticket", ticket.id);
     setIsSyncing(true);
     
     try {
       // Optimistically update the UI immediately
-      setUserTokens((current) => current !== null ? current - ticket.price : null);
+      setUserTokens((current) => {
+        const newValue = current !== null ? current - ticket.price : null;
+        console.log(`Optimistically updating tokens: ${current} -> ${newValue}`);
+        return newValue;
+      });
       
       // Call API to purchase ticket
+      console.log("Sending API request to purchase ticket", ticket.id);
       const response = await fetch(`/api/users/scratch-tickets?id=${ticket.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify({
           price: ticket.price,
           type: ticket.type,
           name: ticket.name,
-          isBonus: ticket.isBonus
+          isBonus: ticket.isBonus || false
         }),
+        credentials: 'include'
       });
       
+      console.log("API response status:", response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorMessage = `Server error (${response.status})`;
+        try {
+          const errorData = await response.json();
+          console.error("Error response:", errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError);
+        }
+        
         // Revert optimistic update if purchase fails
+        console.log("Reverting optimistic token update");
         const tokenResponse = await fetch('/api/user', { credentials: 'include' });
         if (tokenResponse.ok) {
           const userData = await tokenResponse.json();
+          console.log("Retrieved user token count:", userData.tokenCount);
           setUserTokens(userData.tokenCount || 0);
+        } else {
+          console.error("Failed to retrieve token count after error:", tokenResponse.status);
         }
-        throw new Error(errorData.error || 'Failed to purchase ticket');
+        
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+        console.log("Purchase successful, response data:", data);
+      } catch (parseError) {
+        console.error("Error parsing success response:", parseError);
+        throw new Error("Failed to parse server response");
+      }
       
       // Update token count from server response
+      console.log("Updating token count from server:", data.tokenCount);
       setUserTokens(data.tokenCount);
       
       // Add to purchased tickets with server-side data
+      console.log("Creating new user ticket from response");
       const newTicket: UserScratchTicket = {
         id: data.ticket.id,
         ticketId: data.ticket.id,
@@ -419,12 +459,15 @@ export default function ScratchOffs() {
       
       // Check if ticket already exists in purchasedTickets by ID
       const ticketExists = purchasedTickets.some(t => t.id === data.ticket.id);
+      console.log("Ticket already exists in purchased tickets:", ticketExists);
       
       if (!ticketExists) {
+        console.log("Adding new ticket to purchased tickets");
         setPurchasedTickets(prev => [...prev, newTicket]);
       }
       
       // Mark shop ticket as purchased
+      console.log("Marking shop ticket as purchased");
       setShopTickets(prev => 
         prev.map(t => t.id === ticket.id ? { ...t, purchased: true } : t)
       );
@@ -435,17 +478,28 @@ export default function ScratchOffs() {
       });
       
       // Force an immediate refresh of tickets to ensure the My Tickets section updates
+      console.log("Forcing refresh of user tickets");
       await fetchUserTickets();
       
       // Trigger the storage event to notify other components about the change
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('tickets-updated', Date.now().toString());
+        const timestamp = Date.now().toString();
+        console.log("Setting localStorage updates with timestamp:", timestamp);
+        window.localStorage.setItem('tickets-updated', timestamp);
+        
         // Use both storage event and custom event for better coverage
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'tickets-updated',
-          newValue: Date.now().toString()
-        }));
-        window.dispatchEvent(new CustomEvent('tickets-updated'));
+        try {
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'tickets-updated',
+            newValue: timestamp
+          }));
+          console.log("Storage event dispatched");
+          
+          window.dispatchEvent(new CustomEvent('tickets-updated'));
+          console.log("Custom event dispatched");
+        } catch (eventError) {
+          console.error("Error dispatching events:", eventError);
+        }
       }
     } catch (error) {
       console.error('Error purchasing ticket:', error);
@@ -454,6 +508,7 @@ export default function ScratchOffs() {
         description: error instanceof Error ? error.message : 'An unknown error occurred',
       });
     } finally {
+      console.log("Purchase process completed");
       setIsSyncing(false);
     }
   };
