@@ -3,18 +3,19 @@
 import React from "react";
 import Image from "next/image";
 import { FaCoins, FaMoneyBillWave, FaChartLine, FaRandom, FaGem } from "react-icons/fa";
-
-export type TicketType = "tokens" | "money" | "stocks" | "random" | "diamond";
+import { ScratchTicketType } from '@prisma/client';
 
 export interface ScratchTicket {
   id: string;
   name: string;
   price: number;
-  type: TicketType;
+  type: ScratchTicketType;
   description: string;
-  createdAt: string;
-  purchased?: boolean; // Track if ticket is purchased
-  isBonus?: boolean;   // Track if ticket is a bonus variant
+  createdAt: Date;
+  purchased?: boolean;
+  isBonus?: boolean;
+  dayKey: string;
+  shopTicketId?: string | null;
 }
 
 interface ScratchTicketTileProps {
@@ -23,7 +24,7 @@ interface ScratchTicketTileProps {
 }
 
 // Function to get ticket type styles
-export function getTicketTypeStyles(type: TicketType) {
+export function getTicketTypeStyles(type: ScratchTicketType) {
   switch (type) {
     case "tokens":
       return {

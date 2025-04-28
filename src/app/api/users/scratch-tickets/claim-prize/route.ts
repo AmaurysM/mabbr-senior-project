@@ -27,7 +27,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const body = await request.json();
+      // Create a clone of the request to avoid "Body already read" errors
+      const requestClone = request.clone();
+      const body = await requestClone.json();
       const { ticketId, prize } = body;
       
       if (!ticketId || !prize) {

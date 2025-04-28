@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense } from "react";
+import React, { useEffect, useState, useRef, Suspense, FunctionComponent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import LoadingStateAnimation from "@/app/components/LoadingState";
 import { getTicketTypeStyles } from "@/app/components/ScratchTicketTile";
@@ -61,31 +61,31 @@ const TOKEN_AMOUNTS = [10, 50, 100, 500, 1000];
 const baseSymbols = {
   token: {
     type: 'token' as SymbolType,
-    icon: <FaCoins className="text-3xl" />,
+    icon: React.createElement(FaCoins, { className: "text-3xl" }),
     color: 'text-yellow-400',
     value: 1,
   },
   stock: {
     type: 'stock' as SymbolType,
-    icon: <FaChartLine className="text-3xl" />,
+    icon: React.createElement(FaChartLine, { className: "text-3xl" }),
     color: 'text-blue-400',
     value: 1,
   },
   cash: {
     type: 'cash' as SymbolType,
-    icon: <FaMoneyBillWave className="text-3xl" />,
+    icon: React.createElement(FaMoneyBillWave, { className: "text-3xl" }),
     color: 'text-green-400',
     value: 1,
   },
   multiplier2x: {
     type: 'multiplier2x' as SymbolType,
-    icon: <span className="text-2xl font-bold">2x</span>,
+    icon: React.createElement('span', { className: "text-2xl font-bold" }, "2x"),
     color: 'text-orange-400',
     value: 2,
   },
   multiplier10x: {
     type: 'multiplier10x' as SymbolType,
-    icon: <span className="text-2xl font-bold">10x</span>,
+    icon: React.createElement('span', { className: "text-2xl font-bold" }, "10x"),
     color: 'text-red-500',
     value: 10,
   },
@@ -102,7 +102,7 @@ const stockSymbols: Record<string, Symbol> = {};
 STOCK_SYMBOLS.forEach(stock => {
   stockSymbols[`stock_${stock.symbol}`] = {
     type: `stock_${stock.symbol}` as SymbolType,
-    icon: <span className="text-xl font-bold">{stock.symbol}</span>,
+    icon: React.createElement('span', { className: "text-xl font-bold" }, stock.symbol),
     color: 'text-blue-400',
     value: stock.value
   };
@@ -113,7 +113,7 @@ const cashSymbols: Record<string, Symbol> = {};
 CASH_AMOUNTS.forEach(amount => {
   cashSymbols[`cash_${amount}`] = {
     type: `cash_${amount}` as SymbolType,
-    icon: <span className="text-xl font-bold">${amount}</span>,
+    icon: React.createElement('span', { className: "text-xl font-bold" }, `$${amount}`),
     color: 'text-green-400',
     value: amount
   };
@@ -124,25 +124,34 @@ const tokenSymbols: Record<string, Symbol> = {};
 TOKEN_AMOUNTS.forEach((amount, index) => {
   let icon;
   if (amount <= 10) {
-    icon = <FaCoins className="text-2xl" />;
+    icon = React.createElement(FaCoins, { className: "text-2xl" });
   } else if (amount <= 100) {
-    icon = <div className="flex"><FaCoins className="text-2xl" /><FaCoins className="text-2xl ml-1" /></div>;
+    icon = React.createElement('div', { className: "flex" }, 
+      React.createElement(FaCoins, { className: "text-2xl" }),
+      React.createElement(FaCoins, { className: "text-2xl ml-1" })
+    );
   } else if (amount <= 500) {
-    icon = <div className="flex flex-col items-center">
-      <div className="flex"><FaCoins className="text-xl" /><FaCoins className="text-xl ml-0.5" /></div>
-      <div className="flex mt-0.5"><FaCoins className="text-xl" /><FaCoins className="text-xl ml-0.5" /></div>
-    </div>;
+    icon = React.createElement('div', { className: "flex flex-col items-center" },
+      React.createElement('div', { className: "flex" },
+        React.createElement(FaCoins, { className: "text-xl" }),
+        React.createElement(FaCoins, { className: "text-xl ml-0.5" })
+      ),
+      React.createElement('div', { className: "flex mt-0.5" },
+        React.createElement(FaCoins, { className: "text-xl" }),
+        React.createElement(FaCoins, { className: "text-xl ml-0.5" })
+      )
+    );
   } else {
     // Use a money bag icon for the largest amount
-    icon = <FaGem className="text-3xl" />;
+    icon = React.createElement(FaGem, { className: "text-3xl" });
   }
   
   tokenSymbols[`token_${amount}`] = {
     type: `token_${amount}` as SymbolType,
-    icon: <div className="flex flex-col items-center">
-      {icon}
-      <span className="text-xs font-bold mt-1">{amount}</span>
-    </div>,
+    icon: React.createElement('div', { className: "flex flex-col items-center" },
+      icon,
+      React.createElement('span', { className: "text-xs font-bold mt-1" }, amount.toString())
+    ),
     color: 'text-yellow-400',
     value: amount
   };
@@ -154,7 +163,7 @@ const SYMBOLS = {
   ...stockSymbols,
   ...cashSymbols,
   ...tokenSymbols
-} as Record<SymbolType, Symbol>;
+} as unknown as Record<SymbolType, Symbol>;
 
 // Function to generate a random symbol based on probabilities and ticket type
 const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol => {
@@ -575,6 +584,17 @@ const ScratchOffPlayContent = () => {
   const [scratchPercentage, setScratchPercentage] = useState(0);
   const [isScratching, setIsScratching] = useState(false);
   
+  // Function to trigger confetti animation when winning
+  const triggerWinAnimation = () => {
+    if (typeof window !== 'undefined') {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+  };
+  
   // Fetch ticket data
   useEffect(() => {
     if (!ticketId) {
@@ -599,7 +619,28 @@ const ScratchOffPlayContent = () => {
               
               if (!response.ok) {
                 console.error('API error status:', response.status, 'for ticketId:', ticketId);
-                // If not found, inform the user
+                // If not found, check local storage for ticket details first before informing user
+                const userTicketsStr = localStorage.getItem('userScratchTickets');
+                const localTicket = userTicketsStr ? 
+                  JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
+                
+                if (localTicket) {
+                  // Use the local ticket data instead
+                  console.log('Using local ticket data for:', ticketId);
+                  setTicket(localTicket);
+                  
+                  // Set the saved state
+                  setGrid(results.grid);
+                  setWins(results.wins);
+                  setWinningCells(results.winningCells);
+                  setPrize(results.prize);
+                  setIsRevealed(true);
+                  
+                  setLoading(false);
+                  return;
+                }
+                
+                // If nothing found locally either, inform the user
                 if (response.status === 404) {
                   toast({
                     title: "Ticket Not Found",
@@ -621,6 +662,36 @@ const ScratchOffPlayContent = () => {
               setPrize(results.prize);
               setIsRevealed(true);
               
+              // Store the ticket in localStorage for future reference
+              if (typeof window !== 'undefined') {
+                try {
+                  // Get existing tickets from localStorage or initialize empty array
+                  const storedTicketsStr = localStorage.getItem('userScratchTickets');
+                  const storedTickets = storedTicketsStr ? JSON.parse(storedTicketsStr) : [];
+                  
+                  // Check if this ticket already exists in localStorage
+                  const existingIndex = storedTickets.findIndex((t: any) => t.id === data.id);
+                  
+                  if (existingIndex >= 0) {
+                    // Update the existing ticket
+                    storedTickets[existingIndex] = data;
+                  } else {
+                    // Add the new ticket
+                    storedTickets.push(data);
+                  }
+                  
+                  // Save back to localStorage
+                  localStorage.setItem('userScratchTickets', JSON.stringify(storedTickets));
+                  console.log('Saved ticket to localStorage:', data.id);
+                } catch (storageError) {
+                  console.error('Error saving ticket to localStorage:', storageError);
+                  // Continue with the game even if storage fails
+                }
+              }
+              
+              // Generate grid based on ticket type
+              setGrid(generateGrid(data.ticket.type, data.isBonus));
+              
               setLoading(false);
               return;
             } catch (error) {
@@ -636,6 +707,26 @@ const ScratchOffPlayContent = () => {
         
         if (!response.ok) {
           console.error('API error status:', response.status, 'for ticketId:', ticketId);
+          
+          // Try to find the ticket in local storage
+          if (typeof window !== 'undefined') {
+            const userTicketsStr = localStorage.getItem('userScratchTickets');
+            const localTicket = userTicketsStr ? 
+              JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
+            
+            if (localTicket) {
+              // Use the local ticket data instead
+              console.log('API ticket not found, using local ticket data for:', ticketId);
+              setTicket(localTicket);
+              
+              // Generate grid based on ticket type
+              setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus));
+              
+              setLoading(false);
+              return;
+            }
+          }
+          
           // If not found, inform the user and redirect
           if (response.status === 404) {
             toast({
@@ -649,7 +740,42 @@ const ScratchOffPlayContent = () => {
         
         const data = await response.json();
         console.log('API data received:', data);
+        
+        // Validate the ticket data before using it
+        if (!data || !data.ticket || !data.ticket.type) {
+          setError("Invalid ticket data received from server");
+          setLoading(false);
+          return;
+        }
+        
         setTicket(data);
+        
+        // Store the ticket in localStorage for future reference
+        if (typeof window !== 'undefined') {
+          try {
+            // Get existing tickets from localStorage or initialize empty array
+            const storedTicketsStr = localStorage.getItem('userScratchTickets');
+            const storedTickets = storedTicketsStr ? JSON.parse(storedTicketsStr) : [];
+            
+            // Check if this ticket already exists in localStorage
+            const existingIndex = storedTickets.findIndex((t: any) => t.id === data.id);
+            
+            if (existingIndex >= 0) {
+              // Update the existing ticket
+              storedTickets[existingIndex] = data;
+            } else {
+              // Add the new ticket
+              storedTickets.push(data);
+            }
+            
+            // Save back to localStorage
+            localStorage.setItem('userScratchTickets', JSON.stringify(storedTickets));
+            console.log('Saved ticket to localStorage:', data.id);
+          } catch (storageError) {
+            console.error('Error saving ticket to localStorage:', storageError);
+            // Continue with the game even if storage fails
+          }
+        }
         
         // Generate grid based on ticket type
         setGrid(generateGrid(data.ticket.type, data.isBonus));
@@ -663,7 +789,7 @@ const ScratchOffPlayContent = () => {
     };
     
     fetchTicket();
-  }, [ticketId, router]);
+  }, [ticketId, router, toast]);
 
   // Setup canvas for scratch-off effect
   useEffect(() => {
@@ -860,7 +986,14 @@ const ScratchOffPlayContent = () => {
         setWinningCells(finalWinningCells);
         
         // Calculate prize outside this function to avoid dependency issues
-        calculatePrize(finalWins).catch(error => {
+        calculatePrize(finalWins).then(prizeData => {
+          setPrize(prizeData);
+          
+          // If there's a winning prize, trigger the confetti animation
+          if (prizeData.tokens > 0 || prizeData.cash > 0 || prizeData.stocks > 0) {
+            triggerWinAnimation();
+          }
+        }).catch(error => {
           console.error('Error calculating prize:', error);
         });
 
@@ -934,46 +1067,126 @@ const ScratchOffPlayContent = () => {
     });
   };
 
+  // Function to completely remove a ticket from localStorage
+  const removeTicketFromLocalStorage = (ticketId: string) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      console.log(`Attempting to remove ticket ${ticketId} from localStorage`);
+      
+      // Get current tickets
+      const storedTicketsStr = localStorage.getItem('userScratchTickets');
+      if (!storedTicketsStr) return;
+      
+      // Parse and filter
+      const storedTickets = JSON.parse(storedTicketsStr);
+      const updatedTickets = storedTickets.filter((t: any) => t.id !== ticketId);
+      
+      // Save back
+      localStorage.setItem('userScratchTickets', JSON.stringify(updatedTickets));
+      console.log(`Removed ticket ${ticketId} from localStorage, remaining: ${updatedTickets.length}`);
+      
+      // Trigger update events
+      const timestamp = Date.now().toString();
+      localStorage.setItem('tickets-updated', timestamp);
+      
+      // Fire multiple events to ensure all components update
+      try {
+        window.dispatchEvent(new CustomEvent('tickets-updated'));
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'tickets-updated',
+          newValue: timestamp
+        }));
+      } catch (eventError) {
+        console.error('Error dispatching events:', eventError);
+      }
+    } catch (error) {
+      console.error('Error removing ticket from localStorage:', error);
+    }
+  };
+
   // Reveal the entire grid
   const revealAll = async () => {
-    if (isRevealed) return; // Prevent double-revealing
+    if (isRevealed) return;
     
-    console.log('Revealing all cells at once');
-    setIsRevealed(true);
+    // Show a neat reveal animation
+    grid.forEach((cell, index) => {
+      setTimeout(() => {
+        scratchCell(index);
+      }, index * 60); // staggered reveal
+    });
     
-    // Scratch all cells
-    const updatedGrid = grid.map(cell => ({
-      ...cell,
-      scratched: true
-    }));
-    
-    setGrid(updatedGrid);
-    
-    // Check for winning combinations
-    const { wins: finalWins, winningCells: finalWinningCells } = checkWinningPatterns(updatedGrid);
+    // Calculate any wins
+    const { wins: finalWins, winningCells: finalWinningCells } = checkWinningPatterns(grid);
     setWins(finalWins);
     setWinningCells(finalWinningCells);
     
-    // Calculate the prize based on the wins
-    await calculatePrize(finalWins);
+    // Update local state 
+    setIsRevealed(true);
     
-    // Mark as scratched via API
-    try {
-      const response = await fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to mark ticket as scratched');
+    if (ticket && 'id' in ticket) {
+      try {
+        // Mark the ticket as scratched in the database - even if there are no wins
+        const response = await fetch(`/api/users/scratch-tickets/${ticket.id}/scratch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            wins: finalWins,
+            revealedAt: new Date().toISOString()
+          }),
+        });
+        
+        if (response.ok) {
+          console.log('Ticket marked as scratched in database');
+          
+          // Always remove from localStorage
+          removeTicketFromLocalStorage(ticket.id);
+          
+          // Calculate prize amounts - only if there are wins
+          if (finalWins.length > 0) {
+            calculatePrize(finalWins).then(prizeData => {
+              setPrize(prizeData);
+              
+              // If there's a prize, trigger confetti
+              triggerWinAnimation();
+            }).catch(error => {
+              console.error('Error calculating prize:', error);
+            });
+          }
+        } else {
+          console.error('Failed to mark ticket as scratched', await response.text());
+          
+          // Even if server update fails, save results locally
+          saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
+          markTicketAsPlayedInLocalStorage();
+          
+          // Also remove from My Tickets list
+          removeTicketFromLocalStorage(ticket.id);
+        }
+      } catch (error) {
+        console.error('Error updating scratch status:', error);
+        
+        // Save results locally if there's an error
+        saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
+        markTicketAsPlayedInLocalStorage();
+        
+        // Also remove from My Tickets list
+        if (ticket.id) {
+          removeTicketFromLocalStorage(ticket.id);
+        }
       }
-    } catch (error) {
-      console.error('Error marking ticket as scratched:', error);
-      // Fallback to localStorage if API fails
+    } else {
+      // Local ticket flow
+      saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
       markTicketAsPlayedInLocalStorage();
+      
+      // Also remove from My Tickets list if we have a ticketId
+      if (ticketId) {
+        removeTicketFromLocalStorage(ticketId);
+      }
     }
-    
-    // Save the results to localStorage
-    saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
   };
   
   // Save revealed ticket results to localStorage for persistence
@@ -1009,221 +1222,251 @@ const ScratchOffPlayContent = () => {
   };
   
   // Calculate the final prize
-  const calculatePrize = async (finalWins: { symbolType: SymbolType, count: number, multiplier: number, cellValues?: number[] }[]) => {
-    let tokenPrize = 0;
-    let cashPrize = 0;
-    let stockPrize = 0;
-    let stockShares: Record<string, { shares: number, value: number }> = {};
-    
-    finalWins.forEach(win => {
-      const symbolType = win.symbolType;
-      const multiplier = win.multiplier;
+  const calculatePrize = async (finalWins: { symbolType: SymbolType, count: number, multiplier: number, cellValues?: number[] }[]): Promise<{
+    tokens: number;
+    cash: number;
+    stocks: number;
+    stockShares: Record<string, { shares: number, value: number }>;
+  }> => {
+    try {
+      let tokenPrize = 0;
+      let cashPrize = 0;
+      let stockPrize = 0;
+      let stockShares: Record<string, { shares: number, value: number }> = {};
       
-      // Handle token amount symbols - sum values first, then multiply
-      if (symbolType.startsWith('token_')) {
-        if (win.cellValues) {
-          // Sum all token values, then apply multiplier
-          const totalValue = win.cellValues.reduce((sum, val) => sum + val, 0);
-          tokenPrize += totalValue * multiplier;
-        } else {
-          // Fallback to old calculation if cellValues is not available
-          const amount = parseInt(symbolType.replace('token_', ''));
-          const baseValue = win.count * amount;
-          tokenPrize += baseValue * multiplier;
-        }
-      }
-      // Handle stock symbols
-      else if (symbolType.startsWith('stock_')) {
-        const stockSymbol = symbolType.replace('stock_', '');
-        // Increased to 0.2 shares per match
-        const baseValue = win.count * 0.2; 
+      finalWins.forEach(win => {
+        const symbolType = win.symbolType;
+        const multiplier = win.multiplier;
         
-        // Apply special multipliers for Mystic Chance (100x) and Diamond Scratch (300x)
-        let ticketTypeMultiplier = 1;
-        if (ticket && ticket.ticket) {
-          if (ticket.ticket.type === 'random') {
-            ticketTypeMultiplier = 100; // Mystic Chance: 100x multiplier
-          } else if (ticket.ticket.type === 'diamond') {
-            ticketTypeMultiplier = 300; // Diamond Scratch: 300x multiplier
+        // Handle token amount symbols - sum values first, then multiply
+        if (symbolType.startsWith('token_')) {
+          if (win.cellValues) {
+            // Sum all token values, then apply multiplier
+            const totalValue = win.cellValues.reduce((sum, val) => sum + val, 0);
+            tokenPrize += totalValue * multiplier;
+          } else {
+            // Fallback to old calculation if cellValues is not available
+            const amount = parseInt(symbolType.replace('token_', ''));
+            const baseValue = win.count * amount;
+            tokenPrize += baseValue * multiplier;
           }
         }
-        
-        const shares = baseValue * multiplier * ticketTypeMultiplier;
-        
-        // Find the stock value from STOCK_SYMBOLS
-        const stockInfo = STOCK_SYMBOLS.find(s => s.symbol === stockSymbol);
-        if (stockInfo) {
-          // Add to stock prize and track shares
-          const value = shares * stockInfo.value;
-          stockPrize += value;
+        // Handle stock symbols
+        else if (symbolType.startsWith('stock_')) {
+          const stockSymbol = symbolType.replace('stock_', '');
+          // Increased to 0.2 shares per match
+          const baseValue = win.count * 0.2; 
           
-          // Track shares by stock symbol
-          if (!stockShares[stockSymbol]) {
-            stockShares[stockSymbol] = { shares: 0, value: stockInfo.value };
+          // Apply special multipliers for Mystic Chance (100x) and Diamond Scratch (300x)
+          let ticketTypeMultiplier = 1;
+          if (ticket && ticket.ticket) {
+            if (ticket.ticket.type === 'random') {
+              ticketTypeMultiplier = 100; // Mystic Chance: 100x multiplier
+            } else if (ticket.ticket.type === 'diamond') {
+              ticketTypeMultiplier = 300; // Diamond Scratch: 300x multiplier
+            }
           }
-          stockShares[stockSymbol].shares += shares;
+          
+          const shares = baseValue * multiplier * ticketTypeMultiplier;
+          
+          // Find the stock value from STOCK_SYMBOLS
+          const stockInfo = STOCK_SYMBOLS.find(s => s.symbol === stockSymbol);
+          if (stockInfo) {
+            // Add to stock prize and track shares
+            const value = shares * stockInfo.value;
+            stockPrize += value;
+            
+            // Track shares by stock symbol
+            if (!stockShares[stockSymbol]) {
+              stockShares[stockSymbol] = { shares: 0, value: stockInfo.value };
+            }
+            stockShares[stockSymbol].shares += shares;
+          }
         }
-      }
-      // Handle cash amount symbols
-      else if (symbolType.startsWith('cash_')) {
-        if (win.cellValues) {
-          // Sum all cash values, then apply multiplier (similar to tokens)
-          const totalValue = win.cellValues.reduce((sum, val) => sum + val, 0);
-          // No longer apply divisor - use full cash values
-          cashPrize += totalValue * multiplier;
-        } else {
-          // Fallback to old calculation if cellValues is not available
-          const amount = parseInt(symbolType.replace('cash_', ''));
-          // Use full amount without divisor
-          const baseValue = win.count * amount;
-          cashPrize += baseValue * multiplier;
+        // Handle cash amount symbols
+        else if (symbolType.startsWith('cash_')) {
+          if (win.cellValues) {
+            // Sum all cash values, then apply multiplier (similar to tokens)
+            const totalValue = win.cellValues.reduce((sum, val) => sum + val, 0);
+            // No longer apply divisor - use full cash values
+            cashPrize += totalValue * multiplier;
+          } else {
+            // Fallback to old calculation if cellValues is not available
+            const amount = parseInt(symbolType.replace('cash_', ''));
+            // Use full amount without divisor
+            const baseValue = win.count * amount;
+            cashPrize += baseValue * multiplier;
+          }
         }
-      }
-      // Handle regular symbols (legacy support)
-      else {
-        // Apply special multipliers for Mystic Chance (100x) and Diamond Scratch (300x)
-        let ticketTypeMultiplier = 1;
-        if (ticket && ticket.ticket) {
-          if (ticket.ticket.type === 'random') {
-            ticketTypeMultiplier = 100; // Mystic Chance: 100x multiplier
-          } else if (ticket.ticket.type === 'diamond') {
-            ticketTypeMultiplier = 300; // Diamond Scratch: 300x multiplier
+        // Handle regular symbols (legacy support)
+        else {
+          // Apply special multipliers for Mystic Chance (100x) and Diamond Scratch (300x)
+          let ticketTypeMultiplier = 1;
+          if (ticket && ticket.ticket) {
+            if (ticket.ticket.type === 'random') {
+              ticketTypeMultiplier = 100; // Mystic Chance: 100x multiplier
+            } else if (ticket.ticket.type === 'diamond') {
+              ticketTypeMultiplier = 300; // Diamond Scratch: 300x multiplier
+            }
+          }
+          
+          const baseValue = win.count * 15 * ticketTypeMultiplier;
+          
+          if (symbolType === 'token') {
+            tokenPrize += baseValue * multiplier;
+          } else if (symbolType === 'cash') {
+            cashPrize += baseValue * multiplier;
+          } else if (symbolType === 'stock') {
+            stockPrize += baseValue * multiplier;
           }
         }
         
-        const baseValue = win.count * 15 * ticketTypeMultiplier;
+        // Special handling for token amounts in Mystic Chance and Diamond Scratch
+        if (symbolType.startsWith('token_')) {
+          // Apply special multipliers for these ticket types
+          if (ticket && ticket.ticket) {
+            if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
+              const specialMultiplier = ticket.ticket.type === 'random' ? 100 : 300;
+              
+              // If we already calculated the value, multiply it by the special multiplier
+              tokenPrize *= specialMultiplier;
+            }
+          }
+        }
         
-        if (symbolType === 'token') {
-          tokenPrize += baseValue * multiplier;
-        } else if (symbolType === 'cash') {
-          cashPrize += baseValue * multiplier;
-        } else if (symbolType === 'stock') {
-          stockPrize += baseValue * multiplier;
-        }
-      }
-      
-      // Special handling for token amounts in Mystic Chance and Diamond Scratch
-      if (symbolType.startsWith('token_')) {
-        // Apply special multipliers for these ticket types
-        if (ticket && ticket.ticket) {
-          if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
-            const specialMultiplier = ticket.ticket.type === 'random' ? 100 : 300;
-            
-            // If we already calculated the value, multiply it by the special multiplier
-            tokenPrize *= specialMultiplier;
+        // Special handling for cash amounts in Mystic Chance and Diamond Scratch
+        if (symbolType.startsWith('cash_')) {
+          // Apply special multipliers for these ticket types
+          if (ticket && ticket.ticket) {
+            if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
+              const specialMultiplier = ticket.ticket.type === 'random' ? 100 : 300;
+              
+              // If we already calculated the value, multiply it by the special multiplier
+              cashPrize *= specialMultiplier;
+            }
           }
         }
+      });
+      
+      // Apply 25% bonus for bonus tickets
+      if (ticket?.isBonus) {
+        tokenPrize = Math.floor(tokenPrize * 1.25);
+        cashPrize = cashPrize * 1.25;
+        stockPrize = stockPrize * 1.25;
+        
+        // Apply 25% bonus to individual stock shares
+        Object.keys(stockShares).forEach(symbol => {
+          stockShares[symbol].shares *= 1.25;
+        });
       }
       
-      // Special handling for cash amounts in Mystic Chance and Diamond Scratch
-      if (symbolType.startsWith('cash_')) {
-        // Apply special multipliers for these ticket types
-        if (ticket && ticket.ticket) {
-          if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
-            const specialMultiplier = ticket.ticket.type === 'random' ? 100 : 300;
-            
-            // If we already calculated the value, multiply it by the special multiplier
-            cashPrize *= specialMultiplier;
-          }
+      // Set the final prize
+      const finalPrize = {
+        tokens: Math.round(tokenPrize), // Round to whole numbers
+        cash: Math.round(cashPrize * 100) / 100, // Round to 2 decimals
+        stocks: Math.round(stockPrize * 100) / 100,
+        stockShares
+      };
+      
+      setPrize(finalPrize);
+      
+      // Show toast with prize details - SINGLE TOAST ONLY
+      if (tokenPrize > 0 || cashPrize > 0 || stockPrize > 0) {
+        let prizeText = "";
+        if (tokenPrize > 0) prizeText += `${tokenPrize} tokens `;
+        if (cashPrize > 0) prizeText += `$${cashPrize} `;
+        
+        // For stock shares, list them individually
+        if (Object.keys(stockShares).length > 0) {
+          const stockText = Object.entries(stockShares)
+            .map(([symbol, info]) => `${info.shares.toFixed(2)} ${symbol}`)
+            .join(', ');
+          prizeText += `${stockText} `;
+        } else if (stockPrize > 0) {
+          prizeText += `${stockPrize} stock points `;
         }
-      }
-    });
-    
-    // Apply 25% bonus for bonus tickets
-    if (ticket?.isBonus) {
-      tokenPrize = Math.floor(tokenPrize * 1.25);
-      cashPrize = cashPrize * 1.25;
-      stockPrize = stockPrize * 1.25;
-      
-      // Apply 25% bonus to individual stock shares
-      Object.keys(stockShares).forEach(symbol => {
-        stockShares[symbol].shares *= 1.25;
-      });
-    }
-    
-    // Set the final prize
-    const finalPrize = {
-      tokens: Math.round(tokenPrize), // Round to whole numbers
-      cash: Math.round(cashPrize * 100) / 100, // Round to 2 decimals
-      stocks: Math.round(stockPrize * 100) / 100,
-      stockShares
-    };
-    
-    setPrize(finalPrize);
-    
-    // Show toast with prize details - SINGLE TOAST ONLY
-    if (tokenPrize > 0 || cashPrize > 0 || stockPrize > 0) {
-      let prizeText = "";
-      if (tokenPrize > 0) prizeText += `${tokenPrize} tokens `;
-      if (cashPrize > 0) prizeText += `$${cashPrize} `;
-      
-      // For stock shares, list them individually
-      if (Object.keys(stockShares).length > 0) {
-        const stockText = Object.entries(stockShares)
-          .map(([symbol, info]) => `${info.shares.toFixed(2)} ${symbol}`)
-          .join(', ');
-        prizeText += `${stockText} `;
-      } else if (stockPrize > 0) {
-        prizeText += `${stockPrize} stock points `;
-      }
-      
-      // Just one toast message
-      toast({
-        title: "You Won!",
-        description: `Congratulations! You've won ${prizeText.trim()}`,
-        duration: 5000, // Longer duration for win messages
-      });
-      
-      // Send API request to update the user's tokens/assets
-      try {
-        const response = await fetch('/api/users/scratch-tickets/claim-prize', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        
+        // Just one toast message
+        toast({
+          title: "You Won!",
+          description: `Congratulations! You've won ${prizeText.trim()}`,
+          duration: 5000, // Longer duration for win messages
+        });
+        
+        // Trigger confetti animation for winners
+        triggerWinAnimation();
+        
+        // Send API request to update the user's tokens/assets
+        try {
+          // Create the request data
+          const requestData = {
             ticketId: ticketId,
             prize: finalPrize
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to update tokens');
+          };
+          
+          const response = await fetch('/api/users/scratch-tickets/claim-prize', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData),
+          });
+          
+          if (!response.ok) {
+            console.error('Error claiming prize:', await response.text());
+            throw new Error('Failed to update tokens');
+          }
+          
+          // Success! Token balance has been updated on the server
+          // Trigger token refresh in all components by updating localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('token-refresh', Date.now().toString());
+            // Fire a storage event to update other tabs
+            window.dispatchEvent(new StorageEvent('storage', {
+              key: 'token-refresh',
+              newValue: Date.now().toString()
+            }));
+          }
+        } catch (error) {
+          console.error('Error updating tokens:', error);
+          toast({
+            title: "Error",
+            description: "Your prize has been calculated but there was an error updating your balance. Please contact support.",
+          });
         }
+      } else {
+        // Only show the "Better luck next time!" toast once
+        // Use localStorage to track if we've already shown this toast for this ticket
+        const toastShownKey = `no-win-toast-${ticketId}`;
+        const toastAlreadyShown = localStorage.getItem(toastShownKey);
         
-        // Success! Token balance has been updated on the server
-        // Trigger token refresh in all components by updating localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token-refresh', Date.now().toString());
-          // Fire a storage event to update other tabs
-          window.dispatchEvent(new StorageEvent('storage', {
-            key: 'token-refresh',
-            newValue: Date.now().toString()
-          }));
+        if (!toastAlreadyShown) {
+          toast({
+            title: "Better luck next time!",
+            description: "No winning combinations found. Try again with another ticket!",
+            duration: 3000,
+          });
+          
+          // Mark that we've shown this toast
+          localStorage.setItem(toastShownKey, "true");
         }
-      } catch (error) {
-        console.error('Error updating tokens:', error);
-        toast({
-          title: "Error",
-          description: "Your prize has been calculated but there was an error updating your balance. Please contact support.",
-        });
       }
-    } else {
-      // Only show the "Better luck next time!" toast once
-      // Use localStorage to track if we've already shown this toast for this ticket
-      const toastShownKey = `no-win-toast-${ticketId}`;
-      const toastAlreadyShown = localStorage.getItem(toastShownKey);
+
+      return finalPrize;
+    } catch (error) {
+      console.error('Error calculating prize:', error);
+      toast({
+        title: "Error",
+        description: "There was an error calculating your prize. Please try again or contact support.",
+      });
       
-      if (!toastAlreadyShown) {
-        toast({
-          title: "Better luck next time!",
-          description: "No winning combinations found. Try again with another ticket!",
-          duration: 3000,
-        });
-        
-        // Mark that we've shown this toast
-        localStorage.setItem(toastShownKey, "true");
-      }
+      // Return an empty prize object in case of error
+      return {
+        tokens: 0,
+        cash: 0,
+        stocks: 0,
+        stockShares: {}
+      };
     }
   };
 
@@ -1249,27 +1492,6 @@ const ScratchOffPlayContent = () => {
         localStorage.setItem(`user-${userId}-tickets`, JSON.stringify(updatedTickets));
       } catch (error) {
         console.error('Error updating ticket in localStorage:', error);
-      }
-    }
-  };
-  
-  // Helper to clear a ticket from localStorage once it's in the database
-  const clearTicketFromLocalStorage = () => {
-    if (!session?.user?.id) return;
-    
-    const userId = session.user.id;
-    const savedTicketsStr = localStorage.getItem(`user-${userId}-tickets`);
-    
-    if (savedTicketsStr) {
-      try {
-        const savedTickets = JSON.parse(savedTicketsStr);
-        // Filter out this ticket
-        const updatedTickets = savedTickets.filter((t: any) => t.id !== ticketId);
-        
-        // Save back to localStorage
-        localStorage.setItem(`user-${userId}-tickets`, JSON.stringify(updatedTickets));
-      } catch (error) {
-        console.error('Error clearing ticket from localStorage:', error);
       }
     }
   };
@@ -1341,7 +1563,11 @@ const ScratchOffPlayContent = () => {
                       
                       {/* Icon without background for clean look */}
                       <span className={`${cell.symbol.color}`}>
-                        {cell.symbol.icon}
+                        {cell.symbol.icon && (
+                          typeof cell.symbol.icon === 'object' ? 
+                            cell.symbol.icon : 
+                            String(cell.symbol.icon)
+                        )}
                       </span>
                     </>
                   )}
@@ -1422,7 +1648,11 @@ const ScratchOffPlayContent = () => {
                     return (
                       <li key={idx} className="flex items-center text-gray-300">
                         <span className={`${SYMBOLS[win.symbolType].color} mr-2`}>
-                          {SYMBOLS[win.symbolType].icon}
+                          {SYMBOLS[win.symbolType].icon && (
+                            typeof SYMBOLS[win.symbolType].icon === 'object' ? 
+                              SYMBOLS[win.symbolType].icon : 
+                              String(SYMBOLS[win.symbolType].icon)
+                          )}
                         </span>
                         <span>{displayValue}</span>
                       </li>
@@ -1511,7 +1741,32 @@ const ScratchOffPlayContent = () => {
             </button>
           ) : (
             <button 
-              onClick={() => router.push("/games/scratch-offs")}
+              onClick={() => {
+                // Make sure the ticket is marked as scratched in localStorage
+                if (typeof window !== 'undefined' && ticketId) {
+                  try {
+                    // Force API call to mark as scratched first (for reliability)
+                    fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({ 
+                        scratched: true,
+                        scratchedAt: new Date().toISOString()
+                      })
+                    }).catch(err => console.error('API scratch marking error:', err));
+
+                    // Remove the ticket completely from localStorage
+                    removeTicketFromLocalStorage(ticketId);
+                  } catch (error) {
+                    console.error('Error updating localStorage before navigation:', error);
+                  }
+                }
+                
+                // Navigate back to scratch-offs page
+                router.push("/games/scratch-offs");
+              }}
               className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-medium"
             >
               Continue
@@ -1530,9 +1785,9 @@ const ScratchOffPlayContent = () => {
 };
 
 // Main component that renders the content inside a Suspense boundary
-const ScratchOffPlay = () => {
+const ScratchOffPlay: FunctionComponent = () => {
   return (
-    <Suspense fallback={<div className="w-full h-screen flex justify-center items-center"><LoadingStateAnimation /></div>}>
+    <Suspense fallback={<LoadingStateAnimation />}>
       <ScratchOffPlayContent />
     </Suspense>
   );

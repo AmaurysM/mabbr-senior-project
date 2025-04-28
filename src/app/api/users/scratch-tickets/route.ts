@@ -8,6 +8,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { withDebugHeaders, checkModelExists, safeTransaction } from "@/app/api/debug-handler";
 import { safeApiHandler, handleCors, emptyOkResponse } from "../../api-utils";
+import { TicketType } from "@/app/components/ScratchTicketTile";
 
 // Define types for history data
 interface TokenMarketHistoryRecord {
@@ -162,17 +163,35 @@ export async function GET(request: NextRequest) {
         // Query the database for the user's scratch tickets using a safer approach
         console.log('[SCRATCH_TICKETS GET] Querying database with filter:', filter);
         
-        // Simple query without transaction to avoid potential issues
+        // Use select ONLY, include related fields within select
         const userScratchTickets = await (prisma as any).userScratchTicket.findMany({
           where: filter,
-          include: {
-            ticket: true,
-          },
           orderBy: {
             createdAt: "desc",
           },
+          select: { // Use select to fetch all needed fields + relation
+            id: true,
+            ticketId: true,
+            userId: true,
+            purchased: true,
+            scratched: true,
+            createdAt: true,
+            isBonus: true,
+            ticket: { // Select the related ticket data
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                price: true
+              }
+            }
+          }
         }).catch((err: any) => {
           console.error('[SCRATCH_TICKETS GET] Query error:', err);
+          // Check if the error is the specific validation error and log it
+          if (err.message?.includes("Please either use `include` or `select`")) {
+              console.error("[SCRATCH_TICKETS GET] Prisma validation error: Tried to use both include and select.");
+          }
           return [];
         });
 
@@ -182,17 +201,20 @@ export async function GET(request: NextRequest) {
         const formattedTickets = userScratchTickets.map((dbTicket: any) => ({
           id: dbTicket.id,
           ticketId: dbTicket.ticketId,
+          shopTicketId: undefined,
           userId: dbTicket.userId,
           purchased: dbTicket.purchased || true,
           scratched: dbTicket.scratched || false,
           createdAt: dbTicket.createdAt.toISOString(),
           isBonus: dbTicket.isBonus || false,
-          ticket: {
+          ticket: dbTicket.ticket ? {
             id: dbTicket.ticket.id,
             name: dbTicket.ticket.name,
-            type: dbTicket.ticket.type as "tokens" | "money" | "stocks" | "random" | "diamond",
+            type: dbTicket.ticket.type as TicketType,
             price: dbTicket.ticket.price,
-          },
+          } : {
+             id: dbTicket.ticketId, name: 'Unknown Ticket', type: 'tokens', price: 0 
+          }
         }));
 
         return emptyOkResponse({ tickets: formattedTickets });
@@ -259,8 +281,13 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      const { price = 0, type = "tokens", name = "Scratch Ticket", isBonus = false } = ticketData;
-      console.log('[SCRATCH_TICKETS POST] Ticket data:', { price, type, name, isBonus });
+      const { price = 0, type = "tokens", name = "Scratch Ticket", isBonus = false, shopTicketId } = ticketData;
+      console.log('[SCRATCH_TICKETS POST] Ticket data:', { price, type, name, isBonus, shopTicketId });
+
+      if (!shopTicketId) {
+        console.log('[SCRATCH_TICKETS POST] No shopTicketId provided, generating one');
+        // Just log this as warning instead of failing - we'll simply not store it
+      }
 
       if (!price || price <= 0) {
         console.error('[SCRATCH_TICKETS POST] Invalid price:', price);
@@ -342,7 +369,8 @@ export async function POST(request: NextRequest) {
               ticketId: ticketId,
               isBonus,
               purchased: true,
-              scratched: false
+              scratched: false,
+              dayKey: new Date().toISOString().split('T')[0] // Add today's date as dayKey
             }
           });
           console.log('[SCRATCH_TICKETS POST] User ticket created successfully');
@@ -355,6 +383,7 @@ export async function POST(request: NextRequest) {
         const ticketToReturn = {
           id: userTicket?.id || randomUUID(),
           ticketId: ticketId,
+          shopTicketId: shopTicketId,
           userId: session.user.id,
           purchased: true,
           scratched: false,

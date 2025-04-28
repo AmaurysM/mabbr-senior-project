@@ -2,17 +2,25 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { TicketType } from "@/app/components/ScratchTicketTile";
 
 // GET /api/users/scratch-tickets/[ticketId]
 // Get a specific scratch ticket by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { ticketId: string } }
+  context: { params: { ticketId: string } }
 ) {
   try {
-    // Get the ticketId from the route params first before using it
-    const { ticketId } = params;
+    // Properly access the dynamic route params in Next.js App Router
+    const ticketId = context.params?.ticketId;
+    
+    if (!ticketId) {
+      console.error('[SCRATCH_TICKET GET] Missing ticketId in params');
+      return NextResponse.json(
+        { error: "Invalid ticket ID" },
+        { status: 400 }
+      );
+    }
+    
     console.log('[SCRATCH_TICKET GET] Request for ticket:', ticketId);
     
     const session = await auth.api.getSession({

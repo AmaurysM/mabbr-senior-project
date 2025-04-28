@@ -471,6 +471,10 @@ model UserScratchTicket {
   ticketId  String
   ticket    ScratchTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   
+  // Daily shop tracking
+  dayKey    String   // Format: YYYY-MM-DD to track which day's shop it belongs to
+  shopTicketId String?  // ID of the ticket in the daily shop UI (for purchase tracking)
+  
   // Ticket state
   purchased Boolean  @default(true)
   scratched Boolean  @default(false)
@@ -487,6 +491,7 @@ model UserScratchTicket {
   prizeStockShares Json? // Store details of stock shares won
   
   @@unique([userId, id])
+  @@unique([userId, ticketId, dayKey]) // Prevent multiple purchases of same ticket type per day
   @@map("user_scratch_ticket")
 }
 
