@@ -79,12 +79,25 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       checkPurchasedTickets();
     };
     
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('tickets-updated', handleStorageChange);
+    // Use properly named handler functions for each event type
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'tickets-updated') {
+        checkPurchasedTickets();
+      }
+    };
     
+    const handleTicketsUpdated = () => {
+      checkPurchasedTickets();
+    };
+    
+    // Add event listeners
+    window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('tickets-updated', handleTicketsUpdated);
+    
+    // Cleanup function - remove event listeners when component unmounts
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('tickets-updated', handleStorageChange);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('tickets-updated', handleTicketsUpdated);
     };
   }, [user]);
 

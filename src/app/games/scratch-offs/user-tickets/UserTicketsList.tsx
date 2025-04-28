@@ -107,12 +107,17 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
       fetchTickets();
     };
     
-    // Add custom event listener for ticket updates
-    window.addEventListener('tickets-updated', handleCustomEvent);
+    // Properly type and add event listener for custom events
+    // Need to cast the target to support the CustomEvent
+    if (typeof window !== 'undefined') {
+      window.addEventListener('tickets-updated', handleCustomEvent as EventListener);
+    }
     
     return () => {
       window.removeEventListener('storage', handleStorageEvent);
-      window.removeEventListener('tickets-updated', handleCustomEvent);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('tickets-updated', handleCustomEvent as EventListener);
+      }
     };
   }, [session?.user?.id]);
 
