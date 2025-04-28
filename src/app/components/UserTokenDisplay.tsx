@@ -23,54 +23,51 @@ const UserTokenDisplay: React.FC = () => {
           return;
         }
         
-        // First, check if there are tokens in localStorage
-        const storedTokens = localStorage.getItem(`user-${session.user.id}-tokens`);
-        if (storedTokens) {
-          const parsedTokens = parseInt(storedTokens, 10);
-          if (!isNaN(parsedTokens)) {
-            setTokens(parsedTokens);
-          }
-        }
+        // Try to get the user data
+        const res = await fetch("/api/user", { 
+          credentials: "include",
+          cache: "no-store" // Prevent caching
+        });
         
-        // Try fetching from API
-        try {
-          const res = await fetch("/api/user", { 
-            credentials: "include",
-            // Add cache-busting parameter to avoid caching issues
-            headers: { 'Cache-Control': 'no-cache, no-store' }
-          });
-          
-          if (!res.ok) {
-            console.error("Error fetching user data:", await res.text());
-            throw new Error("Failed to fetch user data");
-          }
-          
+        if (res.ok) {
           const data = await res.json();
-          
-          // Only update if we got valid data
           if (data && typeof data.tokenCount === 'number') {
-            setTokens(data.tokenCount || 0);
+            setTokens(data.tokenCount);
             
-            // Store in localStorage for future use
+            // Store in localStorage for future reference
             if (typeof window !== 'undefined') {
               localStorage.setItem(`user-${session.user.id}-tokens`, data.tokenCount.toString());
             }
-          } else if (tokens === null) {
-            // If API didn't return valid tokens and we don't have any, default to 0
-            setTokens(0);
+          } else {
+            // Try to get from localStorage if API doesn't return valid data
+            const storedTokens = localStorage.getItem(`user-${session.user.id}-tokens`);
+            if (storedTokens) {
+              setTokens(parseInt(storedTokens, 10));
+            } else {
+              setTokens(0);
+            }
           }
-        } catch (apiError) {
-          console.error("API error fetching tokens:", apiError);
-          
-          // If we already loaded tokens from localStorage, keep them
-          if (tokens === null) {
-            // If we have no tokens data at all, default to 0
+        } else {
+          // If API fails, try localStorage
+          const storedTokens = localStorage.getItem(`user-${session.user.id}-tokens`);
+          if (storedTokens) {
+            setTokens(parseInt(storedTokens, 10));
+          } else {
             setTokens(0);
           }
         }
-      } catch (err: any) {
-        console.error("Error in token fetching process:", err);
-        if (tokens === null) {
+      } catch (err) {
+        console.error("Error fetching user tokens:", err);
+        
+        // Try localStorage as fallback
+        if (typeof window !== 'undefined' && session?.user?.id) {
+          const storedTokens = localStorage.getItem(`user-${session.user.id}-tokens`);
+          if (storedTokens) {
+            setTokens(parseInt(storedTokens, 10));
+          } else {
+            setTokens(0);
+          }
+        } else {
           setTokens(0);
         }
       } finally {
@@ -80,32 +77,19 @@ const UserTokenDisplay: React.FC = () => {
 
     fetchUserTokens();
     
-    // Set up a listener for local storage changes to refresh tokens
+    // Listen for token refresh events
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'token-refresh' || e.key?.includes(`user-${session?.user?.id}-tokens`)) {
+      if (e.key === 'token-refresh' || (session?.user?.id && e.key === `user-${session.user.id}-tokens`)) {
         fetchUserTokens();
       }
     };
     
-    // Also listen for custom events
-    const handleCustomEvent = () => {
-      fetchUserTokens();
-    };
-    
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('token-refresh', handleCustomEvent);
-    window.addEventListener('tickets-updated', handleCustomEvent);
-    
-    // Poll for token updates every 30 seconds
-    const interval = setInterval(fetchUserTokens, 30000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('token-refresh', handleCustomEvent);
-      window.removeEventListener('tickets-updated', handleCustomEvent);
-      clearInterval(interval);
     };
-  }, [session?.user?.id, tokens]);
+  }, [session?.user?.id]);
 
   if (loading && tokens === null) {
     return (

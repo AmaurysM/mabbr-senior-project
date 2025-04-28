@@ -123,13 +123,8 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
         return; // Silently return without showing error toast
       }
       
-      // Set a timeout to prevent indefinite loading state
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timed out. Please try again.")), 10000);
-      });
-      
       // Attempt to purchase the ticket
-      const fetchPromise = fetch(`/api/users/scratch-tickets?id=${ticketId}`, {
+      const response = await fetch(`/api/users/scratch-tickets?id=${ticketId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -141,9 +136,6 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
         })
       });
       
-      // Race between the fetch and the timeout
-      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
-
       // Check if response is ok
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
@@ -157,54 +149,11 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
         throw new Error(data.error);
       }
 
-      // Check if the API returned an "already own" message - in this case, just close silently
-      if (data.message && data.message.includes("already own")) {
-        // Mark the ticket as purchased in the shop without showing a toast
-        const updatedTickets = shopTickets.map(ticket => 
-          ticket.id === ticketId ? { ...ticket, purchased: true } : ticket
-        );
-        setShopTickets(updatedTickets);
-        setSelectedTicket(null);
-        return;
-      }
-
-      // Check if we need to use localStorage (either from header or response data)
-      const useLocalStorage = 
-        response.headers.get('X-Use-Local-Storage') === 'true' || 
-        data.useLocalStorage === true;
-
       // Mark the ticket as purchased in the shop
       const updatedTickets = shopTickets.map(ticket => 
         ticket.id === ticketId ? { ...ticket, purchased: true } : ticket
       );
       setShopTickets(updatedTickets);
-
-      // If using localStorage, ensure ticket is saved
-      if (useLocalStorage && data.ticket) {
-        console.log('Using localStorage for ticket storage');
-        
-        // Save to localStorage directly
-        if (typeof window !== 'undefined' && user?.id) {
-          try {
-            // Get existing tickets from localStorage
-            const savedTicketsStr = localStorage.getItem(`user-${user.id}-tickets`) || '[]';
-            const savedTickets = JSON.parse(savedTicketsStr);
-            
-            // Add the new ticket
-            savedTickets.push(data.ticket);
-            
-            // Save back to localStorage
-            localStorage.setItem(`user-${user.id}-tickets`, JSON.stringify(savedTickets));
-            
-            // Use global function if available to update tickets list component
-            if ((window as any).saveTicketToLocalStorage) {
-              (window as any).saveTicketToLocalStorage(data.ticket);
-            }
-          } catch (storageError) {
-            console.error('Error saving ticket to localStorage:', storageError);
-          }
-        }
-      }
 
       // Pass the purchased ticket to the parent component
       const purchasedTicket = updatedTickets.find(ticket => ticket.id === ticketId);
@@ -219,13 +168,12 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
 
       // Notify other components about the purchase
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('tickets-updated', Date.now().toString());
-        // Trigger both storage event and custom event
+        localStorage.setItem('tickets-updated', Date.now().toString());
+        // Trigger storage event
         window.dispatchEvent(new StorageEvent('storage', {
           key: 'tickets-updated',
           newValue: Date.now().toString()
         }));
-        window.dispatchEvent(new CustomEvent('tickets-updated'));
       }
 
       setSelectedTicket(null);
@@ -233,13 +181,10 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
       console.error("Error buying scratch ticket:", error);
       setError(error.message);
 
-      // Only show error toast for actual errors, not for "already purchased" conditions
-      if (error.message && !error.message.includes("already purchased")) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to purchase ticket",
-        });
-      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to purchase ticket",
+      });
     } finally {
       setLoading(false);
     }

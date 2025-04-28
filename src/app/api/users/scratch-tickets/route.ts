@@ -258,19 +258,15 @@ export async function POST(request: NextRequest) {
         ticketData = await request.json();
       } catch (parseError) {
         console.error('[SCRATCH_TICKETS POST] JSON parse error:', parseError);
-        // Provide default values if parsing fails
         ticketData = {};
       }
       
       const { price = 0, type = "tokens", name = "Scratch Ticket", isBonus = false } = ticketData;
       console.log('[SCRATCH_TICKETS POST] Ticket data:', { price, type, name, isBonus });
 
-      // Check if localStorage fallback should be used
-      let useLocalStorageFallback = false;
-      
-      // Simplified transaction without complex dependencies
+      // Database transaction for ticket purchase
       try {
-        // Fetch the user with a simpler query
+        // Check if user has enough tokens
         const user = await prisma.user.findUnique({
           where: { id: session.user.id },
           select: { tokenCount: true },
@@ -295,154 +291,9 @@ export async function POST(request: NextRequest) {
           );
         }
         
-        // Look for the ticket in the database
-        let scratchTicket;
-        try {
-          scratchTicket = await (prisma as any).scratchTicket.findUnique({
-            where: { id: ticketId }
-          });
-        } catch (findError) {
-          console.error("[SCRATCH_TICKETS POST] Error finding ticket:", findError);
-          useLocalStorageFallback = true;
-        }
-        
-        // If it doesn't exist, create it
-        if (!scratchTicket) {
-          console.log('[SCRATCH_TICKETS POST] Creating new scratch ticket');
-          try {
-            scratchTicket = await (prisma as any).scratchTicket.create({
-              data: {
-                id: ticketId,
-                name,
-                type,
-                price,
-                description: isBonus 
-                  ? `Another chance to win with a ${type} ticket! 25% Higher Reward!`
-                  : `Win big with this ${type} scratch ticket!`,
-                isDailyShop: true,
-                dayKey: new Date().toISOString().split('T')[0]
-              }
-            });
-          } catch (createError) {
-            console.error("[SCRATCH_TICKETS POST] Error creating ticket:", createError);
-            // Create a minimal ticket object if DB creation fails
-            scratchTicket = { id: ticketId, name, type, price };
-            useLocalStorageFallback = true;
-          }
-        }
-        
-        // Create a user scratch ticket with minimal data
-        let userTicket;
-        try {
-          userTicket = await (prisma as any).userScratchTicket.create({
-            data: {
-              userId: session.user.id,
-              ticketId: scratchTicket.id,
-              isBonus,
-              purchased: true,
-              scratched: false,
-            }
-          });
-        } catch (createTicketError) {
-          console.error("[SCRATCH_TICKETS POST] Error creating user ticket:", createTicketError);
-          // Provide a minimal ticket object for response
-          userTicket = { 
-            id: uuidv4(), 
-            userId: session.user.id, 
-            ticketId: scratchTicket.id,
-            isBonus,
-            purchased: true,
-            scratched: false,
-            createdAt: new Date().toISOString(),
-          };
-          useLocalStorageFallback = true;
-        }
-        
-        // Update the user's token balance
-        let updatedUser;
-        try {
-          updatedUser = await prisma.user.update({
-            where: { id: session.user.id },
-            data: {
-              tokenCount: {
-                decrement: price
-              }
-            },
-            select: {
-              id: true,
-              tokenCount: true
-            }
-          });
-        } catch (updateError) {
-          console.error("[SCRATCH_TICKETS POST] Error updating user:", updateError);
-          // Provide a minimal user object with decremented tokens
-          updatedUser = { 
-            id: session.user.id, 
-            tokenCount: (user.tokenCount || 0) - price 
-          };
-        }
-
-        // If any database operations failed, fall back to localStorage
-        if (useLocalStorageFallback) {
-          // Create response with localStorage instructions
-          const response = NextResponse.json({
-            success: true,
-            useLocalStorage: true,
-            ticket: {
-              id: userTicket.id,
-              ticketId: scratchTicket.id,
-              userId: session.user.id,
-              purchased: true,
-              scratched: false,
-              createdAt: new Date().toISOString(),
-              isBonus: isBonus,
-              ticket: {
-                id: scratchTicket.id,
-                name: scratchTicket.name,
-                type: scratchTicket.type,
-                price: scratchTicket.price
-              }
-            },
-            tokenCount: updatedUser.tokenCount
-          });
-          
-          // Add necessary headers to make client-side Javascript use localStorage
-          response.headers.set('X-Use-Local-Storage', 'true');
-          
-          console.log('[SCRATCH_TICKETS POST] Using localStorage fallback');
-          return response;
-        }
-
-        console.log('[SCRATCH_TICKETS POST] Purchase successful');
-        return NextResponse.json({ 
-          success: true,
-          ticket: {
-            id: userTicket.id,
-            ticketId: scratchTicket.id,
-            userId: session.user.id,
-            purchased: true,
-            scratched: false,
-            createdAt: userTicket.createdAt?.toISOString() || new Date().toISOString(),
-            isBonus: userTicket.isBonus,
-            ticket: {
-              id: scratchTicket.id,
-              name: scratchTicket.name,
-              type: scratchTicket.type,
-              price: scratchTicket.price
-            }
-          },
-          tokenCount: updatedUser.tokenCount
-        });
-      } catch (dbError) {
-        console.error('[SCRATCH_TICKETS POST] Database operation error:', dbError);
-        
-        // Fall back to localStorage approach
-        // Create a randomized ID for the user ticket
-        const userTicketId = uuidv4();
-        
-        // Create a simplified ticket object
-        const ticket = {
-          id: userTicketId,
+        // Create the ticket data to return to the client
+        const ticketToReturn = {
+          id: ticketId,
           ticketId: ticketId,
           userId: session.user.id,
           purchased: true,
@@ -457,18 +308,32 @@ export async function POST(request: NextRequest) {
           }
         };
         
-        // Respond with instructions to use localStorage
-        const response = NextResponse.json({
-          success: true,
-          useLocalStorage: true, 
-          ticket: ticket,
-          tokenCount: null // Client will need to handle token decrement
+        // Update the user's token balance
+        const updatedUser = await prisma.user.update({
+          where: { id: session.user.id },
+          data: {
+            tokenCount: {
+              decrement: price
+            }
+          },
+          select: {
+            id: true,
+            tokenCount: true
+          }
         });
-        
-        // Add header to trigger localStorage fallback
-        response.headers.set('X-Use-Local-Storage', 'true');
-        
-        return response;
+          
+        console.log('[SCRATCH_TICKETS POST] Purchase successful');
+        return NextResponse.json({ 
+          success: true,
+          ticket: ticketToReturn,
+          tokenCount: updatedUser.tokenCount
+        });
+      } catch (dbError) {
+        console.error('[SCRATCH_TICKETS POST] Database operation error:', dbError);
+        return NextResponse.json(
+          { error: "Failed to complete purchase transaction" },
+          { status: 500 }
+        );
       }
     } catch (error) {
       console.error("[SCRATCH_TICKETS POST] Error purchasing scratch ticket:", error);
