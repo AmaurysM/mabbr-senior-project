@@ -352,6 +352,9 @@ export default function ScratchOffs() {
     setIsSyncing(true);
     
     try {
+      // Optimistically update the UI immediately
+      setUserTokens((current) => current !== null ? current - ticket.price : null);
+      
       // Call API to purchase ticket
       const response = await fetch(`/api/users/scratch-tickets?id=${ticket.id}`, {
         method: 'POST',
@@ -368,6 +371,12 @@ export default function ScratchOffs() {
       
       if (!response.ok) {
         const errorData = await response.json();
+        // Revert optimistic update if purchase fails
+        const tokenResponse = await fetch('/api/user', { credentials: 'include' });
+        if (tokenResponse.ok) {
+          const userData = await tokenResponse.json();
+          setUserTokens(userData.tokenCount || 0);
+        }
         throw new Error(errorData.error || 'Failed to purchase ticket');
       }
       
@@ -416,7 +425,12 @@ export default function ScratchOffs() {
       // Trigger the storage event to notify other components about the change
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('tickets-updated', Date.now().toString());
-        window.dispatchEvent(new Event('storage'));
+        // Use both storage event and custom event for better coverage
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'tickets-updated',
+          newValue: Date.now().toString()
+        }));
+        window.dispatchEvent(new CustomEvent('tickets-updated'));
       }
     } catch (error) {
       console.error('Error purchasing ticket:', error);
@@ -428,6 +442,41 @@ export default function ScratchOffs() {
       setIsSyncing(false);
     }
   };
+  
+  // Add a polling mechanism to periodically check token counts
+  useEffect(() => {
+    if (!session?.user) return;
+    
+    const fetchTokens = async () => {
+      try {
+        const response = await fetch('/api/user', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUserTokens(data.tokenCount || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching token update:', error);
+      }
+    };
+    
+    // Initial fetch
+    fetchTokens();
+    
+    // Set up polling every 10 seconds
+    const intervalId = setInterval(fetchTokens, 10000);
+    
+    // Set up event listener for token updates
+    const handleTokenUpdate = () => fetchTokens();
+    window.addEventListener('token-update', handleTokenUpdate);
+    
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('token-update', handleTokenUpdate);
+    };
+  }, [session?.user]);
   
   // Extract the fetchUserTickets function to be reusable
   const fetchUserTickets = async () => {
