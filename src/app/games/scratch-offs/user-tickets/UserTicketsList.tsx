@@ -42,6 +42,16 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
             return acc;
           }, []);
           
+          // Save API tickets to localStorage for resilience
+          if (typeof window !== 'undefined' && session?.user?.id) {
+            try {
+              const userId = session.user.id;
+              localStorage.setItem(`user-${userId}-tickets`, JSON.stringify(uniqueTickets));
+            } catch (saveError) {
+              console.error('Error saving tickets to localStorage:', saveError);
+            }
+          }
+          
           setTickets(uniqueTickets);
         } else {
           setTickets([]);
@@ -50,7 +60,7 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
         console.error("Error fetching scratch tickets:", error);
         setError("Failed to load your scratch tickets. Please try again later.");
         
-        // Fallback to localStorage only if API fails
+        // Fallback to localStorage if API fails
         if (typeof window !== 'undefined' && session?.user?.id) {
           const userId = session.user.id;
           const savedTickets = localStorage.getItem(`user-${userId}-tickets`);
@@ -81,27 +91,90 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
     
     fetchTickets();
     
-    // Set up event listener for tickets updates
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'ticket-played' || e.key === 'tickets-updated') {
+    // Set up storage event listeners to detect ticket changes
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'ticket-played' || 
+          e.key === 'tickets-updated' || 
+          e.key?.includes('ticket-result-')) {
         fetchTickets();
       }
     };
     
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('storage', handleStorageEvent);
     
     // Also listen for custom events from other components in the same window
     const handleCustomEvent = () => {
       fetchTickets();
     };
     
-    window.addEventListener('storage', handleCustomEvent);
+    // Add custom event listener for ticket updates
+    window.addEventListener('tickets-updated', handleCustomEvent);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('storage', handleCustomEvent);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('tickets-updated', handleCustomEvent);
     };
   }, [session?.user?.id]);
+
+  // Add a function to handle localStorage ticket saving
+  // This function will be called when a new ticket is purchased
+  const saveTicketToLocalStorage = (ticket: UserScratchTicket) => {
+    if (!session?.user?.id) return;
+    
+    const userId = session.user.id;
+    try {
+      // Get existing tickets
+      const savedTicketsStr = localStorage.getItem(`user-${userId}-tickets`);
+      let savedTickets: UserScratchTicket[] = [];
+      
+      if (savedTicketsStr) {
+        savedTickets = JSON.parse(savedTicketsStr);
+      }
+      
+      // Check if ticket already exists
+      const existingIndex = savedTickets.findIndex(t => t.id === ticket.id);
+      if (existingIndex >= 0) {
+        // Update existing ticket
+        savedTickets[existingIndex] = ticket;
+      } else {
+        // Add new ticket
+        savedTickets.push(ticket);
+      }
+      
+      // Save back to localStorage
+      localStorage.setItem(`user-${userId}-tickets`, JSON.stringify(savedTickets));
+      
+      // Update state
+      setTickets(prev => {
+        const newTickets = [...prev];
+        const existingTicketIndex = newTickets.findIndex(t => t.id === ticket.id);
+        if (existingTicketIndex >= 0) {
+          newTickets[existingTicketIndex] = ticket;
+        } else {
+          newTickets.push(ticket);
+        }
+        return newTickets;
+      });
+      
+      // Trigger event for other components
+      window.dispatchEvent(new CustomEvent('tickets-updated'));
+    } catch (error) {
+      console.error('Error saving ticket to localStorage:', error);
+    }
+  };
+
+  // Register this function globally for cross-component communication
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).saveTicketToLocalStorage = saveTicketToLocalStorage;
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).saveTicketToLocalStorage;
+      }
+    };
+  }, []);
 
   if (loading && tickets.length === 0) {
     return (

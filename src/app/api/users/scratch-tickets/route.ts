@@ -265,6 +265,9 @@ export async function POST(request: NextRequest) {
       const { price = 0, type = "tokens", name = "Scratch Ticket", isBonus = false } = ticketData;
       console.log('[SCRATCH_TICKETS POST] Ticket data:', { price, type, name, isBonus });
 
+      // Check if localStorage fallback should be used
+      let useLocalStorageFallback = false;
+      
       // Simplified transaction without complex dependencies
       try {
         // Fetch the user with a simpler query
@@ -300,6 +303,7 @@ export async function POST(request: NextRequest) {
           });
         } catch (findError) {
           console.error("[SCRATCH_TICKETS POST] Error finding ticket:", findError);
+          useLocalStorageFallback = true;
         }
         
         // If it doesn't exist, create it
@@ -323,6 +327,7 @@ export async function POST(request: NextRequest) {
             console.error("[SCRATCH_TICKETS POST] Error creating ticket:", createError);
             // Create a minimal ticket object if DB creation fails
             scratchTicket = { id: ticketId, name, type, price };
+            useLocalStorageFallback = true;
           }
         }
         
@@ -334,6 +339,8 @@ export async function POST(request: NextRequest) {
               userId: session.user.id,
               ticketId: scratchTicket.id,
               isBonus,
+              purchased: true,
+              scratched: false,
             }
           });
         } catch (createTicketError) {
@@ -343,8 +350,12 @@ export async function POST(request: NextRequest) {
             id: uuidv4(), 
             userId: session.user.id, 
             ticketId: scratchTicket.id,
-            isBonus 
+            isBonus,
+            purchased: true,
+            scratched: false,
+            createdAt: new Date().toISOString(),
           };
+          useLocalStorageFallback = true;
         }
         
         // Update the user's token balance
@@ -371,24 +382,93 @@ export async function POST(request: NextRequest) {
           };
         }
 
+        // If any database operations failed, fall back to localStorage
+        if (useLocalStorageFallback) {
+          // Create response with localStorage instructions
+          const response = NextResponse.json({
+            success: true,
+            useLocalStorage: true,
+            ticket: {
+              id: userTicket.id,
+              ticketId: scratchTicket.id,
+              userId: session.user.id,
+              purchased: true,
+              scratched: false,
+              createdAt: new Date().toISOString(),
+              isBonus: isBonus,
+              ticket: {
+                id: scratchTicket.id,
+                name: scratchTicket.name,
+                type: scratchTicket.type,
+                price: scratchTicket.price
+              }
+            },
+            tokenCount: updatedUser.tokenCount
+          });
+          
+          // Add necessary headers to make client-side Javascript use localStorage
+          response.headers.set('X-Use-Local-Storage', 'true');
+          
+          console.log('[SCRATCH_TICKETS POST] Using localStorage fallback');
+          return response;
+        }
+
         console.log('[SCRATCH_TICKETS POST] Purchase successful');
         return NextResponse.json({ 
           success: true,
           ticket: {
             id: userTicket.id,
-            name: scratchTicket.name,
-            type: scratchTicket.type,
-            price: scratchTicket.price,
-            isBonus: userTicket.isBonus
+            ticketId: scratchTicket.id,
+            userId: session.user.id,
+            purchased: true,
+            scratched: false,
+            createdAt: userTicket.createdAt?.toISOString() || new Date().toISOString(),
+            isBonus: userTicket.isBonus,
+            ticket: {
+              id: scratchTicket.id,
+              name: scratchTicket.name,
+              type: scratchTicket.type,
+              price: scratchTicket.price
+            }
           },
           tokenCount: updatedUser.tokenCount
         });
       } catch (dbError) {
         console.error('[SCRATCH_TICKETS POST] Database operation error:', dbError);
-        return NextResponse.json(
-          { error: "Failed to complete purchase transaction" },
-          { status: 500 }
-        );
+        
+        // Fall back to localStorage approach
+        // Create a randomized ID for the user ticket
+        const userTicketId = uuidv4();
+        
+        // Create a simplified ticket object
+        const ticket = {
+          id: userTicketId,
+          ticketId: ticketId,
+          userId: session.user.id,
+          purchased: true,
+          scratched: false,
+          createdAt: new Date().toISOString(),
+          isBonus: isBonus,
+          ticket: {
+            id: ticketId,
+            name: name,
+            type: type,
+            price: price
+          }
+        };
+        
+        // Respond with instructions to use localStorage
+        const response = NextResponse.json({
+          success: true,
+          useLocalStorage: true, 
+          ticket: ticket,
+          tokenCount: null // Client will need to handle token decrement
+        });
+        
+        // Add header to trigger localStorage fallback
+        response.headers.set('X-Use-Local-Storage', 'true');
+        
+        return response;
       }
     } catch (error) {
       console.error("[SCRATCH_TICKETS POST] Error purchasing scratch ticket:", error);

@@ -155,11 +155,43 @@ const ScratchTicketShop: React.FC<ScratchTicketShopProps> = ({
         return;
       }
 
+      // Check if we need to use localStorage (either from header or response data)
+      const useLocalStorage = 
+        response.headers.get('X-Use-Local-Storage') === 'true' || 
+        data.useLocalStorage === true;
+
       // Mark the ticket as purchased in the shop
       const updatedTickets = shopTickets.map(ticket => 
         ticket.id === ticketId ? { ...ticket, purchased: true } : ticket
       );
       setShopTickets(updatedTickets);
+
+      // If using localStorage, ensure ticket is saved
+      if (useLocalStorage && data.ticket) {
+        console.log('Using localStorage for ticket storage');
+        
+        // Save to localStorage directly
+        if (typeof window !== 'undefined' && user?.id) {
+          try {
+            // Get existing tickets from localStorage
+            const savedTicketsStr = localStorage.getItem(`user-${user.id}-tickets`) || '[]';
+            const savedTickets = JSON.parse(savedTicketsStr);
+            
+            // Add the new ticket
+            savedTickets.push(data.ticket);
+            
+            // Save back to localStorage
+            localStorage.setItem(`user-${user.id}-tickets`, JSON.stringify(savedTickets));
+            
+            // Use global function if available to update tickets list component
+            if ((window as any).saveTicketToLocalStorage) {
+              (window as any).saveTicketToLocalStorage(data.ticket);
+            }
+          } catch (storageError) {
+            console.error('Error saving ticket to localStorage:', storageError);
+          }
+        }
+      }
 
       // Pass the purchased ticket to the parent component
       const purchasedTicket = updatedTickets.find(ticket => ticket.id === ticketId);
