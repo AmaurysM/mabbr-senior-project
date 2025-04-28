@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { UserScratchTicket } from "@/app/components/OwnedScratchTicket";
 import fs from 'fs';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { withDebugHeaders, checkModelExists, safeTransaction } from "@/app/api/debug-handler";
 import { safeApiHandler, handleCors, emptyOkResponse } from "../../api-utils";
 
@@ -88,7 +88,7 @@ const updateTokenMarketHistory = async (totalTokens: number): Promise<void> => {
   
   // Create new history record
   const newRecord: TokenMarketHistoryRecord = {
-    id: uuidv4(),
+    id: randomUUID(),
     date: new Date(),
     tokenValue,
     totalSupply: totalTokens,
@@ -156,12 +156,6 @@ export async function GET(request: NextRequest) {
       // Only filter out scratched tickets if not explicitly including them
       if (!includeScratched) {
         filter.scratched = false;
-      }
-
-      // Check if model exists without throwing
-      if (!prisma.userScratchTicket) {
-        console.log('[SCRATCH_TICKETS GET] UserScratchTicket model not found, returning empty array');
-        return emptyOkResponse({ tickets: [] });
       }
 
       try {
@@ -291,14 +285,61 @@ export async function POST(request: NextRequest) {
           );
         }
         
+        // Try to create or update ticket in the database - wrapped in try/catch to handle db schema issues
+        let scratchTicket = null;
+        try {
+          // Check if the ticket already exists
+          scratchTicket = await (prisma as any).scratchTicket.findUnique({
+            where: { id: ticketId }
+          });
+          
+          // Create if it doesn't exist
+          if (!scratchTicket) {
+            scratchTicket = await (prisma as any).scratchTicket.create({
+              data: {
+                id: ticketId,
+                name,
+                type,
+                price,
+                description: isBonus 
+                  ? `Another chance to win with a ${type} ticket! 25% Higher Reward!`
+                  : `Win big with this ${type} scratch ticket!`
+              }
+            });
+          }
+        } catch (ticketError) {
+          console.error('[SCRATCH_TICKETS POST] Error with scratchTicket:', ticketError);
+          // Continue even if ticket creation fails - we'll use the in-memory version
+        }
+        
+        // Create the user scratch ticket - try this separately
+        let userTicket = null;
+        try {
+          const uniqueUserTicketId = randomUUID(); // Generate a unique ID for the user ticket
+          
+          userTicket = await (prisma as any).userScratchTicket.create({
+            data: {
+              id: uniqueUserTicketId,
+              userId: session.user.id,
+              ticketId: ticketId,
+              isBonus,
+              purchased: true,
+              scratched: false
+            }
+          });
+        } catch (userTicketError) {
+          console.error('[SCRATCH_TICKETS POST] Error with userScratchTicket:', userTicketError);
+          // Continue even if user ticket creation fails
+        }
+        
         // Create the ticket data to return to the client
         const ticketToReturn = {
-          id: ticketId,
+          id: userTicket?.id || randomUUID(),
           ticketId: ticketId,
           userId: session.user.id,
           purchased: true,
           scratched: false,
-          createdAt: new Date().toISOString(),
+          createdAt: userTicket?.createdAt?.toISOString() || new Date().toISOString(),
           isBonus: isBonus,
           ticket: {
             id: ticketId,

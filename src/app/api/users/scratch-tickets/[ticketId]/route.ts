@@ -11,19 +11,23 @@ export async function GET(
   { params }: { params: { ticketId: string } }
 ) {
   try {
+    // Get the ticketId from the route params first before using it
+    const { ticketId } = params;
+    console.log('[SCRATCH_TICKET GET] Request for ticket:', ticketId);
+    
     const session = await auth.api.getSession({
       headers: await headers(),
     });
     
     if (!session?.user) {
+      console.log('[SCRATCH_TICKET GET] Unauthorized: No valid session');
       return NextResponse.json(
         { error: "You must be logged in to view your scratch tickets" },
         { status: 401 }
       );
     }
-
-    // Get the ticketId from the route params
-    const { ticketId } = await params;
+    
+    console.log('[SCRATCH_TICKET GET] Looking for ticket ID:', ticketId, 'for user:', session.user.id);
     
     // Try to find the user's scratch ticket in the database
     try {

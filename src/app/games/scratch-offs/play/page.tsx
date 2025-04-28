@@ -578,6 +578,7 @@ const ScratchOffPlayContent = () => {
   // Fetch ticket data
   useEffect(() => {
     if (!ticketId) {
+      console.log('No ticketId found, redirecting to scratch-offs page');
       router.push("/games/scratch-offs");
       return;
     }
@@ -593,12 +594,24 @@ const ScratchOffPlayContent = () => {
               const results = JSON.parse(savedResults);
               
               // Ticket has been revealed before, load the previous results
+              console.log('Loading saved ticket results. Fetching from API:', ticketId);
               const response = await fetch(`/api/users/scratch-tickets/${ticketId}`);
+              
               if (!response.ok) {
+                console.error('API error status:', response.status, 'for ticketId:', ticketId);
+                // If not found, inform the user
+                if (response.status === 404) {
+                  toast({
+                    title: "Ticket Not Found",
+                    description: "This ticket couldn't be found. Redirecting back to the shop.",
+                  });
+                  setTimeout(() => router.push('/games/scratch-offs'), 2000);
+                }
                 throw new Error(`Error: ${response.status} ${response.statusText}`);
               }
               
               const data = await response.json();
+              console.log('API data received:', data);
               setTicket(data);
               
               // Set the saved state
@@ -618,12 +631,24 @@ const ScratchOffPlayContent = () => {
         }
         
         // Normal fetch if no saved results
+        console.log('First time playing ticket. Fetching from API:', ticketId);
         const response = await fetch(`/api/users/scratch-tickets/${ticketId}`);
+        
         if (!response.ok) {
+          console.error('API error status:', response.status, 'for ticketId:', ticketId);
+          // If not found, inform the user and redirect
+          if (response.status === 404) {
+            toast({
+              title: "Ticket Not Found",
+              description: "This ticket couldn't be found. Redirecting back to the shop.",
+            });
+            setTimeout(() => router.push('/games/scratch-offs'), 2000);
+          }
           throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
+        console.log('API data received:', data);
         setTicket(data);
         
         // Generate grid based on ticket type
@@ -648,14 +673,26 @@ const ScratchOffPlayContent = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    console.log('Setting up canvas for scratching');
+    
+    // Define all the functions inside the useEffect to avoid stale closures
+    
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let scratchedPixels = 0;
+    let totalPixels = 0;
+    
     // Set canvas dimensions
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
+      totalPixels = canvas.width * canvas.height;
       
       // Redraw the scratch-off layer
       drawScratchLayer();
+      console.log('Canvas resized to', canvas.width, 'x', canvas.height);
     };
 
     // Draw the scratch-off layer
@@ -675,18 +712,6 @@ const ScratchOffPlayContent = () => {
       }
     };
 
-    // Initialize canvas
-    resizeCanvas();
-    
-    // Handle resize
-    window.addEventListener('resize', resizeCanvas);
-
-    let isDrawing = false;
-    let lastX = 0;
-    let lastY = 0;
-    let scratchedPixels = 0;
-    let totalPixels = canvas.width * canvas.height;
-    
     // Simple function to get coordinates from both mouse and touch events
     const getCoordinates = (e: MouseEvent | TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -708,6 +733,7 @@ const ScratchOffPlayContent = () => {
 
     // Start scratching
     const startScratch = (e: MouseEvent | TouchEvent) => {
+      console.log('Start scratching');
       isDrawing = true;
       setIsScratching(true);
       const coords = getCoordinates(e);
@@ -755,6 +781,7 @@ const ScratchOffPlayContent = () => {
 
       const percentage = Math.round((scratchedPixels / totalPixels) * 100);
       setScratchPercentage(percentage);
+      console.log('Scratch percentage:', percentage);
 
       // Calculate grid cell for scratched position
       const cellWidth = canvas.width / 5;
@@ -764,7 +791,27 @@ const ScratchOffPlayContent = () => {
       
       if (col >= 0 && col < 5 && row >= 0 && row < 5) {
         // Reveal the cell at the scratch position
-        scratchCell(row * 5 + col);
+        const cellIndex = row * 5 + col;
+        
+        // Copy the scratchCell function logic here to avoid dependency issues
+        if (isRevealed) return;
+        
+        setGrid(prev => {
+          const newGrid = [...prev];
+          if (!newGrid[cellIndex].scratched) {
+            newGrid[cellIndex] = {
+              ...newGrid[cellIndex],
+              scratched: true
+            };
+            
+            // Check for winning combinations
+            const { wins: newWins, winningCells: newWinningCells } = checkWinningPatterns(newGrid);
+            setWins(newWins);
+            setWinningCells(newWinningCells);
+          }
+          
+          return newGrid;
+        });
         
         // Also reveal adjacent cells for smoother experience
         for (let i = -1; i <= 1; i++) {
@@ -772,7 +819,19 @@ const ScratchOffPlayContent = () => {
             const newCol = col + i;
             const newRow = row + j;
             if (newCol >= 0 && newCol < 5 && newRow >= 0 && newRow < 5) {
-              scratchCell(newRow * 5 + newCol);
+              const adjacentCellIndex = newRow * 5 + newCol;
+              
+              // Similar logic for adjacent cells
+              setGrid(prev => {
+                const newGrid = [...prev];
+                if (!newGrid[adjacentCellIndex].scratched) {
+                  newGrid[adjacentCellIndex] = {
+                    ...newGrid[adjacentCellIndex],
+                    scratched: true
+                  };
+                }
+                return newGrid;
+              });
             }
           }
         }
@@ -780,7 +839,42 @@ const ScratchOffPlayContent = () => {
 
       // Auto-reveal when enough is scratched
       if (percentage > 45 && !isRevealed) {
-        revealAll();
+        setIsRevealed(true);
+        
+        // Scratch all cells
+        setGrid(prev => 
+          prev.map(cell => ({
+            ...cell,
+            scratched: true
+          }))
+        );
+        
+        // Check for winning combinations
+        const fullScratchedGrid = grid.map(cell => ({
+          ...cell,
+          scratched: true
+        }));
+        
+        const { wins: finalWins, winningCells: finalWinningCells } = checkWinningPatterns(fullScratchedGrid);
+        setWins(finalWins);
+        setWinningCells(finalWinningCells);
+        
+        // Calculate prize outside this function to avoid dependency issues
+        calculatePrize(finalWins).catch(error => {
+          console.error('Error calculating prize:', error);
+        });
+
+        // Mark as played for API update
+        fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
+          method: 'POST',
+        }).catch(error => {
+          console.error('Error marking ticket as scratched:', error);
+          // Fallback to localStorage if API fails
+          markTicketAsPlayedInLocalStorage();
+        });
+
+        // Save results to localStorage for future reference
+        saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
       }
     };
 
@@ -790,27 +884,33 @@ const ScratchOffPlayContent = () => {
       setIsScratching(false);
     };
 
+    // Initialize canvas
+    resizeCanvas();
+    
     // Add event listeners
     canvas.addEventListener('mousedown', startScratch);
     canvas.addEventListener('mousemove', scratch);
     window.addEventListener('mouseup', stopScratch);
+    window.addEventListener('resize', resizeCanvas);
     
     // Touch events - important for mobile
     canvas.addEventListener('touchstart', startScratch, { passive: false });
     canvas.addEventListener('touchmove', scratch, { passive: false });
     window.addEventListener('touchend', stopScratch);
-
+    
+    // Cleanup event listeners when component unmounts or ticket changes
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      console.log('Cleaning up canvas event listeners');
       canvas.removeEventListener('mousedown', startScratch);
       canvas.removeEventListener('mousemove', scratch);
       window.removeEventListener('mouseup', stopScratch);
+      window.removeEventListener('resize', resizeCanvas);
       
       canvas.removeEventListener('touchstart', startScratch);
       canvas.removeEventListener('touchmove', scratch);
       window.removeEventListener('touchend', stopScratch);
     };
-  }, [ticket, isRevealed, grid, scratchCell, revealAll, setIsScratching, setScratchPercentage, isRevealing]);
+  }, [ticketId, ticket, isRevealed]);
 
   // Scratch a single cell
   const scratchCell = (cellIndex: number) => {
@@ -836,78 +936,44 @@ const ScratchOffPlayContent = () => {
 
   // Reveal the entire grid
   const revealAll = async () => {
-    if (isRevealed) return;
+    if (isRevealed) return; // Prevent double-revealing
+    
+    console.log('Revealing all cells at once');
     setIsRevealed(true);
     
     // Scratch all cells
-    setGrid(prev => 
-      prev.map(cell => ({
-        ...cell,
-        scratched: true
-      }))
-    );
-    
-    // Check for winning combinations
-    const fullScratchedGrid = grid.map(cell => ({
+    const updatedGrid = grid.map(cell => ({
       ...cell,
       scratched: true
     }));
     
-    const { wins: finalWins, winningCells: finalWinningCells } = checkWinningPatterns(fullScratchedGrid);
+    setGrid(updatedGrid);
+    
+    // Check for winning combinations
+    const { wins: finalWins, winningCells: finalWinningCells } = checkWinningPatterns(updatedGrid);
     setWins(finalWins);
     setWinningCells(finalWinningCells);
     
-    // Calculate prize
-    calculatePrize(finalWins);
+    // Calculate the prize based on the wins
+    await calculatePrize(finalWins);
     
-    // Trigger confetti for winners
-    if (finalWins.length > 0) {
-      if (typeof window !== 'undefined') {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
+    // Mark as scratched via API
+    try {
+      const response = await fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark ticket as scratched');
       }
+    } catch (error) {
+      console.error('Error marking ticket as scratched:', error);
+      // Fallback to localStorage if API fails
+      markTicketAsPlayedInLocalStorage();
     }
     
-    // Mark ticket as scratched immediately when revealed, not just on continue
-    if (ticket) {
-      try {
-        // Mark the ticket as scratched via API
-        const response = await fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        if (!response.ok) {
-          console.error('Failed to mark ticket as scratched via API');
-          // Fallback to localStorage only if API fails
-          markTicketAsPlayedInLocalStorage();
-        } else {
-          // API was successful, clear this ticket from localStorage to avoid duplication
-          clearTicketFromLocalStorage();
-        }
-        
-        // Notify other components that a ticket has been played
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('ticket-played', Date.now().toString());
-          // Fire a storage event to update other tabs
-          window.dispatchEvent(new StorageEvent('storage', {
-            key: 'ticket-played',
-            newValue: Date.now().toString()
-          }));
-          
-          // Save the revealed state and results in localStorage
-          saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
-        }
-      } catch (error) {
-        console.error('Error marking ticket as scratched:', error);
-        markTicketAsPlayedInLocalStorage();
-      }
-    }
+    // Save the results to localStorage
+    saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
   };
   
   // Save revealed ticket results to localStorage for persistence
@@ -1289,8 +1355,9 @@ const ScratchOffPlayContent = () => {
             {/* Scratch-off layer - ensure it has higher z-index */}
             <canvas 
               ref={canvasRef} 
-              className={`absolute inset-0 w-full h-full rounded-lg transition-opacity duration-300 z-20 
+              className={`absolute inset-0 w-full h-full rounded-lg transition-opacity duration-300 z-30 
                 ${isRevealed ? 'opacity-0 pointer-events-none' : 'cursor-pointer'}`}
+              style={{ touchAction: 'none' }}
             />
             
             {/* Helper text - only shown when not yet revealed and not actively scratching */}
