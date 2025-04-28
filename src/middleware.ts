@@ -40,6 +40,25 @@ function isPublicPath(pathname: string): boolean {
 type Session = typeof auth.$Infer.Session;
 
 export async function middleware(request: NextRequest) {
+  // Add CORS headers for API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    // Handle OPTIONS request for CORS preflight
+    if (request.method === 'OPTIONS') {
+      const response = new NextResponse(null, { status: 204 });
+      response.headers.set('Access-Control-Allow-Origin', '*');
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      response.headers.set('Access-Control-Max-Age', '86400');
+      return response;
+    }
+    
+    // Proceed with the request, but add CORS headers to the response
+    const response = NextResponse.next();
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return response;
+  }
 
   const { data: session } = await betterFetch<Session>(
     '/api/auth/get-session',
