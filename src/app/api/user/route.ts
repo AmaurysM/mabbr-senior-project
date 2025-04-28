@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
                 );
             }
             
-            // Now try to get more detailed user data
+            // Now try to get more detailed user data with only fields that exist
             let userData;
             try {
                 userData = await prisma.user.findUnique({
@@ -61,9 +61,7 @@ export async function GET(request: NextRequest) {
                         name: true,
                         email: true,
                         image: true,
-                        tokenCount: true,
-                        claimedLoginBonus: true,
-                        verified: true
+                        tokenCount: true
                     },
                 });
             } catch (detailsError) {
@@ -74,9 +72,7 @@ export async function GET(request: NextRequest) {
                     name: session.user.name,
                     email: session.user.email,
                     image: session.user.image,
-                    tokenCount: 0,
-                    claimedLoginBonus: false,
-                    verified: false
+                    tokenCount: 0
                 };
             }
 
@@ -90,9 +86,7 @@ export async function GET(request: NextRequest) {
                 name: session.user.name,
                 email: session.user.email,
                 image: session.user.image,
-                tokenCount: 0,
-                claimedLoginBonus: false,
-                verified: false
+                tokenCount: 0
             };
             
             // Return a successful response with fallback data rather than an error
@@ -135,15 +129,13 @@ export async function PATCH(request: NextRequest) {
             );
         }
 
-        const { tokenCount, claimedLoginBonus, verified } = requestData;
+        const { tokenCount } = requestData;
         let updateData: any = {};
 
         console.log('[USER PATCH] Update data received:', requestData);
 
-        // Only include fields that were provided
+        // Only include fields that were provided and exist in the database
         if (tokenCount !== undefined) updateData.tokenCount = tokenCount;
-        if (claimedLoginBonus !== undefined) updateData.claimedLoginBonus = claimedLoginBonus;
-        if (verified !== undefined) updateData.verified = verified;
 
         if (Object.keys(updateData).length === 0) {
             console.log('[USER PATCH] No fields to update');
@@ -165,9 +157,7 @@ export async function PATCH(request: NextRequest) {
                     name: true,
                     email: true,
                     image: true,
-                    tokenCount: true,
-                    claimedLoginBonus: true,
-                    verified: true
+                    tokenCount: true
                 },
             });
 
