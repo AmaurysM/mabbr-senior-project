@@ -643,7 +643,7 @@ const ScratchOffPlayContent = () => {
   // Setup canvas for scratch-off effect
   useEffect(() => {
     if (!canvasRef.current || !ticket || isRevealed) return;
-
+    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -663,7 +663,7 @@ const ScratchOffPlayContent = () => {
       // Fill with gray scratch-off layer
       ctx.fillStyle = '#7c7c7c';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    
       // Add some texture/pattern to make it look like a scratch-off
       for (let i = 0; i < 5000; i++) {
         const x = Math.random() * canvas.width;
@@ -686,7 +686,7 @@ const ScratchOffPlayContent = () => {
     let lastY = 0;
     let scratchedPixels = 0;
     let totalPixels = canvas.width * canvas.height;
-
+    
     // Simple function to get coordinates from both mouse and touch events
     const getCoordinates = (e: MouseEvent | TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -810,7 +810,7 @@ const ScratchOffPlayContent = () => {
       canvas.removeEventListener('touchmove', scratch);
       window.removeEventListener('touchend', stopScratch);
     };
-  }, [ticket, isRevealed]);
+  }, [ticket, isRevealed, grid, scratchCell, revealAll, setIsScratching, setScratchPercentage, isRevealing]);
 
   // Scratch a single cell
   const scratchCell = (cellIndex: number) => {
