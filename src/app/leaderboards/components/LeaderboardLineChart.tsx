@@ -389,23 +389,6 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
               All
             </button>
           </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSyncTooltips(!syncTooltips)}
-              className={`px-3 py-1 rounded-md ${syncTooltips ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-              title="Sync tooltips across the chart"
-            >
-              Sync
-            </button>
-            <button
-              onClick={() => setShowLegend(!showLegend)}
-              className={`px-3 py-1 rounded-md ${showLegend ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-              title="Show/hide chart legend"
-            >
-              Legend
-            </button>
-          </div>
         </div>
       </div>
 
