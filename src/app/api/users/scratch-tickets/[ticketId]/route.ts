@@ -4,42 +4,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 
 // GET /api/users/scratch-tickets/[ticketId]
-// Get a specific scratch ticket by ID
+// Get a scratch ticket by ID
 export async function GET(
   request: NextRequest,
   context: { params: { ticketId: string } }
 ) {
   try {
-    // Properly access the dynamic route params in Next.js App Router
-    const ticketId = context.params?.ticketId;
-    
-    if (!ticketId) {
-      console.error('[SCRATCH_TICKET GET] Missing ticketId in params');
-      return NextResponse.json(
-        { error: "Invalid ticket ID" },
-        { status: 400 }
-      );
-    }
-    
-    console.log('[SCRATCH_TICKET GET] Request for ticket:', ticketId);
-    
+    console.log("[TICKET_GET] Request received");
+    // Get session using the auth API
     const session = await auth.api.getSession({
       headers: await headers(),
     });
     
     if (!session?.user) {
-      console.log('[SCRATCH_TICKET GET] Unauthorized: No valid session');
+      console.log("[TICKET_GET] Unauthorized: No valid session");
       return NextResponse.json(
         { error: "You must be logged in to view your scratch tickets" },
         { status: 401 }
       );
     }
+
+    // Extract the ticket ID from the path
+    const { ticketId } = context.params;
+    console.log(`[TICKET_GET] Looking for ticket ID: ${ticketId}`);
     
-    console.log('[SCRATCH_TICKET GET] Looking for ticket ID:', ticketId, 'for user:', session.user.id);
-    
-    // Try to find the user's scratch ticket in the database
+    if (!ticketId) {
+      console.log("[TICKET_GET] No ticket ID provided");
+      return NextResponse.json(
+        { error: "Ticket ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // First, try to find the exact ID match
+    let userTicket;
     try {
-      const userScratchTicket = await (prisma as any).userScratchTicket.findFirst({
+      userTicket = await (prisma as any).userScratchTicket.findFirst({
         where: {
           id: ticketId,
           userId: session.user.id
@@ -48,42 +48,97 @@ export async function GET(
           ticket: true
         }
       });
-      
-      if (userScratchTicket) {
-        // Format the ticket data before returning
-        const formattedTicket = {
-          id: userScratchTicket.id,
-          ticketId: userScratchTicket.ticketId,
-          userId: userScratchTicket.userId,
-          purchased: userScratchTicket.purchased,
-          scratched: userScratchTicket.scratched,
-          createdAt: userScratchTicket.createdAt.toISOString(),
-          isBonus: userScratchTicket.isBonus,
-          ticket: {
-            id: userScratchTicket.ticket.id,
-            name: userScratchTicket.ticket.name,
-            type: userScratchTicket.ticket.type,
-            price: userScratchTicket.ticket.price,
-          },
-        };
-        
-        return NextResponse.json(formattedTicket);
-      }
-    } catch (dbError) {
-      console.error("Database error:", dbError);
-      // Continue to fallback if database query fails
+    } catch (error) {
+      console.error("[TICKET_GET] Error finding ticket:", error);
+      return NextResponse.json(
+        { error: "Failed to query for the ticket" },
+        { status: 500 }
+      );
     }
     
-    // If not found in database or DB error, try to find in localStorage (client will handle this)
-    // Just return a 404 for the server response
-    return NextResponse.json(
-      { error: "Scratch ticket not found" },
-      { status: 404 }
-    );
+    // If not found, try to find by related ticketId 
+    // (sometimes we might pass the wrong ID type in the URL)
+    if (!userTicket) {
+      console.log(`[TICKET_GET] Ticket not found by primary ID. Trying by reference ticketId`);
+      try {
+        userTicket = await (prisma as any).userScratchTicket.findFirst({
+          where: {
+            ticketId: ticketId,
+            userId: session.user.id
+          },
+          include: {
+            ticket: true
+          }
+        });
+      } catch (secondError) {
+        console.error("[TICKET_GET] Error in alternative ticket search:", secondError);
+        // Continue to the next step even if this fails
+      }
+    }
+    
+    // If not found even now, try by shopTicketId (the third ID type used in the system)
+    if (!userTicket) {
+      console.log(`[TICKET_GET] Ticket not found by reference ID. Trying by shopTicketId`);
+      try {
+        userTicket = await (prisma as any).userScratchTicket.findFirst({
+          where: {
+            shopTicketId: ticketId,
+            userId: session.user.id
+          },
+          include: {
+            ticket: true
+          }
+        });
+      } catch (shopIdError) {
+        console.error("[TICKET_GET] Error in shopTicketId search:", shopIdError);
+        // Continue to the 404 response if this fails
+      }
+    }
+    
+    // If still not found, return 404
+    if (!userTicket) {
+      console.log(`[TICKET_GET] Ticket not found by any ID type (${ticketId})`);
+      return NextResponse.json(
+        { error: "Ticket not found" },
+        { status: 404 }
+      );
+    }
+    
+    console.log(`[TICKET_GET] Found ticket: ${userTicket.id}`);
+    
+    // Format the ticket for the client
+    // Use a safe method to process dates and circular references
+    const safeTicket = {
+      id: userTicket.id,
+      ticketId: userTicket.ticketId,
+      userId: userTicket.userId,
+      purchased: userTicket.purchased,
+      scratched: userTicket.scratched,
+      isBonus: userTicket.isBonus,
+      createdAt: userTicket.createdAt?.toISOString(),
+      scratchedAt: userTicket.scratchedAt?.toISOString(),
+      dayKey: userTicket.dayKey,
+      shopTicketId: userTicket.shopTicketId,
+      ticket: {
+        id: userTicket.ticket.id,
+        name: userTicket.ticket.name,
+        type: userTicket.ticket.type,
+        price: userTicket.ticket.price,
+        description: userTicket.ticket.description
+      }
+    };
+    
+    return NextResponse.json(safeTicket, { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
   } catch (error) {
-    console.error("Error fetching scratch ticket:", error);
+    console.error("[TICKET_GET] Unexpected error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch your scratch ticket" },
+      { error: "Failed to get the ticket" },
       { status: 500 }
     );
   }
