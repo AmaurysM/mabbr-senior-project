@@ -42,9 +42,7 @@ const LeaderboardPage = () => {
 
   const [timeframe, setTimeframe] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'global' | 'friends'>('global');
-  const [historicalData, setHistoricalData] = useState<HistoricalData>({});
-  const [hiddenUsers, setHiddenUsers] = useState<Set<string>>(new Set());
-  const [chartMetric, setChartMetric] = useState<'totalValue' | 'profit' | 'percentChange'>('totalValue');
+
 
   const { data: session } = authClient.useSession();
   const user = session?.user;
@@ -144,85 +142,7 @@ const LeaderboardPage = () => {
     
   }, [timeframe, user, viewMode]);
 
-  
-    // const fetchTradePerformance = async () => {
-    //   try {
-    //     const newHistoricalData: HistoricalData = {};
-    
-    //     for (const user of topUsers) {
-          // const res = await fetch('/api/user/transactions/user', {
-          //   method: 'POST',
-          //   headers: { 'Content-Type': 'application/json' },
-          //   body: JSON.stringify({ userId: user.id }),
-          // });
-    
-    //       if (!res.ok) {
-    //         console.warn(`Failed to fetch transactions for ${user.name}`);
-    //         continue;
-    //       }
-    
-    //       const transactions: UserTransactions = await res.json();
-    //       if (!transactions || transactions.length === 0) continue;
-    
-    //       // Process transactions to create portfolio value over time
-    //     //const processedData = processTransactionsForChart(transactions, user.id, chartMetric);
-    
-    //       newHistoricalData[user.id] = {
-    //         name: user.name,
-    //         image: user.image,
-    //         data: transactions,
-    //       };
-    //     }
-    
-    //     setHistoricalData(newHistoricalData);
-    //   } catch (error) {
-    //     console.error('Error fetching trade performance:', error);
-    //   }
-    // };
 
-  // Get time period label for empty state message
-  const getTimePeriodLabel = () => {
-    switch (timeframe) {
-      case 'day':
-        return 'today';
-      case 'week':
-        return 'this week';
-      case 'month':
-        return 'this month';
-      default:
-        return '';
-    }
-  };
-
-  
-  // Generate random colors for the chart lines
-  const lineColors = [
-    '#38BDF8', // Blue
-    '#4ADE80', // Green
-    '#F472B6', // Pink
-    '#FACC15', // Yellow
-    '#F97316'  // Orange
-  ];
-
-  // Handle navigation to user profile - updated to use sessionStorage pattern
-  const navigateToProfile = (userId: string) => {
-    // Store the selected user ID in sessionStorage before navigation
-    sessionStorage.setItem("selectedUserId", userId);
-    router.push(`/friendsProfile`);
-  };
-
-
-  const toggleUserVisibility = (userId: string) => {
-    setHiddenUsers(prev => {
-      const newHidden = new Set(prev);
-      if (newHidden.has(userId)) {
-        newHidden.delete(userId);
-      } else {
-        newHidden.add(userId);
-      }
-      return newHidden;
-    });
-  };
 
   return (
     <div className="px-4 py-4 w-full min-h-screen bg-gradient-to-r from-gray-900 to-gray-800">
