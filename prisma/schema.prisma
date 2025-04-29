@@ -57,6 +57,8 @@ model User {
 
   dailyDrawWinnings      DailyDrawWinner[]
 
+  gameHistory GameHistory[]
+
   @@map("user")
 }
 
@@ -509,4 +511,16 @@ model TokenMarketHistory {
   @@map("token_market_history")
 }
 
+model GameHistory {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  gameType  String   // e.g., "STOCKET"
+  outcome   String   // "Crashed" or "Sold"
+  multiplier Float
+  profit    Float
+  betAmount Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+}
