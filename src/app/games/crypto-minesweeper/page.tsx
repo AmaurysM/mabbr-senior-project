@@ -21,6 +21,7 @@ const CryptoSweeper = () => {
   const [win, setWin] = useState(false);
   const [isNewGameDisabled, setIsNewGameDisabled] = useState(false); // Tracks button disabled state
   const [isMobile, setIsMobile] = useState(false); // Tracks device type
+  const [isFlagMode, setIsFlagMode] = useState(false); // Tracks Flag Mode for mobile
   const hasWonRef = useRef(false); // Tracks if win has been processed
 
   useEffect(() => {
@@ -58,6 +59,7 @@ const CryptoSweeper = () => {
     setGameOver(false);
     setWin(false);
     setIsNewGameDisabled(false); // Reset button state
+    setIsFlagMode(false); // Reset Flag Mode
     hasWonRef.current = false; // Reset win flag
   };
 
@@ -82,6 +84,15 @@ const CryptoSweeper = () => {
     const newGrid = [...grid];
     newGrid[row][col].isRevealed = true;
     if (newGrid[row][col].isBomb) {
+      // Reveal all bombs on loss
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          if (newGrid[i][j].isBomb) {
+            newGrid[i][j].isRevealed = true;
+          }
+        }
+      }
+      setGrid(newGrid);
       setGameOver(true);
     } else {
       if (newGrid[row][col].adjacentBombs === 0) {
@@ -143,7 +154,7 @@ const CryptoSweeper = () => {
         const bonusData = await bonusResponse.json();
 
         // Show toast after API call with token count
-        toast.success(`Success: You beat Crypto Sweeper! You earned 1 token. Current tokens: ${bonusData.tokenCount}`);
+        toast.success(`Success: You beat Crypto Sweeper! You earned 50 tokens. Current tokens: ${bonusData.tokenCount}`);
 
         // Disable New Game button before delay
         setIsNewGameDisabled(true);
@@ -166,15 +177,26 @@ const CryptoSweeper = () => {
         Crypto Sweeper
       </p>
       <p className="text-center text-md mb-4">
-        Free to play! Win to earn a token! Good luck.
+        Free to play! Win to earn 50 tokens! Good luck.
       </p>
       <button
         onClick={initializeGrid}
         disabled={isNewGameDisabled}
-        className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg mb-6 transition disabled:opacity-50 disabled:cursor-not-allowed`}
+        className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg mb-4 transition disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         New Game
       </button>
+      {isMobile && (
+        <button
+          onClick={() => setIsFlagMode(!isFlagMode)}
+          disabled={gameOver || win}
+          className={`w-full ${
+            isFlagMode ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-indigo-600 hover:bg-indigo-700'
+          } text-white py-2 rounded-lg mb-6 transition disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {isFlagMode ? 'Exit Flag Mode' : 'Enter Flag Mode'}
+        </button>
+      )}
       {gameOver && (
         <p className="text-center font-medium mb-4">😢 Game Over!</p>
       )}
@@ -189,6 +211,8 @@ const CryptoSweeper = () => {
               cell={cell}
               onClick={() => revealCell(i, j)}
               onRightClick={() => flagCell(i, j)}
+              isMobile={isMobile}
+              isFlagMode={isFlagMode}
             />
           ))
         )}
@@ -198,16 +222,16 @@ const CryptoSweeper = () => {
         {isMobile ? (
           <ul className="list-disc list-inside text-left max-w-xs mx-auto">
             <li>Tap to reveal a tile.</li>
-            <li>Long press to flag suspected bombs.</li>
+            <li>Tap the Flag Mode button to toggle flagging, then tap tiles to flag suspected bombs.</li>
             <li>Avoid revealing bombs to stay in the game.</li>
-            <li>Win by revealing all non-bomb tiles to earn a token!</li>
+            <li>Win by revealing all non-bomb tiles to earn 50 tokens!</li>
           </ul>
         ) : (
           <ul className="list-disc list-inside text-left max-w-xs mx-auto">
             <li>Left-click to reveal a tile.</li>
             <li>Right-click to flag suspected bombs.</li>
             <li>Avoid revealing bombs to stay in the game.</li>
-            <li>Win by revealing all non-bomb tiles to earn a token!</li>
+            <li>Win by revealing all non-bomb tiles to earn 50 tokens!</li>
           </ul>
         )}
       </div>
@@ -215,17 +239,33 @@ const CryptoSweeper = () => {
   );
 };
 
-const Cell = ({ cell, onClick, onRightClick }: { cell: Cell; onClick: () => void; onRightClick: () => void }) => {
+const Cell = ({
+  cell,
+  onClick,
+  onRightClick,
+  isMobile,
+  isFlagMode,
+}: {
+  cell: Cell;
+  onClick: () => void;
+  onRightClick: () => void;
+  isMobile: boolean;
+  isFlagMode: boolean;
+}) => {
   const handleClick = () => {
     if (!cell.isRevealed && !cell.isFlagged) {
-      onClick();
+      if (isMobile && isFlagMode) {
+        onRightClick(); // Flag/unflag in Flag Mode on mobile
+      } else {
+        onClick(); // Reveal otherwise
+      }
     }
   };
 
   const handleRightClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!cell.isRevealed) {
-      onRightClick();
+    if (!isMobile && !cell.isRevealed) {
+      onRightClick(); // Right-click flagging only on desktop
     }
   };
 

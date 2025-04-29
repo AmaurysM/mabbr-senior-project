@@ -2,118 +2,182 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { safeApiHandler, handleCors, emptyOkResponse } from '../api-utils';
 
-// GET user data
-export async function GET(
-    request: NextRequest,
-) {
-    try {
-        // Await the dynamic route parameters
-        // const params = await context.params;
+// GET /api/user
+// Get the currently logged in user's data
+export async function GET(request: NextRequest) {
+    // Handle CORS preflight requests
+    const corsResponse = handleCors(request);
+    if (corsResponse) return corsResponse;
+    
+    return safeApiHandler(request, async (req) => {
+        console.log('[USER GET] Request received');
+        let session;
+        try {
+            session = await auth.api.getSession({
+                headers: await headers(),
+            });
+        } catch (sessionError) {
+            console.error('[USER GET] Session error:', sessionError);
+            return NextResponse.json(
+                { error: "Failed to retrieve user session" },
+                { status: 401 }
+            );
+        }
 
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id') || '';
-
-        // Get the session using the auth object
-        const session = await auth.api.getSession({ headers: await headers() });
         if (!session?.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            console.log('[USER GET] No valid session found');
+            return NextResponse.json(
+                { error: "You must be logged in to access this endpoint" },
+                { status: 401 }
+            );
         }
 
-        // Fetch user data
-        const user = await prisma.user.findUnique({
-            where: { id },
-            // Only select fields we need and that exist in the schema
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-                banner: true,
-                role: true,
-                premium: true,
-                balance: true,
-                createdAt: true,
-                bio: true,
-            },
-        });
+        console.log('[USER GET] User ID:', session.user.id);
 
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        try {
+            // Use a simpler query that's less likely to fail due to schema changes
+            const user = await prisma.user.findUnique({
+                where: { id: session.user.id },
+                select: { id: true }
+            });
+
+            if (!user) {
+                console.log('[USER GET] User not found in database');
+                return NextResponse.json(
+                    { error: "User not found" },
+                    { status: 404 }
+                );
+            }
+            
+            // Now try to get more detailed user data with only fields that exist
+            let userData;
+            try {
+                userData = await prisma.user.findUnique({
+                    where: { id: session.user.id },
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        image: true,
+                        tokenCount: true
+                    },
+                });
+            } catch (detailsError) {
+                console.error('[USER GET] Error fetching detailed user data:', detailsError);
+                // Fallback with minimal data if the detailed query fails
+                userData = {
+                    id: session.user.id,
+                    name: session.user.name,
+                    email: session.user.email,
+                    image: session.user.image,
+                    tokenCount: 0
+                };
+            }
+
+            console.log('[USER GET] Successfully retrieved user data');
+            return NextResponse.json(userData);
+        } catch (error) {
+            console.error('[USER GET] Error fetching user data:', error);
+            // Return minimal user data from session as fallback
+            const fallbackUserData = {
+                id: session.user.id,
+                name: session.user.name,
+                email: session.user.email,
+                image: session.user.image,
+                tokenCount: 0
+            };
+            
+            // Return a successful response with fallback data rather than an error
+            return NextResponse.json(fallbackUserData);
         }
-
-        return NextResponse.json(user);
-    } catch (error) {
-        console.error('Error fetching user data:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch user data' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
-// Update user data
-export async function PATCH(
-    request: NextRequest,
-) {
-    try {
-        // Await the dynamic route parameters
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id') || '';
+// PATCH /api/user
+// Update the currently logged in user
+export async function PATCH(request: NextRequest) {
+    // Handle CORS preflight requests
+    const corsResponse = handleCors(request);
+    if (corsResponse) return corsResponse;
+    
+    return safeApiHandler(request, async (req) => {
+        console.log('[USER PATCH] Request received');
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
 
-        // Get the session using the auth object
-        const session = await auth.api.getSession({ headers: await headers() });
         if (!session?.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        // Verify user is updating their own profile
-        if (session.user.id !== id) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-
-        // Get update data from request
-        const updateData = await request.json();
-
-        // Validate update data
-        const allowedFields = ['name', 'email', 'bio'];
-        const filteredData: Record<string, string> = {};
-
-        for (const field of allowedFields) {
-            if (updateData[field] !== undefined) {
-                filteredData[field] = updateData[field];
-            }
-        }
-
-        if (Object.keys(filteredData).length === 0) {
+            console.log('[USER PATCH] No valid session found');
             return NextResponse.json(
-                { error: 'No valid fields to update' },
+                { error: "You must be logged in to access this endpoint" },
+                { status: 401 }
+            );
+        }
+
+        console.log('[USER PATCH] User ID:', session.user.id);
+
+        let requestData;
+        try {
+            requestData = await request.json();
+        } catch (parseError) {
+            console.error('[USER PATCH] Error parsing request JSON:', parseError);
+            return NextResponse.json(
+                { error: "Invalid JSON in request body" },
                 { status: 400 }
             );
         }
 
-        // Update user in database
-        const updatedUser = await prisma.user.update({
-            where: { id },
-            data: {
-                ...filteredData,
-                updatedAt: new Date(), // Explicitly set updatedAt to current time
-            },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                bio: true,
-                updatedAt: true,
-            },
-        });
+        const { tokenCount } = requestData;
+        let updateData: any = {};
 
-        return NextResponse.json(updatedUser);
-    } catch (error) {
-        console.error('Error updating user data:', error);
-        return NextResponse.json(
-            { error: 'Failed to update user data' },
-            { status: 500 }
-        );
-    }
+        console.log('[USER PATCH] Update data received:', requestData);
+
+        // Only include fields that were provided and exist in the database
+        if (tokenCount !== undefined) updateData.tokenCount = tokenCount;
+
+        if (Object.keys(updateData).length === 0) {
+            console.log('[USER PATCH] No fields to update');
+            return NextResponse.json(
+                { error: "No fields to update were provided" },
+                { status: 400 }
+            );
+        }
+
+        try {
+            console.log('[USER PATCH] Updating user with:', updateData);
+            const updatedUser = await prisma.user.update({
+                where: {
+                    id: session.user.id,
+                },
+                data: updateData,
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    image: true,
+                    tokenCount: true
+                },
+            });
+
+            console.log('[USER PATCH] User updated successfully');
+            return NextResponse.json(updatedUser);
+        } catch (error) {
+            console.error('[USER PATCH] Error updating user:', error);
+            return NextResponse.json(
+                { 
+                    error: "Failed to update user",
+                    details: error instanceof Error ? error.message : String(error)
+                },
+                { status: 500 }
+            );
+        }
+    });
+}
+
+// OPTIONS handler for CORS
+export async function OPTIONS() {
+    // Using the standardized CORS handler
+    return handleCors();
 }

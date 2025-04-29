@@ -1,0 +1,122 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { IoTicket, IoEllipse } from "react-icons/io5";
+import { authClient } from "@/lib/auth-client";
+import { FaCoins } from "react-icons/fa";
+
+const UserTokenDisplay: React.FC = () => {
+  const [tokens, setTokens] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { data: session } = authClient.useSession();
+
+  // Format token number with commas for thousands
+  const formatTokens = (tokens: number) => {
+    return tokens.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  useEffect(() => {
+    const fetchUserTokens = async () => {
+      try {
+        if (!session?.user?.id) {
+          setLoading(false);
+          return;
+        }
+        
+        // Try to get the user data
+        const res = await fetch("/api/user", { 
+          credentials: "include",
+          cache: "no-store" // Prevent caching
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data.tokenCount === 'number') {
+            setTokens(data.tokenCount);
+            
+            // Store in localStorage for future reference
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`user-${session.user.id}-tokens`, data.tokenCount.toString());
+            }
+          } else {
+            // Try to get from localStorage if API doesn't return valid data
+            const storedTokens = localStorage.getItem(`user-${session.user.id}-tokens`);
+            if (storedTokens) {
+              setTokens(parseInt(storedTokens, 10));
+            } else {
+              setTokens(0);
+            }
+          }
+        } else {
+          // If API fails, try localStorage
+          const storedTokens = localStorage.getItem(`user-${session.user.id}-tokens`);
+          if (storedTokens) {
+            setTokens(parseInt(storedTokens, 10));
+          } else {
+            setTokens(0);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching user tokens:", err);
+        
+        // Try localStorage as fallback
+        if (typeof window !== 'undefined' && session?.user?.id) {
+          const storedTokens = localStorage.getItem(`user-${session.user.id}-tokens`);
+          if (storedTokens) {
+            setTokens(parseInt(storedTokens, 10));
+          } else {
+            setTokens(0);
+          }
+        } else {
+          setTokens(0);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserTokens();
+    
+    // Listen for token refresh events
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token-refresh' || (session?.user?.id && e.key === `user-${session.user.id}-tokens`)) {
+        fetchUserTokens();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [session?.user?.id]);
+
+  if (loading && tokens === null) {
+    return (
+      <div className="bg-gray-700/30 rounded-lg p-3 flex items-center animate-pulse">
+        <div className="w-24 h-5 bg-gray-600 rounded"></div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return null;
+  }
+
+  return (
+    <div className="bg-gray-700/30 rounded-lg p-3 flex items-center justify-between">
+      <div className="flex items-center">
+        <FaCoins className="text-yellow-400 w-5 h-5 mr-2" />
+        <span className="text-white font-medium">My Tokens</span>
+      </div>
+      <div className="flex items-center bg-gray-800/80 px-3 py-1 rounded-lg">
+        <IoEllipse className="text-yellow-400 w-3.5 h-3.5 mr-1.5" />
+        <span className="text-white font-semibold">
+          {tokens !== null ? formatTokens(tokens) : "..."}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+export default UserTokenDisplay; 

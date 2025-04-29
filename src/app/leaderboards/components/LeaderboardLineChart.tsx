@@ -97,6 +97,7 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
           } else {
             console.error(`Failed to load cash data for ${topUsers[index].name}:`, result.reason);
             hasErrors = true;
+
           }
         });
 
@@ -320,6 +321,7 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
   };
 
   const chartTitle = viewMode === 'cash' ? 'Cash Balance History' : 'Stock Holdings Value History';
+
 
   return (
     <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-xl">
