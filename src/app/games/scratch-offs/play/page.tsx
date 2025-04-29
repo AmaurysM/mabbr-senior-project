@@ -603,7 +603,9 @@ const ScratchOffPlayContent = () => {
       return;
     }
 
-    const fetchTicket = async () => {
+    console.log('Attempting to fetch ticket with ID:', ticketId);
+
+    const fetchTicket = async (retryCount = 0, maxRetries = 3) => {
       try {
         // Check if we have saved results for this ticket
         if (typeof window !== 'undefined') {
@@ -619,6 +621,8 @@ const ScratchOffPlayContent = () => {
               
               if (!response.ok) {
                 console.error('API error status:', response.status, 'for ticketId:', ticketId);
+                console.log('API error details:', await response.text().catch(() => 'Unable to get error details'));
+                
                 // If not found, check local storage for ticket details first before informing user
                 const userTicketsStr = localStorage.getItem('userScratchTickets');
                 const localTicket = userTicketsStr ? 
@@ -656,10 +660,20 @@ const ScratchOffPlayContent = () => {
                 
                 // If nothing found locally either, inform the user
                 if (response.status === 404) {
+                  // In production, retry a few times with delay
+                  // This helps when there might be replication lag in the database
+                  const isProd = process.env.NODE_ENV === 'production';
+                  if (isProd && retryCount < maxRetries) {
+                    console.log(`Retry attempt ${retryCount + 1}/${maxRetries} for ticket: ${ticketId}`);
+                    // Exponential backoff
+                    const delay = Math.pow(2, retryCount) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchTicket(retryCount + 1, maxRetries);
+                  }
+                  
                   toast({
                     title: "Ticket Not Found",
-                    description: "This ticket couldn't be found in the database. Redirecting back to the shop.",
-                    variant: "destructive"
+                    description: "This ticket couldn't be found in the database. Redirecting back to the shop."
                   });
                   
                   // Clean up localStorage for this invalid ticket
@@ -728,6 +742,7 @@ const ScratchOffPlayContent = () => {
         
         if (!response.ok) {
           console.error('API error status:', response.status, 'for ticketId:', ticketId);
+          console.log('API error details:', await response.text().catch(() => 'Unable to get error details'));
           
           // Try to find the ticket in local storage
           if (typeof window !== 'undefined') {
@@ -766,8 +781,7 @@ const ScratchOffPlayContent = () => {
           if (response.status === 404) {
             toast({
               title: "Ticket Not Found",
-              description: "This ticket doesn't exist in the database. It may have been already played or removed. Redirecting back to the shop.",
-              variant: "destructive"
+              description: "This ticket doesn't exist in the database. It may have been already played or removed. Redirecting back to the shop."
             });
             
             // Clean up localStorage for this invalid ticket
@@ -831,7 +845,7 @@ const ScratchOffPlayContent = () => {
     };
     
     fetchTicket();
-  }, [ticketId, router, toast]);
+  }, [ticketId, router, toast, session?.user?.id]);
 
   // Setup canvas for scratch-off effect
   useEffect(() => {
