@@ -91,6 +91,52 @@ export async function GET() {
       take: 50 // Limit to recent transactions
     });
     
+    // Get user's scratch ticket wins from activity feed
+    const userScratchWins = await prisma.activityFeedEntry.findMany({
+      where: {
+        userId: userId,
+        type: 'SCRATCH_WIN'
+      },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        data: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+    
+    // Get friends' scratch ticket wins from activity feed
+    const friendScratchWins = await prisma.activityFeedEntry.findMany({
+      where: {
+        userId: { in: friendIds },
+        type: 'SCRATCH_WIN'
+      },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        data: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    
     // Combine and format transactions
     const formattedUserTransactions = userTransactions.map(tx => ({
       ...tx,
@@ -105,10 +151,53 @@ export async function GET() {
       isCurrentUser: false
     }));
     
+    // Format scratch ticket wins as transactions
+    const formatScratchWin = (win: any, isCurrentUser: boolean) => {
+      // Parse the data JSON if it's a string
+      const data = typeof win.data === 'string' ? JSON.parse(win.data) : win.data;
+      
+      // Calculate total value from prize data
+      let totalValue = 0;
+      if (data.tokens) totalValue += data.tokens;
+      if (data.cash) totalValue += data.cash;
+      
+      // Add stock values if available
+      if (data.stockShares && Object.keys(data.stockShares).length > 0) {
+        Object.entries(data.stockShares).forEach(([symbol, info]: [string, any]) => {
+          totalValue += info.shares * info.value;
+        });
+      }
+      
+      return {
+        id: win.id,
+        userEmail: win.user.email,
+        userName: win.user.name,
+        stockSymbol: data.ticketName || 'Scratch Ticket',
+        type: 'SCRATCH_WIN',
+        quantity: 1,
+        price: totalValue,
+        totalCost: totalValue,
+        timestamp: win.createdAt,
+        status: 'COMPLETED',
+        publicNote: `Won from ${data.ticketName} scratch ticket${data.isBonus ? ' (Bonus!)' : ''}`,
+        isCurrentUser
+      };
+    };
+    
+    const formattedUserScratchWins = userScratchWins.map(win => 
+      formatScratchWin(win, true)
+    );
+    
+    const formattedFriendScratchWins = friendScratchWins.map(win => 
+      formatScratchWin(win, false)
+    );
+    
     // Combine all transactions and sort by timestamp
     const allTransactions = [
       ...formattedUserTransactions,
-      ...formattedFriendTransactions
+      ...formattedFriendTransactions,
+      ...formattedUserScratchWins,
+      ...formattedFriendScratchWins
     ].sort((a, b) => {
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });

@@ -180,6 +180,35 @@ export async function POST(request: NextRequest) {
           }
         });
         
+        // Add activity feed entry for this scratch ticket win
+        // Get ticket details for the activity feed
+        const ticketDetails = await (tx as any).scratchTicket.findUnique({
+          where: { id: updatedTicket.ticketId },
+          select: { name: true, type: true }
+        });
+
+        // Prepare prize data for activity feed
+        const prizeData = {
+          ticketName: ticketDetails?.name || "Scratch Ticket",
+          ticketType: ticketDetails?.type || "unknown",
+          ticketId: ticketId,
+          tokens: prize.tokens || 0,
+          cash: prize.cash || 0,
+          stocks: prize.stocks || 0,
+          stockShares: prize.stockShares || {},
+          isBonus: ticketCheck.isBonus,
+          timestamp: new Date().toISOString()
+        };
+
+        // Create the activity feed entry
+        await (tx as any).activityFeedEntry.create({
+          data: {
+            userId: session.user.id,
+            type: "SCRATCH_WIN",
+            data: prizeData
+          }
+        });
+
         return NextResponse.json({
           success: true,
           tokenCount: updatedUser.tokenCount,

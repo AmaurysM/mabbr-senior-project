@@ -637,6 +637,20 @@ const ScratchOffPlayContent = () => {
                   setIsRevealed(true);
                   
                   setLoading(false);
+                  
+                  // Production fix: Try to sync this ticket to the database
+                  if (session?.user?.id) {
+                    fetch('/api/users/scratch-tickets/sync', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        tickets: [localTicket]
+                      })
+                    }).catch(syncError => console.error('Error syncing local ticket to database:', syncError));
+                  }
+                  
                   return;
                 }
                 
@@ -644,8 +658,15 @@ const ScratchOffPlayContent = () => {
                 if (response.status === 404) {
                   toast({
                     title: "Ticket Not Found",
-                    description: "This ticket couldn't be found. Redirecting back to the shop.",
+                    description: "This ticket couldn't be found in the database. Redirecting back to the shop.",
+                    variant: "destructive"
                   });
+                  
+                  // Clean up localStorage for this invalid ticket
+                  if (ticketId) {
+                    removeTicketFromLocalStorage(ticketId);
+                  }
+                  
                   setTimeout(() => router.push('/games/scratch-offs'), 2000);
                 }
                 throw new Error(`Error: ${response.status} ${response.statusText}`);
@@ -723,6 +744,20 @@ const ScratchOffPlayContent = () => {
               setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus));
               
               setLoading(false);
+              
+              // Production fix: Try to sync this ticket to the database
+              if (session?.user?.id) {
+                fetch('/api/users/scratch-tickets/sync', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    tickets: [localTicket]
+                  })
+                }).catch(syncError => console.error('Error syncing local ticket to database:', syncError));
+              }
+              
               return;
             }
           }
@@ -731,8 +766,15 @@ const ScratchOffPlayContent = () => {
           if (response.status === 404) {
             toast({
               title: "Ticket Not Found",
-              description: "This ticket couldn't be found. Redirecting back to the shop.",
+              description: "This ticket doesn't exist in the database. It may have been already played or removed. Redirecting back to the shop.",
+              variant: "destructive"
             });
+            
+            // Clean up localStorage for this invalid ticket
+            if (ticketId) {
+              removeTicketFromLocalStorage(ticketId);
+            }
+            
             setTimeout(() => router.push('/games/scratch-offs'), 2000);
           }
           throw new Error(`Error: ${response.status} ${response.statusText}`);
@@ -1761,7 +1803,7 @@ const ScratchOffPlayContent = () => {
                     removeTicketFromLocalStorage(ticketId);
                     
                     // Explicitly dispatch a tickets-updated event to ensure UI is refreshed
-                    window.dispatchEvent(new Event('tickets-updated'));
+                    window.dispatchEvent(new CustomEvent('tickets-updated'));
                   } catch (error) {
                     console.error('Error updating localStorage before navigation:', error);
                   }
