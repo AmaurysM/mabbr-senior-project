@@ -1759,6 +1759,9 @@ const ScratchOffPlayContent = () => {
 
                     // Remove the ticket completely from localStorage
                     removeTicketFromLocalStorage(ticketId);
+                    
+                    // Explicitly dispatch a tickets-updated event to ensure UI is refreshed
+                    window.dispatchEvent(new Event('tickets-updated'));
                   } catch (error) {
                     console.error('Error updating localStorage before navigation:', error);
                   }
