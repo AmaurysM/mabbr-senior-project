@@ -617,20 +617,124 @@ const ScratchOffPlayContent = () => {
               
               // Ticket has been revealed before, load the previous results
               console.log('Loading saved ticket results. Fetching from API:', ticketId);
-              const response = await fetch(`/api/users/scratch-tickets/${ticketId}`);
               
-              if (!response.ok) {
-                console.error('API error status:', response.status, 'for ticketId:', ticketId);
-                console.log('API error details:', await response.text().catch(() => 'Unable to get error details'));
+              try {
+                const response = await fetch(`/api/users/scratch-tickets/${ticketId}`);
                 
-                // If not found, check local storage for ticket details first before informing user
+                if (!response.ok) {
+                  console.error('API error status:', response.status, 'for ticketId:', ticketId);
+                  console.error('API error details:', await response.text().catch(() => 'Unable to get error details'));
+                  
+                  // If not found, check local storage for ticket details first before informing user
+                  const userTicketsStr = localStorage.getItem('userScratchTickets');
+                  const localTicket = userTicketsStr ? 
+                    JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
+                  
+                  if (localTicket) {
+                    // Use the local ticket data instead
+                    console.log('API failed but using local ticket data for:', ticketId);
+                    setTicket(localTicket);
+                    
+                    // Set the saved state
+                    setGrid(results.grid);
+                    setWins(results.wins);
+                    setWinningCells(results.winningCells);
+                    setPrize(results.prize);
+                    setIsRevealed(true);
+                    
+                    setLoading(false);
+                    
+                    // Production fix: Try to sync this ticket to the database
+                    if (session?.user?.id) {
+                      fetch('/api/users/scratch-tickets/sync', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          tickets: [localTicket]
+                        })
+                      }).catch(syncError => console.error('Error syncing local ticket to database:', syncError));
+                    }
+                    
+                    return;
+                  }
+                  
+                  // If nothing found locally either, inform the user
+                  if (response.status === 404) {
+                    // In production, retry a few times with delay
+                    // This helps when there might be replication lag in the database
+                    const isProd = process.env.NODE_ENV === 'production';
+                    if (isProd && retryCount < maxRetries) {
+                      console.log(`Retry attempt ${retryCount + 1}/${maxRetries} for ticket: ${ticketId}`);
+                      // Exponential backoff
+                      const delay = Math.pow(2, retryCount) * 1000;
+                      await new Promise(resolve => setTimeout(resolve, delay));
+                      return fetchTicket(retryCount + 1, maxRetries);
+                    }
+                    
+                    toast({
+                      title: "Ticket Not Found",
+                      description: "This ticket couldn't be found in the database. Redirecting back to the shop."
+                    });
+                    
+                    // Clean up localStorage for this invalid ticket
+                    if (ticketId) {
+                      removeTicketFromLocalStorage(ticketId);
+                    }
+                    
+                    setTimeout(() => router.push('/games/scratch-offs'), 2000);
+                  }
+                  throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                
+                const responseData = await response.json();
+                console.log('API data received:', responseData);
+                setTicket(responseData);
+                
+                // Set the saved state
+                setGrid(results.grid);
+                setWins(results.wins);
+                setWinningCells(results.winningCells);
+                setPrize(results.prize);
+                setIsRevealed(true);
+                
+                // Store the ticket in localStorage for future reference
+                if (typeof window !== 'undefined') {
+                  try {
+                    // Get existing tickets from localStorage or initialize empty array
+                    const storedTicketsStr = localStorage.getItem('userScratchTickets');
+                    const storedTickets = storedTicketsStr ? JSON.parse(storedTicketsStr) : [];
+                    
+                    // Check if this ticket already exists in localStorage
+                    const existingIndex = storedTickets.findIndex((t: any) => t.id === responseData.id);
+                    
+                    if (existingIndex >= 0) {
+                      // Update the existing ticket
+                      storedTickets[existingIndex] = responseData;
+                    } else {
+                      // Add the new ticket
+                      storedTickets.push(responseData);
+                    }
+                    
+                    // Save back to localStorage
+                    localStorage.setItem('userScratchTickets', JSON.stringify(storedTickets));
+                    console.log('Saved ticket to localStorage:', responseData.id);
+                  } catch (storageError) {
+                    console.error('Error saving ticket to localStorage:', storageError);
+                    // Continue with the game even if storage fails
+                  }
+                }
+              } catch (apiError) {
+                console.error('API request failed completely, using saved results only:', apiError);
+                
+                // If API completely fails, try to use just the local data
                 const userTicketsStr = localStorage.getItem('userScratchTickets');
                 const localTicket = userTicketsStr ? 
                   JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
                 
                 if (localTicket) {
-                  // Use the local ticket data instead
-                  console.log('Using local ticket data for:', ticketId);
+                  console.log('Using cached ticket from localStorage for:', ticketId);
                   setTicket(localTicket);
                   
                   // Set the saved state
@@ -641,91 +745,17 @@ const ScratchOffPlayContent = () => {
                   setIsRevealed(true);
                   
                   setLoading(false);
-                  
-                  // Production fix: Try to sync this ticket to the database
-                  if (session?.user?.id) {
-                    fetch('/api/users/scratch-tickets/sync', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({
-                        tickets: [localTicket]
-                      })
-                    }).catch(syncError => console.error('Error syncing local ticket to database:', syncError));
-                  }
-                  
+                  return;
+                } else {
+                  // No local ticket data at all
+                  setError("Unable to load ticket data. Please try again later.");
+                  setLoading(false);
                   return;
                 }
-                
-                // If nothing found locally either, inform the user
-                if (response.status === 404) {
-                  // In production, retry a few times with delay
-                  // This helps when there might be replication lag in the database
-                  const isProd = process.env.NODE_ENV === 'production';
-                  if (isProd && retryCount < maxRetries) {
-                    console.log(`Retry attempt ${retryCount + 1}/${maxRetries} for ticket: ${ticketId}`);
-                    // Exponential backoff
-                    const delay = Math.pow(2, retryCount) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return fetchTicket(retryCount + 1, maxRetries);
-                  }
-                  
-                  toast({
-                    title: "Ticket Not Found",
-                    description: "This ticket couldn't be found in the database. Redirecting back to the shop."
-                  });
-                  
-                  // Clean up localStorage for this invalid ticket
-                  if (ticketId) {
-                    removeTicketFromLocalStorage(ticketId);
-                  }
-                  
-                  setTimeout(() => router.push('/games/scratch-offs'), 2000);
-                }
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
               }
               
-              const data = await response.json();
-              console.log('API data received:', data);
-              setTicket(data);
-              
-              // Set the saved state
-              setGrid(results.grid);
-              setWins(results.wins);
-              setWinningCells(results.winningCells);
-              setPrize(results.prize);
-              setIsRevealed(true);
-              
-              // Store the ticket in localStorage for future reference
-              if (typeof window !== 'undefined') {
-                try {
-                  // Get existing tickets from localStorage or initialize empty array
-                  const storedTicketsStr = localStorage.getItem('userScratchTickets');
-                  const storedTickets = storedTicketsStr ? JSON.parse(storedTicketsStr) : [];
-                  
-                  // Check if this ticket already exists in localStorage
-                  const existingIndex = storedTickets.findIndex((t: any) => t.id === data.id);
-                  
-                  if (existingIndex >= 0) {
-                    // Update the existing ticket
-                    storedTickets[existingIndex] = data;
-                  } else {
-                    // Add the new ticket
-                    storedTickets.push(data);
-                  }
-                  
-                  // Save back to localStorage
-                  localStorage.setItem('userScratchTickets', JSON.stringify(storedTickets));
-                  console.log('Saved ticket to localStorage:', data.id);
-                } catch (storageError) {
-                  console.error('Error saving ticket to localStorage:', storageError);
-                  // Continue with the game even if storage fails
-                }
-              }
-              
-              // Generate grid based on ticket type
-              setGrid(generateGrid(data.ticket.type, data.isBonus));
+              // Generate grid based on ticket type 
+              setGrid(generateGrid(responseData.ticket.type, responseData.isBonus));
               
               setLoading(false);
               return;
@@ -738,107 +768,147 @@ const ScratchOffPlayContent = () => {
         
         // Normal fetch if no saved results
         console.log('First time playing ticket. Fetching from API:', ticketId);
-        const response = await fetch(`/api/users/scratch-tickets/${ticketId}`);
         
-        if (!response.ok) {
-          console.error('API error status:', response.status, 'for ticketId:', ticketId);
-          console.log('API error details:', await response.text().catch(() => 'Unable to get error details'));
+        try {
+          const response = await fetch(`/api/users/scratch-tickets/${ticketId}`);
           
-          // Try to find the ticket in local storage
-          if (typeof window !== 'undefined') {
-            const userTicketsStr = localStorage.getItem('userScratchTickets');
-            const localTicket = userTicketsStr ? 
-              JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
+          if (!response.ok) {
+            console.error('API error status:', response.status, 'for ticketId:', ticketId);
+            const errorText = await response.text().catch(() => 'Unable to get error details');
+            console.error('API error details:', errorText);
             
-            if (localTicket) {
-              // Use the local ticket data instead
-              console.log('API ticket not found, using local ticket data for:', ticketId);
-              setTicket(localTicket);
+            // Try to find the ticket in local storage
+            if (typeof window !== 'undefined') {
+              const userTicketsStr = localStorage.getItem('userScratchTickets');
+              const localTicket = userTicketsStr ? 
+                JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
               
-              // Generate grid based on ticket type
-              setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus));
+              if (localTicket) {
+                // Use the local ticket data instead
+                console.log('API ticket not found, using local ticket data for:', ticketId);
+                setTicket(localTicket);
+                
+                // Generate grid based on ticket type
+                setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus));
+                
+                setLoading(false);
+                
+                // Production fix: Try to sync this ticket to the database
+                if (session?.user?.id) {
+                  fetch('/api/users/scratch-tickets/sync', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      tickets: [localTicket]
+                    })
+                  }).catch(syncError => console.error('Error syncing local ticket to database:', syncError));
+                }
+                
+                return;
+              }
+            }
+            
+            // If not found, check if we should retry
+            if (response.status === 500 && retryCount < maxRetries) {
+              console.log(`Server error, retry attempt ${retryCount + 1}/${maxRetries} for ticket: ${ticketId}`);
+              const delay = Math.pow(2, retryCount) * 1000;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              return fetchTicket(retryCount + 1, maxRetries);
+            }
+            
+            // If not found, inform the user and redirect
+            if (response.status === 404) {
+              toast({
+                title: "Ticket Not Found",
+                description: "This ticket doesn't exist in the database. It may have been already played or removed. Redirecting back to the shop."
+              });
               
-              setLoading(false);
-              
-              // Production fix: Try to sync this ticket to the database
-              if (session?.user?.id) {
-                fetch('/api/users/scratch-tickets/sync', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    tickets: [localTicket]
-                  })
-                }).catch(syncError => console.error('Error syncing local ticket to database:', syncError));
+              // Clean up localStorage for this invalid ticket
+              if (ticketId) {
+                removeTicketFromLocalStorage(ticketId);
               }
               
-              return;
+              setTimeout(() => router.push('/games/scratch-offs'), 2000);
+            } else {
+              setError(`Error loading ticket: ${response.status} ${response.statusText}`);
+              setLoading(false);
+            }
+            
+            throw new Error(`Error: ${response.status} ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          console.log('API data received:', data);
+          
+          // Validate the ticket data before using it
+          if (!data || !data.ticket || !data.ticket.type) {
+            setError("Invalid ticket data received from server");
+            setLoading(false);
+            return;
+          }
+          
+          setTicket(data);
+          
+          // Store the ticket in localStorage for future reference
+          if (typeof window !== 'undefined') {
+            try {
+              // Get existing tickets from localStorage or initialize empty array
+              const storedTicketsStr = localStorage.getItem('userScratchTickets');
+              const storedTickets = storedTicketsStr ? JSON.parse(storedTicketsStr) : [];
+              
+              // Check if this ticket already exists in localStorage
+              const existingIndex = storedTickets.findIndex((t: any) => t.id === data.id);
+              
+              if (existingIndex >= 0) {
+                // Update the existing ticket
+                storedTickets[existingIndex] = data;
+              } else {
+                // Add the new ticket
+                storedTickets.push(data);
+              }
+              
+              // Save back to localStorage
+              localStorage.setItem('userScratchTickets', JSON.stringify(storedTickets));
+              console.log('Saved ticket to localStorage:', data.id);
+            } catch (storageError) {
+              console.error('Error saving ticket to localStorage:', storageError);
+              // Continue with the game even if storage fails
             }
           }
           
-          // If not found, inform the user and redirect
-          if (response.status === 404) {
-            toast({
-              title: "Ticket Not Found",
-              description: "This ticket doesn't exist in the database. It may have been already played or removed. Redirecting back to the shop."
-            });
-            
-            // Clean up localStorage for this invalid ticket
-            if (ticketId) {
-              removeTicketFromLocalStorage(ticketId);
-            }
-            
-            setTimeout(() => router.push('/games/scratch-offs'), 2000);
-          }
-          throw new Error(`Error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('API data received:', data);
-        
-        // Validate the ticket data before using it
-        if (!data || !data.ticket || !data.ticket.type) {
-          setError("Invalid ticket data received from server");
+          // Generate grid based on ticket type
+          setGrid(generateGrid(data.ticket.type, data.isBonus));
+          
           setLoading(false);
-          return;
-        }
-        
-        setTicket(data);
-        
-        // Store the ticket in localStorage for future reference
-        if (typeof window !== 'undefined') {
-          try {
-            // Get existing tickets from localStorage or initialize empty array
-            const storedTicketsStr = localStorage.getItem('userScratchTickets');
-            const storedTickets = storedTicketsStr ? JSON.parse(storedTicketsStr) : [];
-            
-            // Check if this ticket already exists in localStorage
-            const existingIndex = storedTickets.findIndex((t: any) => t.id === data.id);
-            
-            if (existingIndex >= 0) {
-              // Update the existing ticket
-              storedTickets[existingIndex] = data;
-            } else {
-              // Add the new ticket
-              storedTickets.push(data);
+        } catch (fetchError) {
+          console.error("Error fetching scratch ticket:", fetchError);
+          
+          // Final fallback - try localStorage once more with direct access
+          if (typeof window !== 'undefined' && retryCount === maxRetries) {
+            try {
+              const userTicketsStr = localStorage.getItem('userScratchTickets');
+              const localTicket = userTicketsStr ? 
+                JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
+              
+              if (localTicket) {
+                console.log('Final fallback: Using local storage data after all API attempts failed');
+                setTicket(localTicket);
+                setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus));
+                setLoading(false);
+                return;
+              }
+            } catch (localFallbackError) {
+              console.error("Error with localStorage fallback:", localFallbackError);
             }
-            
-            // Save back to localStorage
-            localStorage.setItem('userScratchTickets', JSON.stringify(storedTickets));
-            console.log('Saved ticket to localStorage:', data.id);
-          } catch (storageError) {
-            console.error('Error saving ticket to localStorage:', storageError);
-            // Continue with the game even if storage fails
           }
+          
+          setError("Failed to load your scratch ticket. Please try again later.");
+          setLoading(false);
         }
-        
-        // Generate grid based on ticket type
-        setGrid(generateGrid(data.ticket.type, data.isBonus));
-        
-        setLoading(false);
       } catch (error) {
-        console.error("Error fetching scratch ticket:", error);
+        console.error("Error in fetchTicket flow:", error);
         setError("Failed to load your scratch ticket. Please try again later.");
         setLoading(false);
       }
@@ -1154,15 +1224,57 @@ const ScratchOffPlayContent = () => {
       // Fire multiple events to ensure all components update
       try {
         console.log('Dispatching tickets-updated events');
+        
+        // Multiple event types for maximum compatibility
         window.dispatchEvent(new CustomEvent('tickets-updated'));
+        window.dispatchEvent(new CustomEvent('scratch-tickets-updated'));
+        window.dispatchEvent(new CustomEvent('user-tickets-updated'));
+        
+        // Storage events for components using storage listeners
         window.dispatchEvent(new StorageEvent('storage', {
           key: 'tickets-updated',
           newValue: timestamp
         }));
         
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'userScratchTickets',
+          newValue: JSON.stringify(updatedTickets)
+        }));
+        
+        // Also update legacy format if it exists
+        if (session?.user?.id) {
+          const legacyKey = `user-${session.user.id}-tickets`;
+          const legacyTicketsStr = localStorage.getItem(legacyKey);
+          
+          if (legacyTicketsStr) {
+            try {
+              const legacyTickets = JSON.parse(legacyTicketsStr);
+              const updatedLegacyTickets = legacyTickets.filter((t: any) => t.id !== ticketId);
+              localStorage.setItem(legacyKey, JSON.stringify(updatedLegacyTickets));
+              
+              // Fire legacy update event
+              window.dispatchEvent(new StorageEvent('storage', {
+                key: legacyKey,
+                newValue: JSON.stringify(updatedLegacyTickets)
+              }));
+            } catch (e) {
+              console.error('Error updating legacy tickets format:', e);
+            }
+          }
+        }
+        
         // Also remove any saved results for this ticket
         localStorage.removeItem(`ticket-result-${ticketId}`);
         localStorage.removeItem(`no-win-toast-${ticketId}`);
+        
+        // Re-trigger events after a short delay to ensure all components catch them
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('tickets-updated'));
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'tickets-updated',
+            newValue: Date.now().toString()
+          }));
+        }, 100);
       } catch (eventError) {
         console.error('Error dispatching events:', eventError);
       }
@@ -1808,12 +1920,41 @@ const ScratchOffPlayContent = () => {
           ) : (
             <button 
               onClick={() => {
-                // Make sure the ticket is marked as scratched in localStorage
+                // Make sure the ticket is marked as scratched and removed
                 if (typeof window !== 'undefined' && ticketId) {
                   try {
                     console.log('Continue button clicked, handling ticket:', ticketId);
                     
-                    // Force API call to mark as scratched first (for reliability)
+                    // Mark as scratched in localStorage first
+                    try {
+                      const storedTicketsStr = localStorage.getItem('userScratchTickets');
+                      if (storedTicketsStr) {
+                        const storedTickets = JSON.parse(storedTicketsStr);
+                        // Update the ticket to mark as scratched
+                        const updatedTickets = storedTickets.map((t: any) => {
+                          if (t.id === ticketId) {
+                            return { 
+                              ...t, 
+                              scratched: true, 
+                              scratchedAt: new Date().toISOString() 
+                            };
+                          }
+                          return t;
+                        });
+                        
+                        // Save back to localStorage
+                        localStorage.setItem('userScratchTickets', JSON.stringify(updatedTickets));
+                        
+                        // Trigger immediate UI update
+                        const timestamp = Date.now().toString();
+                        localStorage.setItem('tickets-updated', timestamp);
+                        window.dispatchEvent(new CustomEvent('tickets-updated'));
+                      }
+                    } catch (storageError) {
+                      console.error('Error updating localStorage:', storageError);
+                    }
+                    
+                    // API call to mark as scratched
                     fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
                       method: 'POST',
                       headers: {
@@ -1826,34 +1967,25 @@ const ScratchOffPlayContent = () => {
                     })
                     .then(response => {
                       console.log('API scratch response status:', response.status);
-                      if (response.ok) {
-                        console.log('Successfully marked ticket as scratched in database');
-                      } else {
-                        console.warn('Failed to mark ticket as scratched in database');
-                      }
-                      
-                      // Always remove from localStorage regardless of API response
+                      // Remove from localStorage after API call
                       removeTicketFromLocalStorage(ticketId);
-                      
-                      // Navigate back to scratch-offs page
+                      // Navigate back
                       router.push("/games/scratch-offs");
                     })
                     .catch(err => {
                       console.error('API scratch marking error:', err);
-                      
-                      // Still remove from localStorage and navigate if API fails
+                      // Still remove and navigate if API fails
                       removeTicketFromLocalStorage(ticketId);
                       router.push("/games/scratch-offs");
                     });
                   } catch (error) {
                     console.error('Error handling Continue button click:', error);
-                    
-                    // Fallback: still navigate away and remove ticket
+                    // Fallback
                     removeTicketFromLocalStorage(ticketId);
                     router.push("/games/scratch-offs");
                   }
                 } else {
-                  // If no window or ticketId, just navigate
+                  // Just navigate if no ticket ID
                   router.push("/games/scratch-offs");
                 }
               }}
