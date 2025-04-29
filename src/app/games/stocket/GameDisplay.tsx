@@ -1,4 +1,3 @@
-// src/games/stocket/GameDisplay.tsx
 import React, { useRef, useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
 import {
@@ -10,59 +9,55 @@ import {
     Tooltip,
     ChartOptions,
     ChartData,
-    Filler, // Needed for background fill
-    Chart, // Type used for chart instance ref
+    Filler,
+    Chart,
 } from "chart.js";
-import { GraphPoint, GameOutcome } from "./types"; // Adjust path
-import { formatMultiplier, formatCurrency } from "../../util/formatters"; // Adjust path
+import { GraphPoint, GameOutcome } from "./types";
+import { formatMultiplier, formatCurrency } from "../../util/formatters";
 import { FaRocket } from "react-icons/fa";
 
-// Register Chart.js components
 ChartJS.register(
     CategoryScale,
     LinearScale,
     PointElement,
     LineElement,
     Tooltip,
-    Filler // Register Filler for background colors
+    Filler
 );
 
 interface GameDisplayProps {
     graphPoints: GraphPoint[];
-    currentValue: number; // Live multiplier during game, final value after end
+    currentValue: number;
     gameActive: boolean;
     gameEnded: boolean;
     endOutcome: GameOutcome;
-    endValue: number | null; // Actual value where game ended (sell or crash)
+    endValue: number | null;
     roundProfit: number | null;
-    // Props for theoretical path display
-    sellTime: number | null; // Time user clicked sell (null if crashed or not ended)
-    crashValue: number;      // The crash multiplier value for the round (still needed for overlay)
+    sellTime: number | null;
+    crashValue: number;
 }
 
-// State type for rocket position
 interface RocketPosition {
     x: number;
     y: number;
-    angle: number; // degrees
+    angle: number;
     visible: boolean;
 }
 
 const GameDisplay: React.FC<GameDisplayProps> = ({
                                                      graphPoints,
-                                                     currentValue, // Live value
+                                                     currentValue,
                                                      gameActive,
                                                      gameEnded,
                                                      endOutcome,
-                                                     endValue, // Actual end value (sell or crash)
+                                                     endValue,
                                                      roundProfit,
-                                                     sellTime,   // Time user sold
-                                                     crashValue, // Actual crash value for the round
+                                                     sellTime,
+                                                     crashValue,
                                                  }) => {
-    const chartRef = useRef<ChartJS<"line"> | null>(null); // Ref to store chart instance
-    const [rocketPosition, setRocketPosition] = useState<RocketPosition>({ x: 0, y: 0, angle: -45, visible: false }); // Initial state
+    const chartRef = useRef<ChartJS<"line"> | null>(null);
+    const [rocketPosition, setRocketPosition] = useState<RocketPosition>({ x: 0, y: 0, angle: -45, visible: false });
 
-    // --- Effect to Calculate Rocket Position ---
     useEffect(() => {
         const chart = chartRef.current;
         if (!chart || graphPoints.length < 1) {
@@ -74,7 +69,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         const yScale = chart.scales.y;
         if (!xScale || !yScale) return;
 
-        // Use the actual last point for positioning, even if it's theoretical
         const lastPoint = graphPoints[graphPoints.length - 1];
         if (!lastPoint) {
             setRocketPosition(prev => ({ ...prev, visible: false }));
@@ -84,9 +78,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         const xPixel = xScale.getPixelForValue(lastPoint.time);
         const yPixel = yScale.getPixelForValue(lastPoint.value);
 
-        let angle = -45; // Default angle
+        let angle = -45;
 
-        // Calculate angle based on the last *visible* segment
         const relevantPoints = (gameEnded && endOutcome === 'Sold' && sellTime !== null)
             ? graphPoints.filter(p => p.time <= sellTime)
             : graphPoints;
@@ -114,7 +107,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             return;
         }
 
-        // Update rocket position state
         setRocketPosition({
             x: xPixel,
             y: yPixel,
@@ -122,27 +114,24 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             visible: gameActive || (gameEnded && graphPoints.length > 1)
         });
 
-    }, [graphPoints, gameActive, gameEnded, endOutcome, sellTime]); // Re-run when relevant data changes
+    }, [graphPoints, gameActive, gameEnded, endOutcome, sellTime]);
 
 
-    // --- Chart Data Logic ---
     const getChartData = (): ChartData<"line", number[], number> => {
         const labels = graphPoints.map(p => p.time);
         const datasets = [];
 
-        // Define colors
-        const colorSold = "rgb(34, 197, 94)"; // Green-600
-        const colorCrashed = "rgb(239, 68, 68)"; // Red-500
-        const colorActive = "rgb(167, 139, 250)"; // Purple-400
-        const colorTheoretical = "rgba(107, 114, 128, 0.6)"; // Gray-500 semi-transparent
+        const colorSold = "rgb(34, 197, 94)";
+        const colorCrashed = "rgb(239, 68, 68)";
+        const colorActive = "rgb(167, 139, 250)";
+        const colorTheoretical = "rgba(107, 114, 128, 0.6)";
 
         const backgroundSold = "rgba(34, 197, 94, 0.2)";
         const backgroundCrashed = "rgba(239, 68, 68, 0.2)";
         const backgroundActive = "rgba(167, 139, 250, 0.1)";
-        const backgroundTheoretical = "rgba(107, 114, 128, 0.05)"; // Very light gray fill
+        const backgroundTheoretical = "rgba(107, 114, 128, 0.05)";
 
         if (gameEnded && endOutcome === "Sold" && sellTime !== null) {
-            // --- SOLD STATE: Show actual + theoretical ---
             const actualData = graphPoints.map(p => (p.time <= sellTime ? p.value : NaN));
             const theoreticalData = graphPoints.map(p => (p.time >= sellTime ? p.value : NaN));
 
@@ -157,7 +146,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                 pointRadius: 0, borderWidth: 2, fill: true, order: 2
             });
         } else {
-            // --- ACTIVE or CRASHED STATE: Show single path ---
             const color = gameEnded ? colorCrashed : colorActive;
             const bgColor = gameEnded ? backgroundCrashed : backgroundActive;
             datasets.push({
@@ -169,9 +157,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         return { labels, datasets };
     };
 
-    const chartData = getChartData(); // Generate the data based on state
+    const chartData = getChartData();
 
-    // --- Chart Options ---
     const chartOptions: ChartOptions<"line"> = {
         responsive: true,
         maintainAspectRatio: false,
@@ -185,25 +172,15 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             },
             y: {
                 type: 'linear', position: 'right', title: { display: false }, min: 1.0,
-                // *** Y-Axis Max Calculation Logic ***
                 suggestedMax: (() => {
-                    // Find highest value currently present in the graph data
                     const currentMaxPointValue = Math.max(...graphPoints.map(p => p.value), 1.0);
 
                     if (gameActive && !gameEnded) {
-                        // --- Active Game ---
-                        // Base max on the higher of current live value or highest point seen, plus padding.
-                        // Ensure a minimum scale (e.g., 1.5x) so graph isn't too flat initially.
-                        // Does NOT use crashValue here.
                         return Math.max(currentValue * 1.15, currentMaxPointValue * 1.15, 1.5);
                     } else {
-                        // --- Game Ended or Not Started ---
-                        // Base max on the highest point in the *entire* dataset (including theoretical/crash point)
-                        // plus a small padding. Use crashValue as a fallback max if needed.
                         return Math.max(currentMaxPointValue, crashValue ?? 1.1, 1.5) * 1.05;
                     }
-                })(), // Immediately invoke the function
-                // *** End Y-Axis Max Calculation Logic ***
+                })(),
                 ticks: { color: "#6b7280", maxTicksLimit: 6, callback: (v) => typeof v === 'number' ? `${v.toFixed(1)}x` : v, padding: 10, font: { size: 10 } },
                 grid: { color: "rgba(55, 65, 81, 0.5)", drawTicks: false, },
                 border: { display: false }
@@ -223,7 +200,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         layout: { padding: { top: 15, right: 5, bottom: 5, left: 15 } }
     };
 
-    // --- Render ---
     return (
         <div className="relative h-64 md:h-80 bg-[#1a1f3a] rounded-lg border border-gray-700 overflow-hidden p-1">
 
@@ -242,15 +218,15 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     className={`absolute text-purple-400 text-xl md:text-2xl transition-transform duration-100 ease-linear ${
                         gameActive && !gameEnded ? 'animate-pulse' : ''
                     } ${
-                        gameEnded && endOutcome === 'Crashed' ? '!text-red-500' : '' // Red on crash
+                        gameEnded && endOutcome === 'Crashed' ? '!text-red-500' : ''
                     } ${
-                        gameEnded && endOutcome === 'Sold' ? '!text-green-500' : '' // Green on successful sell
+                        gameEnded && endOutcome === 'Sold' ? '!text-green-500' : ''
                     }`}
                     style={{
                         left: `${rocketPosition.x}px`,
                         top: `${rocketPosition.y}px`,
                         transform: `translate(-50%, -50%) rotate(${rocketPosition.angle}deg)`,
-                        willChange: 'transform, left, top' // Performance hint
+                        willChange: 'transform, left, top'
                     }}
                 />
             )}
@@ -260,9 +236,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
                 <div
                     className={`bg-gray-900/70 backdrop-blur-sm px-4 py-1 rounded-full font-bold text-xl md:text-2xl shadow-lg transition-colors duration-200 ${
-                        gameActive && !gameEnded ? "text-purple-300 animate-pulse" : "text-white" // Active state
+                        gameActive && !gameEnded ? "text-purple-300 animate-pulse" : "text-white"
                     } ${
-                        gameEnded ? (endOutcome === 'Crashed' ? 'text-red-400' : 'text-green-400') : '' // Ended state color
+                        gameEnded ? (endOutcome === 'Crashed' ? 'text-red-400' : 'text-green-400') : ''
                     }`}
                 >
                     {/* Show actual endValue when game ended, otherwise live currentValue */}

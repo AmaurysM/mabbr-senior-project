@@ -1,7 +1,6 @@
-// src/games/stocket/GameInfoPanel.tsx
 import React from "react";
-import { GameHistoryEntry } from "./types"; // Adjust path
-import { formatMultiplier, formatCurrency } from "../../util/formatters"; // Adjust path
+import { GameHistoryEntry } from "./types";
+import { formatMultiplier, formatCurrency } from "../../util/formatters";
 
 interface GameInfoPanelProps {
   gameHistory: GameHistoryEntry[];
@@ -9,7 +8,6 @@ interface GameInfoPanelProps {
 
 const GameInfoPanel: React.FC<GameInfoPanelProps> = ({ gameHistory }) => {
   return (
-    // Make the panel a flex column and allow it to fill height
     <div className="flex flex-col p-4 md:p-6 bg-gray-800 rounded-lg border border-gray-700 h-full">
 
       {/* --- How to Play Section --- */}
@@ -29,20 +27,14 @@ const GameInfoPanel: React.FC<GameInfoPanelProps> = ({ gameHistory }) => {
       <h2 className="text-xl font-bold text-white mb-3 flex-shrink-0">Game History</h2>
 
       {/* --- Scrollable History List Container --- */}
-      {/*
-        - flex-1: Allows this div to take up remaining vertical space
-        - overflow-y-auto: Enables vertical scrollbar ONLY when needed
-        - max-h-72: Limits the maximum height, triggering the scrollbar
-        - pr-2: Adds padding on the right to avoid scrollbar overlap
-      */}
-      <div className="flex-1 space-y-2 overflow-y-auto max-h-72 pr-2 custom-scrollbar"> {/* Added custom-scrollbar class for potential styling */}
+      <div className="flex-1 space-y-2 overflow-y-auto max-h-72 pr-2 custom-scrollbar">
         {gameHistory.length > 0 ? (
           gameHistory.map((game) => (
             <div
               key={game.id}
               className={`flex justify-between items-center p-2 rounded text-xs md:text-sm ${
                 game.outcome === "Sold"
-                  ? "bg-green-900/40" // Slightly more visible background
+                  ? "bg-green-900/40"
                   : "bg-red-900/40"
               }`}
             >

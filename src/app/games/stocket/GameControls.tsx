@@ -1,8 +1,6 @@
-// src/games/stocket/GameControls.tsx
 import React from "react";
-import { formatMultiplier, formatCurrency } from "../../util/formatters"; // Adjust path
-// Removed INITIAL_BET import
-import { MIN_BET_AMOUNT, MAX_BET_AMOUNT } from "./constants"; // Keep min/max if needed for input attributes, or rely on props
+import { formatMultiplier, formatCurrency } from "../../util/formatters";
+import { MIN_BET_AMOUNT, MAX_BET_AMOUNT } from "./constants";
 
 interface GameControlsProps {
   userBalance: number | null;
@@ -14,7 +12,6 @@ interface GameControlsProps {
   onStart: () => void;
   onSell: () => void;
   hasMounted: boolean;
-  // *** Added props for bet amount ***
   betAmount: number;
   onBetAmountChange: (value: string) => void;
   minBet: number;
@@ -31,7 +28,6 @@ const GameControls: React.FC<GameControlsProps> = ({
   onStart,
   onSell,
   hasMounted,
-  // *** Destructure new props ***
   betAmount,
   onBetAmountChange,
   minBet,
@@ -44,7 +40,6 @@ const GameControls: React.FC<GameControlsProps> = ({
     return formatCurrency(userBalance);
   };
 
-  // Handle input change event directly
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onBetAmountChange(event.target.value);
   };
@@ -67,17 +62,15 @@ const GameControls: React.FC<GameControlsProps> = ({
            <input
              id="betAmountInput"
              type="number"
-             // Format value for display, but onChange sends the raw string
-             value={betAmount} // Bind directly to the number state
-             onChange={handleInputChange} // Call handler passed from parent
+             value={betAmount}
+             onChange={handleInputChange}
              min={minBet}
              max={maxBet}
-             step="0.01" // Allow cents
-             disabled={gameActive || !hasMounted} // Disable during game or before mount
+             step="0.01"
+             disabled={gameActive || !hasMounted}
              className={`w-full h-8 px-3 py-1 bg-gray-700 border border-gray-600 rounded-md text-white font-semibold text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition ${
                (gameActive || !hasMounted) ? 'opacity-60 cursor-not-allowed' : ''
              }`}
-             // Prevent mouse wheel scrolling from changing the input value
              onWheel={(e) => (e.target as HTMLInputElement).blur()}
            />
         </div>
@@ -85,7 +78,7 @@ const GameControls: React.FC<GameControlsProps> = ({
 
       {/* Action Buttons */}
       <div className="flex gap-4">
-        {!gameActive && gameEnded ? ( // Show Start Button
+        {!gameActive && gameEnded ? (
           <button
             className={`flex-1 py-3 px-4 rounded-lg transition-colors font-semibold text-base md:text-lg text-center ${
               hasMounted && canStart
@@ -98,7 +91,7 @@ const GameControls: React.FC<GameControlsProps> = ({
             {/* *** Update button text to use betAmount state *** */}
             Start Game ({formatCurrency(betAmount)})
           </button>
-        ) : ( // Show Sell Button
+        ) : (
           <button
             className={`flex-1 py-3 px-4 rounded-lg transition-colors font-semibold text-base md:text-lg text-center ${
               hasMounted && gameActive && !gameEnded
