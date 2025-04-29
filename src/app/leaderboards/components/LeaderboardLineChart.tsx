@@ -39,11 +39,13 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userPortfolios, setUserPortfolios] = useState<Record<string, [string, number][]>>({});
+  const [userCashPortfolios, setUserCashPortfolios] = useState<Record<string, [string, number][]>>({});
+  const [userStockPortfolios, setUserStockPortfolios] = useState<Record<string, [string, number][]>>({});
   const [visibleUsers, setVisibleUsers] = useState<Record<string, boolean>>({});
   const [timeRange, setTimeRange] = useState<'1d' | '1w' | '1m' | '3m' | '6m' | '1y' | 'all'>('1m');
   const [syncTooltips, setSyncTooltips] = useState(true);
   const [showLegend, setShowLegend] = useState(false);
+  const [viewMode, setViewMode] = useState<'cash' | 'stock'>('cash');
 
   useEffect(() => {
     setIsClient(true);
@@ -64,32 +66,53 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
       setLoading(true);
       
       try {
-        const promises = topUsers.map(async (user) => {
-          const res = await fetch(`/api/user/transactions/stockHistory?userId=${user.id}`);
-          if (!res.ok) throw new Error(`Failed to load ${user.name}'s data`);
+        // Fetch cash history for all users
+        const cashPromises = topUsers.map(async (user) => {
+          const res = await fetch(`/api/user/transactions/cashHistory?userId=${user.id}`);
+          if (!res.ok) throw new Error(`Failed to load ${user.name}'s cash data`);
           const data = await res.json();
           return { userId: user.id, data };
         });
 
-        const results = await Promise.allSettled(promises);
+        // Fetch stock history for all users
+        const stockPromises = topUsers.map(async (user) => {
+          const res = await fetch(`/api/user/transactions/stockHistory?userId=${user.id}`);
+          if (!res.ok) throw new Error(`Failed to load ${user.name}'s stock data`);
+          const data = await res.json();
+          return { userId: user.id, data };
+        });
+
+        const cashResults = await Promise.allSettled(cashPromises);
+        const stockResults = await Promise.allSettled(stockPromises);
         
         if (!isMounted) return;
         
-        const portfolios: Record<string, [string, number][]> = {};
+        const cashPortfolios: Record<string, [string, number][]> = {};
+        const stockPortfolios: Record<string, [string, number][]> = {};
         let hasErrors = false;
         
-        results.forEach((result, index) => {
+        cashResults.forEach((result, index) => {
           if (result.status === 'fulfilled') {
-            portfolios[result.value.userId] = result.value.data;
+            cashPortfolios[result.value.userId] = result.value.data;
           } else {
-            console.error(`Failed to load data for ${topUsers[index].name}:`, result.reason);
+            console.error(`Failed to load cash data for ${topUsers[index].name}:`, result.reason);
+            hasErrors = true;
+          }
+        });
+
+        stockResults.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            stockPortfolios[result.value.userId] = result.value.data;
+          } else {
+            console.error(`Failed to load stock data for ${topUsers[index].name}:`, result.reason);
             hasErrors = true;
           }
         });
         
-        setUserPortfolios(portfolios);
+        setUserCashPortfolios(cashPortfolios);
+        setUserStockPortfolios(stockPortfolios);
         
-        if (hasErrors && Object.keys(portfolios).length === 0) {
+        if (hasErrors && Object.keys(cashPortfolios).length === 0 && Object.keys(stockPortfolios).length === 0) {
           setError("Failed to load user data. Please try again later.");
         } else if (hasErrors) {
           setError("Some user data couldn't be loaded completely.");
@@ -114,7 +137,12 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
 
   // Prepare time-filtered data for chart
   const chartData = useMemo(() => {
-    if (loading || Object.keys(userPortfolios).length === 0) return [];
+    if (loading) return [];
+    
+    // Select the appropriate portfolio data based on the view mode
+    const userPortfolios = viewMode === 'cash' ? userCashPortfolios : userStockPortfolios;
+    
+    if (Object.keys(userPortfolios).length === 0) return [];
     
     // Generate a combined dataset for all users
     const activeUserIds = Object.keys(visibleUsers).filter(id => visibleUsers[id]);
@@ -226,7 +254,7 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
       }
       return dataPoint;
     });
-  }, [userPortfolios, visibleUsers, timeRange, loading, topUsers]);
+  }, [userCashPortfolios, userStockPortfolios, viewMode, visibleUsers, timeRange, loading, topUsers]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -281,8 +309,6 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
     return null;
   };
 
-
-  
   const toggleUser = (id: string) => {
     setVisibleUsers(vis => ({ ...vis, [id]: !vis[id] }));
   };
@@ -293,12 +319,30 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
     setVisibleUsers(newVisibility);
   };
 
+  const chartTitle = viewMode === 'cash' ? 'Cash Balance History' : 'Stock Holdings Value History';
+
   return (
     <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-xl">
       <div className="flex flex-wrap justify-between items-center mb-4">
         <h3 className="text-xl font-bold text-white mb-2 md:mb-0">Portfolio Performance</h3>
         
         <div className="flex flex-wrap gap-2 items-center justify-end w-full md:w-auto">
+          {/* View Mode Toggle */}
+          <div className="bg-gray-700 rounded-lg p-1 flex text-sm mr-2">
+            <button 
+              onClick={() => setViewMode('cash')}
+              className={`px-3 py-1 rounded-md ${viewMode === 'cash' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              Cash
+            </button>
+            <button 
+              onClick={() => setViewMode('stock')}
+              className={`px-3 py-1 rounded-md ${viewMode === 'stock' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+            >
+              Stocks
+            </button>
+          </div>
+          
           <div className="bg-gray-700 rounded-lg p-1 flex flex-wrap text-sm">
             <button 
               onClick={() => setTimeRange('1d')}
@@ -361,6 +405,11 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Chart title based on view mode */}
+      <div className="text-white text-lg font-medium mb-4">
+        {chartTitle}
       </div>
 
       {/* User toggles */}
