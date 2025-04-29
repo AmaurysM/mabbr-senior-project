@@ -1132,11 +1132,16 @@ const ScratchOffPlayContent = () => {
       
       // Get current tickets
       const storedTicketsStr = localStorage.getItem('userScratchTickets');
-      if (!storedTicketsStr) return;
+      if (!storedTicketsStr) {
+        console.log('No stored tickets found in localStorage');
+        return;
+      }
       
       // Parse and filter
       const storedTickets = JSON.parse(storedTicketsStr);
       const updatedTickets = storedTickets.filter((t: any) => t.id !== ticketId);
+      
+      console.log(`Filtering tickets, from ${storedTickets.length} to ${updatedTickets.length}`);
       
       // Save back
       localStorage.setItem('userScratchTickets', JSON.stringify(updatedTickets));
@@ -1148,11 +1153,16 @@ const ScratchOffPlayContent = () => {
       
       // Fire multiple events to ensure all components update
       try {
+        console.log('Dispatching tickets-updated events');
         window.dispatchEvent(new CustomEvent('tickets-updated'));
         window.dispatchEvent(new StorageEvent('storage', {
           key: 'tickets-updated',
           newValue: timestamp
         }));
+        
+        // Also remove any saved results for this ticket
+        localStorage.removeItem(`ticket-result-${ticketId}`);
+        localStorage.removeItem(`no-win-toast-${ticketId}`);
       } catch (eventError) {
         console.error('Error dispatching events:', eventError);
       }
@@ -1801,6 +1811,8 @@ const ScratchOffPlayContent = () => {
                 // Make sure the ticket is marked as scratched in localStorage
                 if (typeof window !== 'undefined' && ticketId) {
                   try {
+                    console.log('Continue button clicked, handling ticket:', ticketId);
+                    
                     // Force API call to mark as scratched first (for reliability)
                     fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
                       method: 'POST',
@@ -1811,20 +1823,39 @@ const ScratchOffPlayContent = () => {
                         scratched: true,
                         scratchedAt: new Date().toISOString()
                       })
-                    }).catch(err => console.error('API scratch marking error:', err));
-
-                    // Remove the ticket completely from localStorage
-                    removeTicketFromLocalStorage(ticketId);
-                    
-                    // Explicitly dispatch a tickets-updated event to ensure UI is refreshed
-                    window.dispatchEvent(new CustomEvent('tickets-updated'));
+                    })
+                    .then(response => {
+                      console.log('API scratch response status:', response.status);
+                      if (response.ok) {
+                        console.log('Successfully marked ticket as scratched in database');
+                      } else {
+                        console.warn('Failed to mark ticket as scratched in database');
+                      }
+                      
+                      // Always remove from localStorage regardless of API response
+                      removeTicketFromLocalStorage(ticketId);
+                      
+                      // Navigate back to scratch-offs page
+                      router.push("/games/scratch-offs");
+                    })
+                    .catch(err => {
+                      console.error('API scratch marking error:', err);
+                      
+                      // Still remove from localStorage and navigate if API fails
+                      removeTicketFromLocalStorage(ticketId);
+                      router.push("/games/scratch-offs");
+                    });
                   } catch (error) {
-                    console.error('Error updating localStorage before navigation:', error);
+                    console.error('Error handling Continue button click:', error);
+                    
+                    // Fallback: still navigate away and remove ticket
+                    removeTicketFromLocalStorage(ticketId);
+                    router.push("/games/scratch-offs");
                   }
+                } else {
+                  // If no window or ticketId, just navigate
+                  router.push("/games/scratch-offs");
                 }
-                
-                // Navigate back to scratch-offs page
-                router.push("/games/scratch-offs");
               }}
               className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-medium"
             >
