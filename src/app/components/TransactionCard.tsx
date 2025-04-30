@@ -47,6 +47,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   const isLootboxPurchase = type === 'LOOTBOX';
   const isLootboxRedeem = type === 'LOOTBOX_REDEEM';
   const isScratchWin = type === 'SCRATCH_WIN';
+  const isDailyDrawWin = type === 'DAILY_DRAW_WIN';
 
   const hasNotes = publicNote || (isCurrentUser && privateNote);
 
@@ -56,6 +57,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isLootboxPurchase) return 'purchased';
     if (isLootboxRedeem) return 'redeemed';
     if (isScratchWin) return 'won';
+    if (isDailyDrawWin) return 'won';
     return 'traded';
   };
 
@@ -63,6 +65,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isLootboxPurchase) return 'Lootbox';
     if (isLootboxRedeem) return `${stockSymbol} from Lootbox`;
     if (isScratchWin) return stockSymbol;
+    if (isDailyDrawWin) return 'Daily Draw Jackpot';
     return stockSymbol;
   };
 
@@ -70,6 +73,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
     if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
     if (isScratchWin) return `Value: $${price.toFixed(2)}`;
+    if (isDailyDrawWin) return `${price.toLocaleString()} tokens`;
     return `${quantity} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
   };
 
@@ -78,6 +82,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isSell) return 'bg-red-500';
     if (isLootboxPurchase || isLootboxRedeem) return 'bg-blue-500';
     if (isScratchWin) return 'bg-yellow-500';
+    if (isDailyDrawWin) return 'bg-purple-500';
     return 'bg-gray-500';
   };
 
@@ -86,6 +91,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isSell) return 'text-red-400';
     if (isLootboxPurchase || isLootboxRedeem) return 'text-blue-400';
     if (isScratchWin) return 'text-yellow-400';
+    if (isDailyDrawWin) return 'text-purple-400';
     return 'text-gray-400';
   };
   
@@ -115,6 +121,8 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
             <div className="font-bold">REDEEMED LOOTBOX</div>
           ) : isScratchWin ? (
             <div className="font-bold">SCRATCH WIN</div>
+          ) : isDailyDrawWin ? (
+            <div className="font-bold">DAILY DRAW WIN</div>
           ) : (
             <div className="font-bold">${totalCost.toFixed(2)}</div>
           )}
