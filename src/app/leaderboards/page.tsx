@@ -48,7 +48,7 @@ const LeaderboardPage = () => {
   const user = session?.user;
   const currentLeaderboard = viewMode === 'global' ? leaderboard : friendsLeaderboard;
 
-  const topUsers = currentLeaderboard.slice(0, 6);
+  const topUsers = currentLeaderboard.slice(0, 8);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -183,24 +183,14 @@ const LeaderboardPage = () => {
             {/* Time Period Selector - Full width */}
             <div className="bg-gray-700/50 rounded-lg shadow-md flex">
               <button 
-                onClick={() => setTimeframe('all')}
+                onClick={() => setTimeframe('day')}
                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'all' 
+                  timeframe === 'day' 
                     ? 'bg-blue-600 text-white' 
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                All Time
-              </button>
-              <button 
-                onClick={() => setTimeframe('month')}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'month' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                Month
+                1D
               </button>
               <button 
                 onClick={() => setTimeframe('week')}
@@ -210,17 +200,27 @@ const LeaderboardPage = () => {
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                Week
+                1W
               </button>
               <button 
-                onClick={() => setTimeframe('day')}
+                onClick={() => setTimeframe('month')}
                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'day' 
+                  timeframe === 'month' 
                     ? 'bg-blue-600 text-white' 
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                Today
+                1M
+              </button>
+              <button 
+                onClick={() => setTimeframe('all')}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  timeframe === 'all' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                All
               </button>
             </div>
           </div>
@@ -231,15 +231,7 @@ const LeaderboardPage = () => {
             <Leaderboard timeframe={timeframe} viewMode={viewMode} leaderboard={leaderboard} friendsLeaderboard={friendsLeaderboard} loading={loading} error={leaderboardError}/>
             
             {/* Right Column - Performance Graph */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col self-start">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
-                <h2 className="text-xl font-bold text-white mb-2 sm:mb-0">Top Traders Performance</h2>
-                
-                
-              </div>
-                    {/* Chart goes here */}
-                    <LeaderboardLineChart topUsers={topUsers}/>
-            </div>
+            <LeaderboardLineChart topUsers={topUsers} timeframe={timeframe}/>
           </div>
         </div>
       </div>
