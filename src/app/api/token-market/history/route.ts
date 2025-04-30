@@ -104,135 +104,80 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '30');
-    
+
+    // Fetch data from the database - the model name in Prisma is camelCase instead of snake_case
     try {
-      // Try to get token market history data from Prisma - this will fail if model doesn't exist
-      // @ts-ignore - Ignoring TypeScript error as we're using try-catch to handle missing model
-      const history = await prisma.tokenMarketHistory.findMany({
+      // @ts-ignore - Using model name directly
+      const history = await prisma.tokenMarketDataPoint.findMany({
         orderBy: {
-          date: 'desc'
+          timestamp: 'desc',
         },
-        take: limit
+        take: limit,
       });
       
-      // Return sorted by date ascending for charts
-      return NextResponse.json({
-        history: history.reverse()
-      });
+      // Return the data in oldest-to-newest order for proper chart display
+      return NextResponse.json({ history: history.reverse() });
     } catch (dbError) {
-      console.log('Using file-based token market history');
-      
-      // Read history data from file as fallback
-      let historyData = readHistoryData();
-      
-      // If no data in file or empty array, use mock data
-      if (!historyData || historyData.length === 0) {
-        historyData = generateMockData();
-        writeHistoryData(historyData);
-      }
-      
-      // Sort by date (newest first) and limit
-      historyData.sort((a: TokenMarketHistoryRecord, b: TokenMarketHistoryRecord) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      const limitedData = historyData.slice(0, limit).reverse();
-      
-      return NextResponse.json({
-        history: limitedData
-      });
+      console.error('Database error when fetching token market history:', dbError);
+      return NextResponse.json({ history: [] });
     }
   } catch (error) {
     console.error('Error fetching token market history:', error);
-    
-    // Ultimate fallback - return mock data
-    const mockData = generateMockData();
-    return NextResponse.json({
-      history: mockData.slice(-30)
-    });
+    return NextResponse.json(
+      { error: 'Failed to fetch token market history' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST() {
   try {
-    // Get current token data
-    const totalUsers = await prisma.user.count();
-    
-    // Get sum of all user token counts
-    const tokenSum = await prisma.user.aggregate({
+    // Calculate total tokens in circulation
+    const totalTokens = await prisma.user.aggregate({
       _sum: {
-        tokenCount: true
-      }
+        tokenCount: true,
+      },
     });
-    
-    const totalTokens = tokenSum._sum.tokenCount || 0;
-    
-    // Calculate token holders (users with tokens > 0)
-    const holdersCount = await prisma.user.count({
-      where: {
-        tokenCount: {
-          gt: 0
-        }
-      }
-    });
-    
-    // Calculate token value based on total tokens in circulation
-    const maxValue = 500000; // Max value is $500,000 per token
-    const minValue = 0.01; // Min value is $0.01 per token
-    const circulationFactor = 0.0001; // Adjust this to control the rate of value decrease
-    
-    // Calculate token value with exponential decay
-    let tokenValue = maxValue * Math.exp(-circulationFactor * totalTokens);
-    tokenValue = Math.max(minValue, tokenValue);
-    
-    // Estimate daily volume (5% of total tokens)
-    const dailyVolume = Math.floor(totalTokens * 0.05);
-    
-    // Create new history record
-    const newRecord: TokenMarketHistoryRecord = {
-      id: uuidv4(),
-      date: new Date(),
-      tokenValue,
-      totalSupply: totalTokens,
-      holdersCount,
-      dailyVolume,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
+
+    // Get current token value
+    const tokenValue = await calculateTokenValue(totalTokens._sum.tokenCount || 0);
+
     try {
-      // Try to create a history record in Prisma
-      // @ts-ignore - Ignoring TypeScript error as we're using try-catch to handle missing model
-      const record = await prisma.tokenMarketHistory.create({
+      // @ts-ignore - Using model name directly
+      const dataPoint = await prisma.tokenMarketDataPoint.create({
         data: {
           tokenValue,
-          totalSupply: totalTokens,
-          holdersCount,
-          dailyVolume
-        }
+          tokensInCirculation: totalTokens._sum.tokenCount || 0,
+          totalTransactionValue: tokenValue * (totalTokens._sum.tokenCount || 0),
+        },
       });
       
-      return NextResponse.json({
-        success: true,
-        record
-      });
+      return NextResponse.json({ success: true, dataPoint });
     } catch (dbError) {
-      console.log('Using file-based token market history storage');
-      
-      // Store in file instead
-      let historyData = readHistoryData();
-      historyData.push(newRecord);
-      writeHistoryData(historyData);
-      
-      return NextResponse.json({
-        success: true,
-        record: newRecord
-      });
+      console.error('Database error when creating token market data point:', dbError);
+      return NextResponse.json(
+        { error: 'Failed to record token market history' },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error('Error creating token market history:', error);
+    console.error('Error recording token market history:', error);
     return NextResponse.json(
-      { error: 'Failed to create token market history' },
+      { error: 'Failed to record token market history' },
       { status: 500 }
     );
   }
+}
+
+// Helper function to calculate token value based on circulation
+function calculateTokenValue(tokensInCirculation: number): number {
+  const maxValue = 500000; // Max value is $500,000 per token
+  const minValue = 0.01; // Min value is $0.01 per token
+  const circulationFactor = 0.0001; // Controls how quickly value drops
+
+  // Token value with exponential decay
+  const value = maxValue * Math.exp(-circulationFactor * tokensInCirculation);
+  
+  // Ensure value stays within bounds
+  return Math.max(minValue, Math.min(maxValue, value));
 } 

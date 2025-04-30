@@ -524,3 +524,14 @@ model GameHistory {
 
   @@index([userId])
 }
+
+model TokenMarketDataPoint {
+  id                String   @id @default(cuid()) @map("_id")
+  timestamp         DateTime @default(now())
+  tokenValue        Float
+  tokensInCirculation Int
+  totalTransactionValue Float
+  
+  @@index([timestamp])
+  @@map("token_market_data_point")
+}
