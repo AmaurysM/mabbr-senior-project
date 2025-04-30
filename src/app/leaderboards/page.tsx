@@ -183,24 +183,14 @@ const LeaderboardPage = () => {
             {/* Time Period Selector - Full width */}
             <div className="bg-gray-700/50 rounded-lg shadow-md flex">
               <button 
-                onClick={() => setTimeframe('day')}
+                onClick={() => setTimeframe('all')}
                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'day' 
+                  timeframe === 'all' 
                     ? 'bg-blue-600 text-white' 
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                1D
-              </button>
-              <button 
-                onClick={() => setTimeframe('week')}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'week' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                1W
+                All Time
               </button>
               <button 
                 onClick={() => setTimeframe('month')}
@@ -210,17 +200,27 @@ const LeaderboardPage = () => {
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                1M
+                Month
               </button>
               <button 
-                onClick={() => setTimeframe('all')}
+                onClick={() => setTimeframe('week')}
                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'all' 
+                  timeframe === 'week' 
                     ? 'bg-blue-600 text-white' 
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                All
+                Week
+              </button>
+              <button 
+                onClick={() => setTimeframe('day')}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  timeframe === 'day' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                Today
               </button>
             </div>
           </div>

@@ -164,6 +164,7 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
     // Calculate the start date based on timeframe
     const now = new Date();
     let startDate = new Date();
+
     switch (timeframe) {
       case 'day':
         startDate = subDays(now, 1);
@@ -176,12 +177,29 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
         break;
       default: // 'all'
         // Find the earliest start date across all datasets
+        startDate = now; // Initialize with current date
+        let foundValidDate = false;
+        
+        // First pass: find the earliest date across all portfolios
         for (const userId of activeUserIds) {
           const portfolio = userPortfolios[userId];
           if (portfolio?.length > 0) {
-            const portfolioStartDate = new Date(portfolio[0][0]);
-            if (portfolioStartDate < startDate) startDate = portfolioStartDate;
+            // Sort dates to ensure we get the actual earliest date
+            const dates = portfolio.map(([timestamp]) => new Date(timestamp)).sort((a, b) => a.getTime() - b.getTime());
+            const earliestDate = dates[0];
+            
+            if (isValid(earliestDate) && (!foundValidDate || earliestDate < startDate)) {
+              startDate = earliestDate;
+              foundValidDate = true;
+              console.log(`Found earlier date for user ${userId}: ${earliestDate.toISOString()}`);
+            }
           }
+        }
+        
+        // Only fall back to 1 month if we found no valid dates at all
+        if (!foundValidDate) {
+          console.log('No valid dates found, falling back to 1 month');
+          startDate = subMonths(now, 1);
         }
     }
     
@@ -200,40 +218,26 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
       const portfolio = userPortfolios[userId];
       if (!portfolio?.length) continue;
       
+      // Sort portfolio data by date
+      const sortedPortfolio = [...portfolio].sort((a, b) => 
+        new Date(a[0]).getTime() - new Date(b[0]).getTime()
+      );
+      
       const dailyValues: Record<string, number | null> = {};
       
-      // Filter portfolio data based on timeframe
-      const filteredPortfolio = portfolio.filter(([timestamp]) => {
-        const date = new Date(timestamp);
-        return date >= startDate && date <= now;
-      });
-      
       // Process time series data to get daily values
-      for (const [timestamp, balance] of filteredPortfolio) {
+      for (const [timestamp, balance] of sortedPortfolio) {
         const dateStr = timestamp.slice(0, 10);
         dailyValues[dateStr] = balance;
       }
       
-      const portfolioDates = filteredPortfolio.map(entry => entry[0].slice(0, 10)).sort();
-      const userFirstDate = portfolioDates[0];
-      const userLastDate = portfolioDates[portfolioDates.length - 1];
-      
+      // Fill in missing dates with previous values
+      let lastValidValue: number | null = null;
       for (const date of allDates) {
-        if (date < userFirstDate || date > userLastDate) {
-          dailyValues[date] = null;
-          continue;
-        }
-        
         if (dailyValues[date] === undefined) {
-          const validDates = Object.keys(dailyValues)
-            .filter(d => d < date && dailyValues[d] !== null)
-            .sort();
-          
-          if (validDates.length > 0) {
-            dailyValues[date] = dailyValues[validDates[validDates.length - 1]];
-          } else {
-            dailyValues[date] = null;
-          }
+          dailyValues[date] = lastValidValue;
+        } else {
+          lastValidValue = dailyValues[date];
         }
       }
       
@@ -268,10 +272,28 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
       const date = new Date(dateStr);
       if (isValid(date)) {
         // Get the timeframe from the parent component
-        const rangeTickFormat = timeframe === 'day' ? 'HH:mm' : 
-                               timeframe === 'week' ? 'MMM d' :
-                               timeframe === 'month' ? 'MMM d' :
-                               'MMM yyyy';
+        const now = new Date();
+        const dateTime = date.getTime();
+        const monthsAgo = (now.getTime() - dateTime) / (1000 * 60 * 60 * 24 * 30);
+
+        // For "All Time" view, adapt format based on data range
+        if (timeframe === 'all') {
+          if (monthsAgo > 12) {
+            return format(date, 'MMM yyyy'); // Show month and year for data older than a year
+          } else if (monthsAgo > 1) {
+            return format(date, 'MMM d'); // Show month and day for data within a year
+          } else {
+            return format(date, 'MMM d'); // Show month and day for recent data
+          }
+        }
+
+        // For other timeframes, use specific formats
+        const rangeTickFormat = 
+          timeframe === 'day' ? 'HH:mm' :      // Hours and minutes for daily view
+          timeframe === 'week' ? 'MMM d' :      // Month and day for weekly view
+          timeframe === 'month' ? 'MMM d' :     // Month and day for monthly view
+          'MMM d';                              // Default to month and day
+
         return format(date, rangeTickFormat);
       }
       return dateStr;
@@ -461,6 +483,43 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
                 })}
               </LineChart>
             </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Portfolio stats */}
+        <div className="mt-4 bg-gray-700/50 rounded-lg p-3">
+          {visibleUsers && Object.keys(visibleUsers).filter(id => visibleUsers[id]).length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {topUsers
+                .filter(user => visibleUsers[user.id])
+                .slice(0, 3)
+                .map((user, idx) => {
+                  const colorIndex = idx % colorPalette.length;
+                  const latestData = chartData.length > 0 ? chartData[chartData.length - 1][user.id] : null;
+                  const firstData = chartData.length > 0 ? chartData[0][user.id] : null;
+                  const percentChange = (firstData && latestData) 
+                    ? ((latestData - firstData) / firstData * 100) 
+                    : 0;
+                  
+                  return (
+                    <div key={user.id} className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colorPalette[idx] }} />
+                        <span className="text-white font-medium">{user.name}</span>
+                      </div>
+                      <div className="text-lg font-bold text-white">
+                        {latestData ? formatCurrency(latestData) : 'N/A'}
+                      </div>
+                      <div className={`text-sm ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {percentChange >= 0 ? '↑' : '↓'} {Math.abs(percentChange).toFixed(2)}%
+                      </div>
+                    </div>
+                  );
+                })
+              }
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center">Select users to view portfolio stats</p>
           )}
         </div>
       </div>
