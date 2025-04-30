@@ -28,21 +28,25 @@ interface LeaderboardEntry {
   holdingsValue: number;
 }
 
-// Enhanced color palette with better visual distinction
+// Update color palette to 8 distinct colors
 const colorPalette = [
-  '#4CC9F0', '#F72585', '#7209B7', '#3A0CA3', '#F94144', 
-  '#F3722C', '#F8961E', '#F9C74F', '#90BE6D', '#43AA8B', 
-  '#277DA1', '#3CAEA3', '#F4A261', '#E76F51', '#9D4EDD'
+  '#38BDF8', // Light blue
+  '#F472B6', // Pink
+  '#4ADE80', // Green
+  '#FACC15', // Yellow
+  '#F97316', // Orange
+  '#A78BFA', // Purple
+  '#EC4899', // Hot pink
+  '#14B8A6', // Teal
 ];
 
-export default function LeaderboardLineChart({ topUsers }: { topUsers: LeaderboardEntry[] }) {
+export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers: LeaderboardEntry[], timeframe: string }) {
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userCashPortfolios, setUserCashPortfolios] = useState<Record<string, [string, number][]>>({});
   const [userStockPortfolios, setUserStockPortfolios] = useState<Record<string, [string, number][]>>({});
   const [visibleUsers, setVisibleUsers] = useState<Record<string, boolean>>({});
-  const [timeRange, setTimeRange] = useState<'1d' | '1w' | '1m' | '3m' | '6m' | '1y' | 'all'>('1m');
   const [syncTooltips, setSyncTooltips] = useState(true);
   const [showLegend, setShowLegend] = useState(false);
   const [viewMode, setViewMode] = useState<'cash' | 'stock'>('cash');
@@ -50,7 +54,12 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
   useEffect(() => {
     setIsClient(true);
     const vis: Record<string, boolean> = {};
-    topUsers.forEach((u, idx) => { vis[u.id] = idx < topUsers.length });
+    // Show all users by default, up to 8
+    topUsers.forEach((u, idx) => { 
+      if (idx < 8) {
+        vis[u.id] = true;
+      }
+    });
     setVisibleUsers(vis);
   }, [topUsers]);
 
@@ -146,47 +155,54 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
     if (Object.keys(userPortfolios).length === 0) return [];
     
     // Generate a combined dataset for all users
-    const activeUserIds = Object.keys(visibleUsers).filter(id => visibleUsers[id]);
+    const activeUserIds = Object.keys(visibleUsers)
+      .filter(id => visibleUsers[id])
+      .slice(0, 8); // Ensure we only process top 8 users
     
     if (activeUserIds.length === 0) return [];
     
-    // Find the earliest start date across all datasets
-    let earliestDate = new Date();
-    for (const userId of activeUserIds) {
-      const portfolio = userPortfolios[userId];
-      if (portfolio?.length > 0) {
-        const startDate = new Date(portfolio[0][0]);
-        if (startDate < earliestDate) earliestDate = startDate;
-      }
-    }
-    
-    // Apply time range filter
-    let startDate = earliestDate;
+    // Calculate the start date based on timeframe
     const now = new Date();
-    
-    switch (timeRange) {
-      case '1d':
+    let startDate = new Date();
+
+    switch (timeframe) {
+      case 'day':
         startDate = subDays(now, 1);
         break;
-      case '1w':
-        startDate = subDays(now, 7);
+      case 'week':
+        startDate = subWeeks(now, 1);
         break;
-      case '1m':
+      case 'month':
         startDate = subMonths(now, 1);
         break;
-      case '3m':
-        startDate = subMonths(now, 3);
-        break;
-      case '6m':
-        startDate = subMonths(now, 6);
-        break;
-      case '1y':
-        startDate = subMonths(now, 12);
-        break;
-      // 'all' uses earliestDate as is
+      default: // 'all'
+        // Find the earliest start date across all datasets
+        startDate = now; // Initialize with current date
+        let foundValidDate = false;
+        
+        // First pass: find the earliest date across all portfolios
+        for (const userId of activeUserIds) {
+          const portfolio = userPortfolios[userId];
+          if (portfolio?.length > 0) {
+            // Sort dates to ensure we get the actual earliest date
+            const dates = portfolio.map(([timestamp]) => new Date(timestamp)).sort((a, b) => a.getTime() - b.getTime());
+            const earliestDate = dates[0];
+            
+            if (isValid(earliestDate) && (!foundValidDate || earliestDate < startDate)) {
+              startDate = earliestDate;
+              foundValidDate = true;
+              console.log(`Found earlier date for user ${userId}: ${earliestDate.toISOString()}`);
+            }
+          }
+        }
+        
+        // Only fall back to 1 month if we found no valid dates at all
+        if (!foundValidDate) {
+          console.log('No valid dates found, falling back to 1 month');
+          startDate = subMonths(now, 1);
+        }
     }
     
-
     // Generate all dates in range
     const allDates: string[] = [];
     const currentDate = new Date(startDate);
@@ -202,40 +218,26 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
       const portfolio = userPortfolios[userId];
       if (!portfolio?.length) continue;
       
+      // Sort portfolio data by date
+      const sortedPortfolio = [...portfolio].sort((a, b) => 
+        new Date(a[0]).getTime() - new Date(b[0]).getTime()
+      );
+      
       const dailyValues: Record<string, number | null> = {};
       
       // Process time series data to get daily values
-      for (const [timestamp, balance] of portfolio) {
+      for (const [timestamp, balance] of sortedPortfolio) {
         const dateStr = timestamp.slice(0, 10);
         dailyValues[dateStr] = balance;
       }
       
-      const portfolioDates = portfolio.map(entry => entry[0].slice(0, 10)).sort();
-      const userFirstDate = portfolioDates[0];
-      const userLastDate = portfolioDates[portfolioDates.length - 1];
-      
+      // Fill in missing dates with previous values
+      let lastValidValue: number | null = null;
       for (const date of allDates) {
-
-        if (date < userFirstDate || date > userLastDate) {
-          dailyValues[date] = null;
-          continue;
-        }
-        
         if (dailyValues[date] === undefined) {
-          const validDates = Object.keys(dailyValues)
-            .filter(d => d < date && dailyValues[d] !== null)
-            .sort();
-          
-          if (validDates.length > 0) {
-            dailyValues[date] = dailyValues[validDates[validDates.length - 1]];
-          } else {
-            const nextDates = portfolioDates.filter(d => d > date).sort();
-            if (nextDates.length > 0) {
-              dailyValues[date] = null;
-            } else {
-              dailyValues[date] = null;
-            }
-          }
+          dailyValues[date] = lastValidValue;
+        } else {
+          lastValidValue = dailyValues[date];
         }
       }
       
@@ -255,7 +257,7 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
       }
       return dataPoint;
     });
-  }, [userCashPortfolios, userStockPortfolios, viewMode, visibleUsers, timeRange, loading, topUsers]);
+  }, [loading, userCashPortfolios, userStockPortfolios, visibleUsers, viewMode, topUsers, timeframe]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -269,7 +271,30 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
     try {
       const date = new Date(dateStr);
       if (isValid(date)) {
-        return format(date, 'MMM d, yyyy');
+        // Get the timeframe from the parent component
+        const now = new Date();
+        const dateTime = date.getTime();
+        const monthsAgo = (now.getTime() - dateTime) / (1000 * 60 * 60 * 24 * 30);
+
+        // For "All Time" view, adapt format based on data range
+        if (timeframe === 'all') {
+          if (monthsAgo > 12) {
+            return format(date, 'MMM yyyy'); // Show month and year for data older than a year
+          } else if (monthsAgo > 1) {
+            return format(date, 'MMM d'); // Show month and day for data within a year
+          } else {
+            return format(date, 'MMM d'); // Show month and day for recent data
+          }
+        }
+
+        // For other timeframes, use specific formats
+        const rangeTickFormat = 
+          timeframe === 'day' ? 'HH:mm' :      // Hours and minutes for daily view
+          timeframe === 'week' ? 'MMM d' :      // Month and day for weekly view
+          timeframe === 'month' ? 'MMM d' :     // Month and day for monthly view
+          'MMM d';                              // Default to month and day
+
+        return format(date, rangeTickFormat);
       }
       return dateStr;
     } catch (error) {
@@ -320,219 +345,127 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
     setVisibleUsers(newVisibility);
   };
 
-  const chartTitle = viewMode === 'cash' ? 'Cash Balance History' : 'Stock Holdings Value History';
-
+  // Add a function to calculate domain based on visible users
+  const calculateDomain = (data: any[], activeUsers: string[]) => {
+    if (!data.length || !activeUsers.length) return [0, 0];
+    
+    let min = Infinity;
+    let max = -Infinity;
+    
+    data.forEach(point => {
+      activeUsers.forEach(userId => {
+        if (point[userId] !== undefined) {
+          min = Math.min(min, point[userId]);
+          max = Math.max(max, point[userId]);
+        }
+      });
+    });
+    
+    // Add some padding to the top and bottom
+    const padding = (max - min) * 0.1;
+    return [
+      Math.max(0, min - padding), // Don't go below 0
+      max + padding
+    ];
+  };
 
   return (
-    <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-xl">
-      <div className="flex flex-wrap justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-white mb-2 md:mb-0">Portfolio Performance</h3>
-        
-        <div className="flex flex-wrap gap-2 items-center justify-end w-full md:w-auto">
-          {/* View Mode Toggle */}
-          <div className="bg-gray-700 rounded-lg p-1 flex text-sm mr-2">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
+      <div className="flex flex-col space-y-4">
+        {/* View mode and Show/Hide controls */}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
             <button 
               onClick={() => setViewMode('cash')}
-              className={`px-3 py-1 rounded-md ${viewMode === 'cash' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'cash' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:text-white'
+              }`}
             >
               Cash
             </button>
             <button 
               onClick={() => setViewMode('stock')}
-              className={`px-3 py-1 rounded-md ${viewMode === 'stock' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'stock' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:text-white'
+              }`}
             >
-              Stocks
+              Stock
             </button>
           </div>
-          
-          <div className="bg-gray-700 rounded-lg p-1 flex flex-wrap text-sm">
-            <button 
-              onClick={() => setTimeRange('1d')}
-              className={`px-3 py-1 rounded-md ${timeRange === '1d' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
-            >
-              1D
-            </button>
-            <button 
-              onClick={() => setTimeRange('1w')}
-              className={`px-3 py-1 rounded-md ${timeRange === '1w' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
-            >
-              1W
-            </button>
-            <button 
-              onClick={() => setTimeRange('1m')}
-              className={`px-3 py-1 rounded-md ${timeRange === '1m' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
-            >
-              1M
-            </button>
-            <button 
-              onClick={() => setTimeRange('3m')}
-              className={`px-3 py-1 rounded-md ${timeRange === '3m' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
-            >
-              3M
-            </button>
-            <button 
-              onClick={() => setTimeRange('6m')}
-              className={`px-3 py-1 rounded-md ${timeRange === '6m' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
-            >
-              6M
-            </button>
-            <button 
-              onClick={() => setTimeRange('1y')}
-              className={`px-3 py-1 rounded-md ${timeRange === '1y' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
-            >
-              1Y
-            </button>
-            <button 
-              onClick={() => setTimeRange('all')}
-              className={`px-3 py-1 rounded-md ${timeRange === 'all' ? 'bg-blue-600 text-white' : 'text-gray-300'}`}
-            >
-              All
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {/* Chart title based on view mode */}
-      <div className="text-white text-lg font-medium mb-4">
-        {chartTitle}
-      </div>
-
-      {/* User toggles */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="text-white font-medium">Users</h4>
-          <div className="flex gap-2 text-xs">
+          <div className="flex gap-2">
             <button 
               onClick={() => toggleAllUsers(true)}
-              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
             >
               Show All
             </button>
             <button 
               onClick={() => toggleAllUsers(false)}
-              className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700/50 hover:bg-gray-600 text-white transition-colors"
             >
               Hide All
             </button>
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          {topUsers.map((user, idx) => {
+
+        {/* User toggles - 4x2 grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {topUsers.slice(0, 8).map((user, idx) => {
             const colorIndex = idx % colorPalette.length;
+            const color = colorPalette[colorIndex];
             return (
               <button
                 key={user.id}
                 onClick={() => toggleUser(user.id)}
-                className={`flex items-center gap-2 p-2 rounded-lg text-left transition-all ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   visibleUsers[user.id] 
-                    ? 'border-l-4' 
-                    : 'bg-gray-700 opacity-70'
+                    ? 'text-white border-l-4' 
+                    : 'bg-gray-800/50 text-gray-400 border-l-4 border-transparent'
                 }`}
                 style={{
-                  backgroundColor: visibleUsers[user.id] ? `${colorPalette[colorIndex]}20` : '',
-                  borderLeftColor: visibleUsers[user.id] ? colorPalette[colorIndex] : ''
+                  backgroundColor: visibleUsers[user.id] ? `${color}15` : undefined,
+                  borderLeftColor: visibleUsers[user.id] ? color : undefined
                 }}
               >
-                <div className="relative flex-shrink-0">
-                  {user.image ? (
-                    <Image
-                      src={user.image}
-                      alt={user.name}
-                      width={24}
-                      height={24}
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">
-                      {user.name.charAt(0)}
-                    </div>
-                  )}
-                  {user.badgeImage && (
-                    <div className="absolute -bottom-1 -right-1">
-                      <Image
-                        src={user.badgeImage}
-                        alt="Badge"
-                        width={12}
-                        height={12}
-                        className="rounded-full"
-                      />
-                    </div>
-                  )}
-                </div>
-                <span className="text-white text-sm truncate">{user.name}</span>
+                <span className="truncate">{user.name}</span>
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* Chart container */}
-      <div className="relative h-80 md:h-96">
-        {loading && <SkeletonLoader />}
-        
-        {!loading && error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-lg">
-            <div className="text-center p-4">
-              <div className="text-red-400 mb-2">⚠️ {error}</div>
-              <button 
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {!loading && !error && chartData.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-gray-400">No data available</p>
-          </div>
-        )}
-        
-        {!loading && !error && chartData.length > 0 && (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={chartData}
-              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis 
-                dataKey="date" 
-                stroke="rgba(255,255,255,0.7)"
-                tickFormatter={(tick) => {
-                  const date = new Date(tick);
-                  const rangeTickFormat = timeRange === '1d' ? 'HH:mm' : 
-                                        timeRange === '1w' ? 'MMM d' :
-                                        timeRange === '1m' ? 'MMM d' :
-                                        'MMM yyyy';
-                  return format(date, rangeTickFormat);
-                }}
-              />
-              <YAxis 
-                stroke="rgba(255,255,255,0.7)"
-                tickFormatter={(tick) => {
-                  if (tick >= 1000000) return `$${(tick/1000000).toFixed(1)}M`;
-                  if (tick >= 1000) return `$${(tick/1000).toFixed(1)}K`;
-                  return `$${tick}`;
-                }}
-              />
-              <Tooltip 
-                content={<CustomTooltip />}
-                isAnimationActive={false}
-              />
-              {showLegend && (
-                <Legend 
-                  layout="horizontal"
-                  verticalAlign="top"
-                  align="center"
-                  wrapperStyle={{ paddingBottom: '10px' }}
+        {/* Chart */}
+        <div className="h-[500px] w-full">
+          {loading ? (
+            <SkeletonLoader />
+          ) : error ? (
+            <div className="text-red-500">{error}</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 0, bottom: 20, left: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDate}
+                  stroke="#9CA3AF"
+                  tick={{ fill: '#9CA3AF' }}
+                  tickMargin={10}
                 />
-              )}
-              {topUsers
-                .filter(user => visibleUsers[user.id])
-                .map((user, idx) => {
+                <YAxis
+                  tickFormatter={formatCurrency}
+                  stroke="#9CA3AF"
+                  tick={{ fill: '#9CA3AF' }}
+                  tickMargin={10}
+                  width={60}
+                  domain={calculateDomain(chartData, Object.keys(visibleUsers).filter(id => visibleUsers[id]))}
+                  allowDataOverflow={false}
+                />
+                <Tooltip 
+                  content={<CustomTooltip />}
+                  animationDuration={200}
+                />
+                {topUsers.slice(0, 8).map((user, idx) => {
+                  if (!visibleUsers[user.id]) return null;
                   const colorIndex = idx % colorPalette.length;
                   return (
                     <Line
@@ -541,57 +474,54 @@ export default function LeaderboardLineChart({ topUsers }: { topUsers: Leaderboa
                       dataKey={user.id}
                       name={user.name}
                       stroke={colorPalette[colorIndex]}
-                      strokeWidth={2}
                       dot={false}
-                      activeDot={{ r: 6, fill: colorPalette[colorIndex], stroke: 'white' }}
-                      isAnimationActive={false}
-                      connectNulls={false}
+                      strokeWidth={2}
+                      isAnimationActive={true}
+                      animationDuration={300}
                     />
                   );
-                })
-              }
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+                })}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
 
-      {/* Portfolio stats */}
-      <div className="mt-4 bg-gray-700 rounded-lg p-3">
-        {visibleUsers && Object.keys(visibleUsers).filter(id => visibleUsers[id]).length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {topUsers
-              .filter(user => visibleUsers[user.id])
-              .slice(0, 3)
-              .map((user, idx) => {
-                const colorIndex = idx % colorPalette.length;
-                const latestData = chartData.length > 0 ? chartData[chartData.length - 1][user.id] : null;
-                const firstData = chartData.length > 0 ? chartData[0][user.id] : null;
-                const percentChange = (firstData && latestData) 
-                  ? ((latestData - firstData) / firstData * 100) 
-                  : 0;
-                
-                return (
-                  <div key={user.id} className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colorPalette[colorIndex] }} />
-                      <span className="text-white font-medium">{user.name}</span>
-                    </div>
-                    <div className="text-lg font-bold text-white">
-                      {latestData ? formatCurrency(latestData) : 'N/A'}
-                    </div>
-                    {firstData && latestData && (
+        {/* Portfolio stats */}
+        <div className="mt-4 bg-gray-700/50 rounded-lg p-3">
+          {visibleUsers && Object.keys(visibleUsers).filter(id => visibleUsers[id]).length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {topUsers
+                .filter(user => visibleUsers[user.id])
+                .slice(0, 3)
+                .map((user, idx) => {
+                  const colorIndex = idx % colorPalette.length;
+                  const latestData = chartData.length > 0 ? chartData[chartData.length - 1][user.id] : null;
+                  const firstData = chartData.length > 0 ? chartData[0][user.id] : null;
+                  const percentChange = (firstData && latestData) 
+                    ? ((latestData - firstData) / firstData * 100) 
+                    : 0;
+                  
+                  return (
+                    <div key={user.id} className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colorPalette[idx] }} />
+                        <span className="text-white font-medium">{user.name}</span>
+                      </div>
+                      <div className="text-lg font-bold text-white">
+                        {latestData ? formatCurrency(latestData) : 'N/A'}
+                      </div>
                       <div className={`text-sm ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {percentChange >= 0 ? '↑' : '↓'} {Math.abs(percentChange).toFixed(2)}%
                       </div>
-                    )}
-                  </div>
-                );
-              })
-            }
-          </div>
-        ) : (
-          <p className="text-gray-400 text-center">Select users to view portfolio stats</p>
-        )}
+                    </div>
+                  );
+                })
+              }
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center">Select users to view portfolio stats</p>
+          )}
+        </div>
       </div>
     </div>
   );

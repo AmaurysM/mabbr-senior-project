@@ -48,7 +48,7 @@ const LeaderboardPage = () => {
   const user = session?.user;
   const currentLeaderboard = viewMode === 'global' ? leaderboard : friendsLeaderboard;
 
-  const topUsers = currentLeaderboard.slice(0, 6);
+  const topUsers = currentLeaderboard.slice(0, 8);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -231,15 +231,7 @@ const LeaderboardPage = () => {
             <Leaderboard timeframe={timeframe} viewMode={viewMode} leaderboard={leaderboard} friendsLeaderboard={friendsLeaderboard} loading={loading} error={leaderboardError}/>
             
             {/* Right Column - Performance Graph */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 flex flex-col self-start">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
-                <h2 className="text-xl font-bold text-white mb-2 sm:mb-0">Top Traders Performance</h2>
-                
-                
-              </div>
-                    {/* Chart goes here */}
-                    <LeaderboardLineChart topUsers={topUsers}/>
-            </div>
+            <LeaderboardLineChart topUsers={topUsers} timeframe={timeframe}/>
           </div>
         </div>
       </div>
