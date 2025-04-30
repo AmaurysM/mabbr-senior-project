@@ -121,7 +121,7 @@ const CryptoSweeper = () => {
   };
 
   const checkWin = async () => {
-    if (hasWonRef.current) return; // Prevent multiple win processing
+    if (hasWonRef.current) return; 
 
     let won = true;
     for (let i = 0; i < rows; i++) {
@@ -135,13 +135,13 @@ const CryptoSweeper = () => {
     }
     if (won) {
       setWin(true);
-      hasWonRef.current = true; // Mark win as processed
+      hasWonRef.current = true; 
       try {
-        // Make API call
-        const bonusResponse = await fetch('/api/user/loginBonus', {
+        const bonusResponse = await fetch('/api/user/token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Tokens': '50'
           },
           credentials: 'include',
         });
@@ -153,16 +153,12 @@ const CryptoSweeper = () => {
 
         const bonusData = await bonusResponse.json();
 
-        // Show toast after API call with token count
         toast.success(`Success: You beat Crypto Sweeper! You earned 50 tokens. Current tokens: ${bonusData.tokenCount}`);
 
-        // Disable New Game button before delay
         setIsNewGameDisabled(true);
 
-        // Delay for 3 seconds before refreshing
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        // Refresh page
         window.location.reload();
       } catch (error) {
         console.error('Error awarding token:', error);
