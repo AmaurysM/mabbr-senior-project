@@ -165,6 +165,21 @@ export default function DailyDraw() {
         }]);
       }
 
+      // Trigger token refresh across components
+      if (user?.id) {
+        // Update localStorage with the new token amount
+        localStorage.setItem(`user-${user.id}-tokens`, data.userTokens.toString());
+        
+        // Trigger a storage event for UserTokenDisplay
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'token-refresh',
+          newValue: Date.now().toString()
+        }));
+        
+        // Also trigger a custom event that other components can listen for
+        window.dispatchEvent(new CustomEvent('token-balance-updated'));
+      }
+
       toast.success(`Added ${tokens} tokens to the pot!`);
     } catch (error) {
       console.error('Error entering draw:', error);
