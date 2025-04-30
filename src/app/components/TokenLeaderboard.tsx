@@ -58,7 +58,18 @@ const TokenLeaderboard: React.FC = () => {
     
     // Poll for updates
     const interval = setInterval(fetchTokenLeaderboard, POLLING_INTERVAL_MS);
-    return () => clearInterval(interval);
+    
+    // Listen for token balance update events
+    const handleTokenUpdate = () => {
+      fetchTokenLeaderboard();
+    };
+    
+    window.addEventListener('token-balance-updated', handleTokenUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('token-balance-updated', handleTokenUpdate);
+    };
   }, [session?.user?.id]);
 
   const handleProfileClick = (userId: string) => {

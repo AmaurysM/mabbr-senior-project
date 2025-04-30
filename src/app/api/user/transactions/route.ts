@@ -114,11 +114,60 @@ export async function GET() {
       take: 20
     });
     
+    // Get user's daily draw wins from activity feed
+    const userDailyDrawWins = await prisma.activityFeedEntry.findMany({
+      where: {
+        userId: userId,
+        type: 'DAILY_DRAW_WIN'
+      },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        data: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+    
     // Get friends' scratch ticket wins from activity feed
     const friendScratchWins = await prisma.activityFeedEntry.findMany({
       where: {
         userId: { in: friendIds },
         type: 'SCRATCH_WIN'
+      },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        data: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    
+    // Get friends' daily draw wins from activity feed
+    const friendDailyDrawWins = await prisma.activityFeedEntry.findMany({
+      where: {
+        userId: { in: friendIds },
+        OR: [
+          { type: 'DAILY_DRAW_WIN' },
+          { type: 'FRIEND_DAILY_DRAW_WIN' }
+        ]
       },
       select: {
         id: true,
@@ -184,12 +233,41 @@ export async function GET() {
       };
     };
     
+    // Format daily draw wins as transactions
+    const formatDailyDrawWin = (win: any, isCurrentUser: boolean) => {
+      // Parse the data JSON if it's a string
+      const data = typeof win.data === 'string' ? JSON.parse(win.data) : win.data;
+      
+      return {
+        id: win.id,
+        userEmail: win.user.email,
+        userName: win.user.name,
+        stockSymbol: 'Daily Draw',
+        type: 'DAILY_DRAW_WIN',
+        quantity: 1,
+        price: data.tokens,
+        totalCost: data.tokens,
+        timestamp: win.createdAt,
+        status: 'COMPLETED',
+        publicNote: `Won ${data.tokens} tokens from Daily Draw with ${data.totalParticipants} participants!`,
+        isCurrentUser
+      };
+    };
+    
     const formattedUserScratchWins = userScratchWins.map(win => 
       formatScratchWin(win, true)
     );
     
+    const formattedUserDailyDrawWins = userDailyDrawWins.map(win => 
+      formatDailyDrawWin(win, true)
+    );
+    
     const formattedFriendScratchWins = friendScratchWins.map(win => 
       formatScratchWin(win, false)
+    );
+    
+    const formattedFriendDailyDrawWins = friendDailyDrawWins.map(win => 
+      formatDailyDrawWin(win, false)
     );
     
     // Combine all transactions and sort by timestamp
@@ -197,7 +275,9 @@ export async function GET() {
       ...formattedUserTransactions,
       ...formattedFriendTransactions,
       ...formattedUserScratchWins,
-      ...formattedFriendScratchWins
+      ...formattedFriendScratchWins,
+      ...formattedUserDailyDrawWins,
+      ...formattedFriendDailyDrawWins
     ].sort((a, b) => {
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
