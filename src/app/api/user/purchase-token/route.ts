@@ -2,118 +2,32 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import fs from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
-// Define types for history data
-interface TokenMarketHistoryRecord {
-  id: string;
-  date: Date;
-  tokenValue: number;
-  totalSupply: number;
-  holdersCount: number;
-  dailyVolume: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Path to store token market history data
-const dataDir = path.join(process.cwd(), 'data');
-const historyFilePath = path.join(dataDir, 'token-market-history.json');
-
-// Ensure data directory exists
-try {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-} catch (error) {
-  console.error('Error creating data directory:', error);
-}
-
-// Helper function to read history data from file
-const readHistoryData = (): TokenMarketHistoryRecord[] => {
-  try {
-    if (fs.existsSync(historyFilePath)) {
-      const data = fs.readFileSync(historyFilePath, 'utf8');
-      const parsedData = JSON.parse(data);
-      // Convert string dates back to Date objects
-      return parsedData.map((record: any) => ({
-        ...record,
-        date: new Date(record.date),
-        createdAt: new Date(record.createdAt),
-        updatedAt: new Date(record.updatedAt)
-      }));
-    }
-  } catch (error) {
-    console.error('Error reading history data:', error);
-  }
-  return [];
-};
-
-// Helper function to write history data to file
-const writeHistoryData = (data: TokenMarketHistoryRecord[]): void => {
-  try {
-    fs.writeFileSync(historyFilePath, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error writing history data:', error);
-  }
-};
-
-// Update token market history when tokens are purchased
-const updateTokenMarketHistory = async (totalTokens: number): Promise<void> => {
-  // Calculate token holders (users with tokens > 0)
-  const holdersCount = await prisma.user.count({
-    where: {
-      tokenCount: {
-        gt: 0
-      }
-    }
-  });
-  
-  // Calculate token value based on total tokens in circulation
+// Helper function to calculate token value based on circulation
+function calculateTokenValue(tokensInCirculation: number): number {
   const maxValue = 500000; // Max value is $500,000 per token
   const minValue = 0.01; // Min value is $0.01 per token
   const circulationFactor = 0.0001; // Controls how quickly value drops
+
+  // Token value with exponential decay
+  const value = maxValue * Math.exp(-circulationFactor * tokensInCirculation);
   
-  // Calculate token value with exponential decay
-  let tokenValue = maxValue * Math.exp(-circulationFactor * totalTokens);
-  tokenValue = Math.max(minValue, tokenValue);
+  // Ensure value stays within bounds
+  return Math.max(minValue, Math.min(maxValue, value));
+}
+
+// Update token market history when tokens are purchased
+const updateTokenMarketHistory = async (totalTokens: number, transactionValue: number): Promise<void> => {
+  const tokenValue = calculateTokenValue(totalTokens);
   
-  // Estimate daily volume (5% of total tokens)
-  const dailyVolume = Math.floor(totalTokens * 0.05);
-  
-  // Create new history record
-  const newRecord: TokenMarketHistoryRecord = {
-    id: uuidv4(),
-    date: new Date(),
-    tokenValue,
-    totalSupply: totalTokens,
-    holdersCount,
-    dailyVolume,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
-  
-  try {
-    // Try to create a history record in Prisma
-    // @ts-ignore - We catch errors if model doesn't exist
-    await prisma.tokenMarketHistory.create({
-      data: {
-        tokenValue,
-        totalSupply: totalTokens,
-        holdersCount,
-        dailyVolume
-      }
-    });
-  } catch (dbError) {
-    console.log('Using file-based token market history storage for purchase update');
-    
-    // Store in file instead
-    let historyData = readHistoryData();
-    historyData.push(newRecord);
-    writeHistoryData(historyData);
-  }
+  // Create new data point
+  await prisma.tokenMarketDataPoint.create({
+    data: {
+      tokenValue,
+      tokensInCirculation: totalTokens,
+      totalTransactionValue: transactionValue
+    }
+  });
 };
 
 // Rate at which cash can be converted to tokens
@@ -208,12 +122,7 @@ export async function POST(request: Request) {
     const totalTokens = tokenSum._sum.tokenCount || 0;
     
     // Update token market history
-    await updateTokenMarketHistory(totalTokens);
-    
-    // Create CustomEvent to notify other components
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('token-balance-updated', Date.now().toString());
-    }
+    await updateTokenMarketHistory(totalTokens, amount);
     
     return NextResponse.json({
       success: true,
