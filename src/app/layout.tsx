@@ -17,6 +17,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="M.A.B.B.R." />
       </head>
       <body className="h-screen bg-gray-800 flex flex-col">
+        {/* Portal container for Daily Market Pulse */}
+        <div id="market-pulse-portal" className="relative z-[9999]" />
+        
         <Navbar />
         <main className="flex-grow h-full overflow-auto">
           <ClientLayout>
