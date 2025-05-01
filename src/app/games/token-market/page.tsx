@@ -67,7 +67,6 @@ export default function TokenMarket() {
     // Fetch market data
     const fetchMarketData = async () => {
       try {
-        // In a real app, this would be a call to your market data API
         const response = await fetch('/api/token-market');
         if (response.ok) {
           const data = await response.json();
@@ -102,10 +101,10 @@ export default function TokenMarket() {
     fetchUserData();
     fetchMarketData();
     
-    // Set up a timer to refresh market data periodically (every 30 seconds)
+    // Set up a timer to refresh market data more frequently (every 15 seconds)
     const marketRefreshInterval = setInterval(() => {
       fetchMarketData();
-    }, 30000);
+    }, 15000);
     
     // Listen for token balance update events from games or other components
     const handleTokenUpdate = (event: Event) => {
@@ -114,15 +113,40 @@ export default function TokenMarket() {
         setUserTokens(customEvent.detail.newBalance);
         // Also refresh market data when token balance changes
         fetchMarketData();
+        
+        // Ensure market history is updated immediately when tokens change
+        fetch('/api/token-market/history', {
+          method: 'POST',
+        }).catch(error => {
+          console.error('Error updating token market history after token update:', error);
+        });
       }
     };
     
     window.addEventListener('token-balance-updated', handleTokenUpdate);
     
+    // Also listen for storage events which may indicate token changes
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key?.includes('token') || event.key === 'token-refresh') {
+        fetchUserData();
+        fetchMarketData();
+        
+        // Update market history for storage events related to tokens
+        fetch('/api/token-market/history', {
+          method: 'POST',
+        }).catch(error => {
+          console.error('Error updating token market history after storage event:', error);
+        });
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageEvent);
+    
     // Clean up on component unmount
     return () => {
       clearInterval(marketRefreshInterval);
       window.removeEventListener('token-balance-updated', handleTokenUpdate);
+      window.removeEventListener('storage', handleStorageEvent);
     };
   }, [session?.user]);
 
@@ -172,7 +196,13 @@ export default function TokenMarket() {
         localStorage.setItem(`user-${session.user.id}-tokens`, data.newTokenCount.toString());
       }
 
-      // 3. Refresh market data after exchange to show updated token value
+      // 3. Update token market history BEFORE refreshing market data
+      // This ensures we capture the change in token circulation immediately
+      await fetch('/api/token-market/history', {
+        method: 'POST',
+      });
+
+      // 4. Refresh market data after exchange to show updated token value
       const marketResponse = await fetch('/api/token-market');
       if (marketResponse.ok) {
         const marketData = await marketResponse.json();
@@ -180,11 +210,6 @@ export default function TokenMarket() {
         setTokenValue(marketData.tokenValue);
       }
       
-      // 4. Update token market history to update the graph
-      await fetch('/api/token-market/history', {
-        method: 'POST',
-      });
-
       // 5. Broadcast the token update to other components using multiple methods
       if (typeof window !== 'undefined') {
         // Update the token-balance-updated value that components listen for
