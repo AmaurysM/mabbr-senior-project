@@ -97,6 +97,65 @@ const generateMockData = (days: number = 30): any[] => {
   return data;
 };
 
+// Function to create a real data point based on actual users
+const createRealDataPoint = async (days: number = 30): Promise<any[]> => {
+  const data = [];
+  const now = new Date();
+  
+  // Get all users and their token counts
+  const users = await prisma.user.findMany({
+    select: {
+      tokenCount: true,
+      id: true
+    }
+  });
+  
+  // Sum total tokens in circulation
+  const totalTokens = users.reduce((sum, user) => sum + (user.tokenCount || 0), 0);
+  
+  // Calculate token value based on circulation
+  const maxValue = 500000; // Max value is $500,000 per token
+  const minValue = 0.01; // Min value is $0.01 per token
+  const circulationFactor = 0.0001; // Controls how quickly value drops
+  
+  // Token value with exponential decay
+  const tokenValue = Math.max(minValue, maxValue * Math.exp(-circulationFactor * totalTokens));
+  
+  // Create a data point for the current time
+  data.push({
+    id: uuidv4(),
+    timestamp: now,
+    tokenValue: tokenValue,
+    tokensInCirculation: totalTokens,
+    totalTransactionValue: tokenValue * totalTokens
+  });
+  
+  // Generate historical data points
+  for (let i = 1; i < days; i++) {
+    const previousDate = new Date(now);
+    previousDate.setDate(now.getDate() - i);
+    
+    // Simulate slightly different token counts for past days
+    const variationFactor = 0.05; // 5% variation day to day
+    const randomVariation = 1 + (Math.random() * variationFactor * 2 - variationFactor);
+    const historicalTokens = Math.floor(totalTokens * randomVariation);
+    
+    // Calculate historical token value
+    const historicalValue = Math.max(minValue, maxValue * Math.exp(-circulationFactor * historicalTokens));
+    
+    data.push({
+      id: uuidv4(),
+      timestamp: previousDate,
+      tokenValue: historicalValue,
+      tokensInCirculation: historicalTokens,
+      totalTransactionValue: historicalValue * historicalTokens
+    });
+  }
+  
+  // Sort by date ascending
+  return data.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -105,31 +164,43 @@ export async function GET(request: Request) {
     let history;
     
     try {
-      // Use regular Prisma operations with proper type casting
-      const prismaAny = prisma as any;
-      history = await prismaAny.token_market_data_point.findMany({
-        orderBy: {
-          timestamp: 'desc',
-        },
-        take: limit,
-      });
+      // First try to get existing data from the database
+      let dbHistory;
       
-      if (!history || history.length === 0) {
-        // If no records found, generate mock data
-        history = generateMockData(limit);
+      if (typeof (prisma as any).TokenMarketDataPoint !== 'undefined') {
+        dbHistory = await (prisma as any).TokenMarketDataPoint.findMany({
+          orderBy: { timestamp: 'desc' },
+          take: limit
+        });
+      } else if (typeof (prisma as any).tokenMarketDataPoint !== 'undefined') {
+        dbHistory = await (prisma as any).tokenMarketDataPoint.findMany({
+          orderBy: { timestamp: 'desc' },
+          take: limit
+        });
+      }
+      
+      // If we have sufficient database history, use it
+      if (dbHistory && dbHistory.length >= Math.min(5, limit)) {
+        history = dbHistory.sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
+        console.log(`Using ${history.length} history points from database`);
+      } else {
+        // Otherwise generate data points based on real users
+        console.log('Insufficient database history, generating new data points');
+        history = await createRealDataPoint(limit);
+        
+        // Try to save this data to the database (for future use)
+        try {
+          // For the most recent data point, save it to DB
+          const latestPoint = history[history.length - 1];
+          await saveDataPoint(latestPoint);
+        } catch (saveError) {
+          console.error('Unable to save data point to database:', saveError);
+        }
       }
     } catch (dbError) {
-      console.error('Database error when fetching token market history:', dbError);
-      // Generate mock data if the database query fails
+      console.error('Error retrieving token market data:', dbError);
       history = generateMockData(limit);
     }
-    
-    // Sort history by timestamp to ensure proper order
-    history.sort((a: any, b: any) => {
-      const dateA = new Date(a.timestamp).getTime();
-      const dateB = new Date(b.timestamp).getTime();
-      return dateA - dateB;
-    });
     
     return NextResponse.json({ history });
   } catch (error) {
@@ -152,17 +223,18 @@ export async function POST() {
     const tokensInCirculation = totalTokens._sum.tokenCount || 0;
     const totalTransactionValue = tokenValue * tokensInCirculation;
 
+    // Create the data point
+    const dataPoint = {
+      id: uuidv4(),
+      timestamp: new Date(),
+      tokenValue,
+      tokensInCirculation,
+      totalTransactionValue
+    };
+    
     try {
-      // Use regular Prisma operations with proper type casting
-      const prismaAny = prisma as any;
-      const dataPoint = await prismaAny.token_market_data_point.create({
-        data: {
-          tokenValue,
-          tokensInCirculation,
-          totalTransactionValue,
-          timestamp: new Date(),
-        }
-      });
+      // Save the data point
+      await saveDataPoint(dataPoint);
       
       return NextResponse.json({ 
         success: true, 
@@ -174,12 +246,7 @@ export async function POST() {
       // Return success anyway to prevent client-side errors
       return NextResponse.json({ 
         success: true, 
-        dataPoint: {
-          tokenValue,
-          tokensInCirculation,
-          totalTransactionValue,
-          timestamp: new Date()
-        },
+        dataPoint,
         note: "Data point saved in memory only"
       });
     }
@@ -189,6 +256,30 @@ export async function POST() {
       { error: 'Failed to record token market history' },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to save a data point to the database
+async function saveDataPoint(dataPoint: any): Promise<void> {
+  try {
+    // Try different model name casing patterns
+    if (typeof (prisma as any).TokenMarketDataPoint !== 'undefined') {
+      // CamelCase version
+      await (prisma as any).TokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else if (typeof (prisma as any).tokenMarketDataPoint !== 'undefined') {
+      // camelCase version
+      await (prisma as any).tokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else {
+      console.log('Token market data point model not found - data point not saved');
+      throw new Error('Token market data point model not found');
+    }
+  } catch (error) {
+    console.error('Error saving data point:', error);
+    throw error;
   }
 }
 

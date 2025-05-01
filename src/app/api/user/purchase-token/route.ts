@@ -21,15 +21,29 @@ const updateTokenMarketHistory = async (totalTokens: number, transactionValue: n
   const tokenValue = calculateTokenValue(totalTokens);
   
   try {
-    // Create new data point with correct model name
-    const prismaAny = prisma as any;
-    await prismaAny.token_market_data_point.create({
-      data: {
-        tokenValue,
-        tokensInCirculation: totalTokens,
-        totalTransactionValue: transactionValue
-      }
-    });
+    // Data point to create
+    const dataPoint = {
+      tokenValue,
+      tokensInCirculation: totalTokens,
+      totalTransactionValue: transactionValue,
+      timestamp: new Date()
+    };
+    
+    // Try different model name casing patterns
+    if (typeof (prisma as any).TokenMarketDataPoint !== 'undefined') {
+      // CamelCase version
+      await (prisma as any).TokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else if (typeof (prisma as any).tokenMarketDataPoint !== 'undefined') {
+      // camelCase version
+      await (prisma as any).tokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else {
+      console.log('Token market data point model not found - data point not saved');
+    }
+    
     console.log('Successfully recorded token market data point after token purchase');
   } catch (error) {
     console.error('Failed to record token market history after token purchase:', error);
