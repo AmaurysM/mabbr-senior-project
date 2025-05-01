@@ -42,7 +42,7 @@ const generateMockData = () => {
     data.push({
       date: currentDate.toLocaleDateString(),
       value: value.toFixed(4),
-      holders: tokenSupply
+      supply: tokenSupply
     });
   }
   
@@ -51,19 +51,13 @@ const generateMockData = () => {
 
 const TokenValueChart = () => {
   const [chartData, setChartData] = useState<any[]>([]);
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   
   useEffect(() => {
     // Fetch data from the API
     const fetchChartData = async () => {
       try {
-        // Get the appropriate limit based on timeRange
-        let requestLimit = 30; // Default to 30 days
-        if (timeRange === '7d') {
-          requestLimit = 7;
-        } else if (timeRange === '90d') {
-          requestLimit = 90;
-        }
+        // Always use 30 days
+        const requestLimit = 30;
         
         // Call our token market history API
         const response = await fetch(`/api/token-market/history?limit=${requestLimit}`);
@@ -79,62 +73,50 @@ const TokenValueChart = () => {
           const formattedData = data.history.map((item: any) => ({
             date: new Date(item.date).toLocaleDateString(),
             value: item.tokenValue.toFixed(4),
-            holders: item.holdersCount
+            supply: item.totalSupply
           }));
           
           setChartData(formattedData);
         } else {
           // Fallback to mock data if API doesn't return proper history
           const mockData = generateMockData();
-          let filteredData = mockData;
-          
-          if (timeRange === '7d') {
-            filteredData = mockData.slice(-7);
-          } else if (timeRange === '90d') {
-            // For 90 days, generate more mock data
-            const extended = [...mockData];
-            for (let i = 0; i < 2; i++) {
-              extended.unshift(...mockData.map(d => ({
-                ...d,
-                date: new Date(new Date(d.date).setDate(new Date(d.date).getDate() - 30)).toLocaleDateString(),
-                value: (parseFloat(d.value) * (0.9 + Math.random() * 0.2)).toFixed(4)
-              })));
-            }
-            filteredData = extended;
-          }
-          
-          setChartData(filteredData);
+          setChartData(mockData);
         }
       } catch (error) {
         console.error('Error fetching chart data:', error);
         
         // Fallback to mock data
         const mockData = generateMockData();
-        let filteredData = mockData;
-        
-        if (timeRange === '7d') {
-          filteredData = mockData.slice(-7);
-        } else if (timeRange === '30d') {
-          filteredData = mockData;
-        } else if (timeRange === '90d') {
-          // For 90 days, generate more mock data
-          const extended = [...mockData];
-          for (let i = 0; i < 2; i++) {
-            extended.unshift(...mockData.map(d => ({
-              ...d,
-              date: new Date(new Date(d.date).setDate(new Date(d.date).getDate() - 30)).toLocaleDateString(),
-              value: (parseFloat(d.value) * (0.9 + Math.random() * 0.2)).toFixed(4)
-            })));
-          }
-          filteredData = extended;
-        }
-        
-        setChartData(filteredData);
+        setChartData(mockData);
       }
     };
     
     fetchChartData();
-  }, [timeRange]);
+    
+    // Set up interval to refresh data every 30 seconds
+    const refreshInterval = setInterval(fetchChartData, 30000);
+    
+    // Listen for token balance updates (e.g., when tokens are exchanged)
+    const handleTokenUpdate = () => {
+      fetchChartData();
+    };
+    
+    // Listen for storage events that might indicate token changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token-refresh' || e.key === 'token-balance-updated') {
+        fetchChartData();
+      }
+    };
+    
+    window.addEventListener('token-balance-updated', handleTokenUpdate);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener('token-balance-updated', handleTokenUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
   
   const formatValue = (value: number) => {
     // Handle formatting large numbers properly
@@ -147,8 +129,15 @@ const TokenValueChart = () => {
     return `$${value.toFixed(2)}`;
   };
   
-  const formatHolders = (value: number) => {
-    return `${value.toLocaleString()}`;
+  const formatSupply = (value: number) => {
+    // Format token supply numbers
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    }
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    }
+    return value.toLocaleString();
   };
   
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -171,7 +160,7 @@ const TokenValueChart = () => {
         <div className="bg-gray-900 p-4 border border-gray-700 rounded shadow">
           <p className="text-gray-300">{`Date: ${label}`}</p>
           <p className="text-cyan-500">{`Value: ${formattedValue}`}</p>
-          <p className="text-amber-500">{`Holders: ${Number(payload[1].value).toLocaleString()}`}</p>
+          <p className="text-amber-500">{`Global Supply: ${Number(payload[1].value).toLocaleString()} tokens`}</p>
         </div>
       );
     }
@@ -181,36 +170,10 @@ const TokenValueChart = () => {
   
   return (
     <div className="w-full h-80 mb-4">
-      <div className="flex justify-end mb-4 space-x-2">
-        <button
-          onClick={() => setTimeRange('7d')}
-          className={`px-3 py-1 text-sm rounded ${
-            timeRange === '7d' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-          }`}
-        >
-          7D
-        </button>
-        <button
-          onClick={() => setTimeRange('30d')}
-          className={`px-3 py-1 text-sm rounded ${
-            timeRange === '30d' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-          }`}
-        >
-          30D
-        </button>
-        <button
-          onClick={() => setTimeRange('90d')}
-          className={`px-3 py-1 text-sm rounded ${
-            timeRange === '90d' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-          }`}
-        >
-          90D
-        </button>
-      </div>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={chartData}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          margin={{ top: 5, right: 40, left: 35, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
           <XAxis 
@@ -226,7 +189,7 @@ const TokenValueChart = () => {
             tickLine={{ stroke: '#4B5563' }}
             tickFormatter={formatValue}
             domain={['auto', 'auto']}
-            label={{ value: 'Token Value (USD)', angle: -90, position: 'insideLeft', fill: '#9CA3AF' }}
+            label={{ value: 'Token Value (USD)', angle: -90, position: 'insideLeft', fill: '#9CA3AF', dx: -15 }}
           />
           <YAxis 
             yAxisId="right"
@@ -234,9 +197,9 @@ const TokenValueChart = () => {
             stroke="#9CA3AF"
             tick={{ fill: '#9CA3AF' }}
             tickLine={{ stroke: '#4B5563' }}
-            tickFormatter={formatHolders}
+            tickFormatter={formatSupply}
             domain={['auto', 'auto']}
-            label={{ value: 'Token Holders', angle: 90, position: 'insideRight', fill: '#9CA3AF' }}
+            label={{ value: 'Global Token Supply', angle: 90, position: 'insideRight', fill: '#9CA3AF', dx: 15 }}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend wrapperStyle={{ color: '#9CA3AF' }} />
@@ -252,16 +215,14 @@ const TokenValueChart = () => {
           <Line
             yAxisId="right"
             type="monotone"
-            dataKey="holders"
+            dataKey="supply"
             stroke="#F59E0B"
             dot={false}
-            name="Token Holders"
+            activeDot={{ r: 8 }}
+            name="Global Token Supply"
           />
         </LineChart>
       </ResponsiveContainer>
-      <div className="text-center text-sm text-gray-400 mt-2">
-        Token value is inversely related to the number of tokens being held - as more tokens are spent, the value increases.
-      </div>
     </div>
   );
 };

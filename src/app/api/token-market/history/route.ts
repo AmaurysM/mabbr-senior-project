@@ -106,8 +106,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '30');
     
     try {
-      // Try to get token market history data from Prisma - this will fail if model doesn't exist
-      // @ts-ignore - Ignoring TypeScript error as we're using try-catch to handle missing model
+      // Get token market history data from Prisma
       const history = await prisma.tokenMarketHistory.findMany({
         orderBy: {
           date: 'desc'
@@ -201,7 +200,6 @@ export async function POST() {
     
     try {
       // Try to create a history record in Prisma
-      // @ts-ignore - Ignoring TypeScript error as we're using try-catch to handle missing model
       const record = await prisma.tokenMarketHistory.create({
         data: {
           tokenValue,
