@@ -159,7 +159,7 @@ const TokenValueChart = () => {
   // Loading state
   if (loading && chartData.length === 0) {
     return (
-      <div className="w-full h-[342px] flex items-center justify-center bg-gray-800 rounded-lg">
+      <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
           <p className="text-gray-400">Loading market data...</p>
@@ -169,7 +169,7 @@ const TokenValueChart = () => {
   }
   
   return (
-    <div className="w-full h-[342px]">
+    <div className="w-full h-full">
       {error && (
         <div className="text-yellow-500 text-sm mb-2 p-2 bg-yellow-500 bg-opacity-10 rounded">
           {error} - Using simulated data

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to calculate token value based on circulation
 function calculateTokenValue(tokensInCirculation: number): number {
@@ -21,20 +22,47 @@ const updateTokenMarketHistory = async (totalTokens: number, transactionValue: n
   const tokenValue = calculateTokenValue(totalTokens);
   
   try {
-    // Create new data point with correct model name
-    const prismaAny = prisma as any;
-    await prismaAny.token_market_data_point.create({
-      data: {
-        tokenValue,
-        tokensInCirculation: totalTokens,
-        totalTransactionValue: transactionValue
-      }
-    });
+    // Create the data point
+    const dataPoint = {
+      id: uuidv4(),
+      timestamp: new Date(),
+      tokenValue,
+      tokensInCirculation: totalTokens,
+      totalTransactionValue: transactionValue
+    };
+    
+    // Save to database
+    await saveDataPoint(dataPoint);
+    
     console.log('Successfully recorded token market data point after token exchange');
   } catch (error) {
     console.error('Failed to record token market history after token exchange:', error);
   }
 };
+
+// Helper function to save a data point to the database
+async function saveDataPoint(dataPoint: any): Promise<void> {
+  try {
+    // Try different model name casing patterns
+    if (typeof (prisma as any).TokenMarketDataPoint !== 'undefined') {
+      // CamelCase version
+      await (prisma as any).TokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else if (typeof (prisma as any).tokenMarketDataPoint !== 'undefined') {
+      // camelCase version
+      await (prisma as any).tokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else {
+      console.log('Token market data point model not found - data point not saved');
+      throw new Error('Token market data point model not found');
+    }
+  } catch (error) {
+    console.error('Error saving token market data point:', error);
+    throw error;
+  }
+}
 
 export async function POST(request: Request) {
   try {

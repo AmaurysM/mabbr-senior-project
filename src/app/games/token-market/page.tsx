@@ -13,9 +13,23 @@ import dynamic from 'next/dynamic';
 // Dynamically import DailyInterestPanel to avoid build errors
 const DailyInterestPanel = dynamic(() => import("./components/DailyInterestPanel"), {
   ssr: false,
-  loading: () => <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
-    <LoadingStateAnimation />
-  </div>
+  loading: () => (
+    <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-full">
+      <div className="flex items-center mb-4">
+        <div className="w-6 h-6 mr-3 bg-gray-700 rounded animate-pulse"></div>
+        <div className="h-8 w-32 bg-gray-700 rounded animate-pulse"></div>
+      </div>
+      <div className="space-y-4">
+        <div className="h-4 w-3/4 bg-gray-700 rounded animate-pulse"></div>
+        <div className="h-20 bg-gray-700 rounded animate-pulse"></div>
+        <div className="space-y-3">
+          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+  )
 });
 
 export default function TokenMarket() {
@@ -180,24 +194,30 @@ export default function TokenMarket() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Token Holdings Panel - First column */}
         <div className="lg:col-span-1">
-          <TokensHoldingPanel 
-            tokenCount={userTokens || 0} 
-            tokenValue={tokenValue} 
-            interestRate={marketData.interestRate}
-          />
+          <div className="h-[450px]">
+            <TokensHoldingPanel 
+              tokenCount={userTokens || 0} 
+              tokenValue={tokenValue} 
+              interestRate={marketData.interestRate}
+            />
+          </div>
         </div>
         
         {/* Token Value Chart - Second and third column */}
-        <div className="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold text-white mb-4">Token Value History</h2>
-          <TokenValueChart />
+        <div className="lg:col-span-2">
+          <div className="h-[450px] bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-white mb-4">Token Value History</h2>
+            <div className="h-[calc(100%-2.5rem)]">
+              <TokenValueChart />
+            </div>
+          </div>
         </div>
       </div>
       
       {/* Second row of components - with extra margin-top to prevent overlap */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-12">
         {/* Exchange Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 h-[350px]">
           <TokenExchangePanel 
             tokenCount={userTokens || 0} 
             tokenValue={tokenValue}
@@ -206,7 +226,7 @@ export default function TokenMarket() {
         </div>
         
         {/* Daily Interest Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 h-[350px]">
           <DailyInterestPanel 
             interestRate={marketData.interestRate} 
             tokenCount={userTokens || 0}
@@ -215,7 +235,7 @@ export default function TokenMarket() {
         </div>
         
         {/* Market Statistics Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 h-[350px]">
           <MarketStatisticsPanel 
             totalSupply={marketData.tokenSupply}
             dailyVolume={marketData.dailyVolume}
