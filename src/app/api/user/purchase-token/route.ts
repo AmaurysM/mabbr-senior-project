@@ -20,14 +20,20 @@ function calculateTokenValue(tokensInCirculation: number): number {
 const updateTokenMarketHistory = async (totalTokens: number, transactionValue: number): Promise<void> => {
   const tokenValue = calculateTokenValue(totalTokens);
   
-  // Create new data point
-  await prisma.tokenMarketDataPoint.create({
-    data: {
-      tokenValue,
-      tokensInCirculation: totalTokens,
-      totalTransactionValue: transactionValue
-    }
-  });
+  try {
+    // Create new data point with correct model name
+    const prismaAny = prisma as any;
+    await prismaAny.token_market_data_point.create({
+      data: {
+        tokenValue,
+        tokensInCirculation: totalTokens,
+        totalTransactionValue: transactionValue
+      }
+    });
+    console.log('Successfully recorded token market data point after token purchase');
+  } catch (error) {
+    console.error('Failed to record token market history after token purchase:', error);
+  }
 };
 
 // Rate at which cash can be converted to tokens

@@ -86,37 +86,21 @@ const updateTokenMarketHistory = async (totalTokens: number): Promise<void> => {
   
   // Estimate daily volume (5% of total tokens)
   const dailyVolume = Math.floor(totalTokens * 0.05);
-  
-  // Create new history record
-  const newRecord: TokenMarketHistoryRecord = {
-    id: randomUUID(),
-    date: new Date(),
-    tokenValue,
-    totalSupply: totalTokens,
-    holdersCount,
-    dailyVolume,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+  const totalTransactionValue = tokenValue * totalTokens;
   
   try {
-    // Try to create a history record in Prisma
-    // @ts-ignore - We catch errors if model doesn't exist
-    await prisma.tokenMarketHistory.create({
+    // Create new data point with correct model name
+    const prismaAny = prisma as any;
+    await prismaAny.token_market_data_point.create({
       data: {
         tokenValue,
-        totalSupply: totalTokens,
-        holdersCount,
-        dailyVolume
+        tokensInCirculation: totalTokens,
+        totalTransactionValue
       }
     });
-  } catch (dbError) {
-    console.log('Using file-based token market history storage for scratch ticket purchase');
-    
-    // Store in file instead
-    let historyData = readHistoryData();
-    historyData.push(newRecord);
-    writeHistoryData(historyData);
+    console.log('Successfully recorded token market data point after scratch ticket transaction');
+  } catch (error) {
+    console.error('Failed to record token market history after scratch ticket transaction:', error);
   }
 };
 
