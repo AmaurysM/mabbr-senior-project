@@ -1,11 +1,17 @@
 {
-  "crons": [{
-    "path": "/api/cron/daily-draw",
-    "schedule": "30 21 * * *"
-  }],
+  "crons": [
+    {
+      "path": "/api/cron/daily-draw",
+      "schedule": "30 21 * * *",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer cb53a474f2fbb93fd32b843f6"
+      }
+    }
+  ],
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
   "outputDirectory": ".next"
-} 
+}
