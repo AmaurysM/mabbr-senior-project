@@ -2,6 +2,54 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper function to update token market history
+const updateTokenMarketHistory = async (totalTokens: number): Promise<void> => {
+  // Calculate token holders (users with tokens > 0)
+  const holdersCount = await prisma.user.count({
+    where: {
+      tokenCount: {
+        gt: 0
+      }
+    }
+  });
+  
+  // Calculate token value based on total tokens in circulation
+  const maxValue = 500000; // Max value is $500,000 per token
+  const minValue = 0.01; // Min value is $0.01 per token
+  const circulationFactor = 0.0001; // Controls how quickly value drops
+  
+  // Calculate token value with exponential decay
+  let tokenValue = maxValue * Math.exp(-circulationFactor * totalTokens);
+  tokenValue = Math.max(minValue, tokenValue);
+  
+  // Estimate daily volume (5% of total tokens)
+  const dailyVolume = Math.floor(totalTokens * 0.05);
+  
+  try {
+    // Try to create a history record in Prisma
+    await prisma.tokenMarketHistory.create({
+      data: {
+        tokenValue,
+        totalSupply: totalTokens,
+        holdersCount,
+        dailyVolume
+      }
+    });
+  } catch (dbError) {
+    console.log('Using token market history API for update');
+    
+    // Use the token-market/history API as fallback
+    try {
+      await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/token-market/history`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Failed to update token market history:', error);
+    }
+  }
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,6 +87,18 @@ export async function POST(request: NextRequest) {
         },
         select: { tokenCount: true }
       });
+
+      // Get updated total token supply for history update
+      const tokenSum = await prisma.user.aggregate({
+        _sum: {
+          tokenCount: true
+        }
+      });
+      
+      const totalTokens = tokenSum._sum.tokenCount || 0;
+      
+      // Update token market history to reflect removed tokens
+      await updateTokenMarketHistory(totalTokens);
 
       return NextResponse.json({
         success: true,
@@ -89,6 +149,18 @@ export async function POST(request: NextRequest) {
         },
         select: { tokenCount: true }
       });
+
+      // Get updated total token supply for history update
+      const tokenSum = await prisma.user.aggregate({
+        _sum: {
+          tokenCount: true
+        }
+      });
+      
+      const totalTokens = tokenSum._sum.tokenCount || 0;
+      
+      // Update token market history to reflect added tokens
+      await updateTokenMarketHistory(totalTokens);
 
       return NextResponse.json({
         success: true,

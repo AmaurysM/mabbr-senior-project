@@ -109,8 +109,27 @@ const TokenValueChart = () => {
     // Set up an interval to refresh the data every 5 minutes
     const intervalId = setInterval(fetchChartData, 300000);
     
-    // Clean up the interval on component unmount
-    return () => clearInterval(intervalId);
+    // Listen for token balance updates (e.g., when tokens are exchanged)
+    const handleTokenUpdate = () => {
+      fetchChartData();
+    };
+    
+    // Listen for storage events that might indicate token changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token-refresh' || e.key === 'token-balance-updated') {
+        fetchChartData();
+      }
+    };
+    
+    window.addEventListener('token-balance-updated', handleTokenUpdate);
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Clean up the interval and event listeners on component unmount
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('token-balance-updated', handleTokenUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
   
   const formatValue = (value: number) => {
@@ -258,4 +277,4 @@ const TokenValueChart = () => {
   );
 }
 
-export default TokenValueChart; 
+export default TokenValueChart;

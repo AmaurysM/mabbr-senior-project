@@ -77,17 +77,38 @@ const UserTokenDisplay: React.FC = () => {
 
     fetchUserTokens();
     
-    // Listen for token refresh events
+    // Listen for token refresh events via storage events
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'token-refresh' || (session?.user?.id && e.key === `user-${session.user.id}-tokens`)) {
+      if (e.key === 'token-refresh' || 
+          e.key === 'token-balance-updated' || 
+          (session?.user?.id && e.key === `user-${session.user.id}-tokens`)) {
+        fetchUserTokens();
+      }
+    };
+    
+    // Listen for direct token update events
+    const handleTokenUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && typeof customEvent.detail.newBalance === 'number') {
+        // If we have the new balance directly, use it without an API call
+        setTokens(customEvent.detail.newBalance);
+        
+        // Also update localStorage
+        if (typeof window !== 'undefined' && session?.user?.id) {
+          localStorage.setItem(`user-${session.user.id}-tokens`, customEvent.detail.newBalance.toString());
+        }
+      } else {
+        // Otherwise refresh from the API
         fetchUserTokens();
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('token-balance-updated', handleTokenUpdate);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('token-balance-updated', handleTokenUpdate);
     };
   }, [session?.user?.id]);
 

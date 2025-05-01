@@ -294,4 +294,4 @@ function calculateTokenValue(tokensInCirculation: number): number {
   
   // Ensure value stays within bounds
   return Math.max(minValue, Math.min(maxValue, value));
-} 
+}
