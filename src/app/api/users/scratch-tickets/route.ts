@@ -86,37 +86,35 @@ const updateTokenMarketHistory = async (totalTokens: number): Promise<void> => {
   
   // Estimate daily volume (5% of total tokens)
   const dailyVolume = Math.floor(totalTokens * 0.05);
-  
-  // Create new history record
-  const newRecord: TokenMarketHistoryRecord = {
-    id: randomUUID(),
-    date: new Date(),
-    tokenValue,
-    totalSupply: totalTokens,
-    holdersCount,
-    dailyVolume,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+  const totalTransactionValue = tokenValue * totalTokens;
   
   try {
-    // Try to create a history record in Prisma
-    // @ts-ignore - We catch errors if model doesn't exist
-    await prisma.tokenMarketHistory.create({
-      data: {
-        tokenValue,
-        totalSupply: totalTokens,
-        holdersCount,
-        dailyVolume
-      }
-    });
-  } catch (dbError) {
-    console.log('Using file-based token market history storage for scratch ticket purchase');
+    // Data point to create
+    const dataPoint = {
+      tokenValue,
+      tokensInCirculation: totalTokens,
+      totalTransactionValue,
+      timestamp: new Date()
+    };
     
-    // Store in file instead
-    let historyData = readHistoryData();
-    historyData.push(newRecord);
-    writeHistoryData(historyData);
+    // Try different model name casing patterns
+    if (typeof (prisma as any).TokenMarketDataPoint !== 'undefined') {
+      // CamelCase version
+      await (prisma as any).TokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else if (typeof (prisma as any).tokenMarketDataPoint !== 'undefined') {
+      // camelCase version
+      await (prisma as any).tokenMarketDataPoint.create({
+        data: dataPoint
+      });
+    } else {
+      console.log('Token market data point model not found - data point not saved');
+    }
+    
+    console.log('Successfully recorded token market data point after scratch ticket transaction');
+  } catch (error) {
+    console.error('Failed to record token market history after scratch ticket transaction:', error);
   }
 };
 

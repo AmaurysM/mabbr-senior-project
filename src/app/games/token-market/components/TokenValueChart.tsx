@@ -12,89 +12,102 @@ import {
   Legend,
 } from 'recharts';
 
-// Generate mock historical data
-const generateMockData = () => {
-  const data = [];
-  const now = new Date();
-  const startDate = new Date(now);
-  startDate.setDate(now.getDate() - 30); // Last 30 days
-  
-  // Token supply starts low and grows over time
-  let tokenSupply = 500 + Math.floor(Math.random() * 300); // Start with 500-800 tokens
-  
-  for (let i = 0; i < 30; i++) {
-    const currentDate = new Date(startDate);
-    currentDate.setDate(startDate.getDate() + i);
-    
-    // Daily change in token supply - slightly increasing trend
-    // Some days tokens are spent, some days more are earned
-    const supplyChange = Math.floor(Math.random() * 100) - 40; // -40 to +59
-    tokenSupply = Math.max(100, tokenSupply + supplyChange);
-    
-    // Calculate token value using exponential decay
-    const maxValue = 500000; // Max value is $500,000 per token
-    const minValue = 0.01; // Min value is $0.01 per token
-    const circulationFactor = 0.0001; // Controls how quickly value drops
-    
-    // Token value with exponential decay
-    const value = maxValue * Math.exp(-circulationFactor * tokenSupply);
-    
-    data.push({
-      date: currentDate.toLocaleDateString(),
-      value: value.toFixed(4),
-      supply: tokenSupply
-    });
-  }
-  
-  return data;
-};
-
+// Simplified component that always shows 30 days of data
 const TokenValueChart = () => {
   const [chartData, setChartData] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Generate default mock data when API fails
+  const generateDefaultData = () => {
+    const data = [];
+    const now = new Date();
+    const startDate = new Date(now);
+    startDate.setDate(now.getDate() - 30);
+    
+    let value = 0.5 + Math.random() * 0.5;
+    let circulation = 500 + Math.floor(Math.random() * 500);
+    
+    for (let i = 0; i < 30; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      
+      // Random walk with upward bias
+      value = Math.max(0.1, value + (Math.random() * 0.2 - 0.1));
+      circulation += Math.floor(Math.random() * 100 - 40);
+      circulation = Math.max(100, circulation);
+      
+      data.push({
+        date: currentDate.toLocaleDateString(),
+        value: value.toFixed(4),
+        circulation: circulation
+      });
+    }
+    
+    return data;
+  };
   
   useEffect(() => {
-    // Fetch data from the API
     const fetchChartData = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        // Always use 30 days
-        const requestLimit = 30;
+        // Always fetch 30 days of data
+        const days = 30;
+        const response = await fetch(`/api/token-market/history?limit=${days}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         
-        // Call our token market history API
-        const response = await fetch(`/api/token-market/history?limit=${requestLimit}`);
-        
+        // Handle HTTP errors
         if (!response.ok) {
-          throw new Error('Failed to fetch token market history');
+          console.error('Token market history API error:', response.status, response.statusText);
+          setChartData(generateDefaultData());
+          setLoading(false);
+          return;
         }
         
         const data = await response.json();
         
-        if (data && data.history && Array.isArray(data.history)) {
-          // Format the data for the chart
-          const formattedData = data.history.map((item: any) => ({
-            date: new Date(item.date).toLocaleDateString(),
-            value: item.tokenValue.toFixed(4),
-            supply: item.totalSupply
-          }));
+        if (data?.history?.length > 0) {
+          // Format the data and ensure proper dates for display
+          const formattedData = data.history.map((item: any) => {
+            const date = new Date(item.timestamp);
+            return {
+              date: date.toLocaleDateString(),
+              fullDate: date, // Store full date for sorting
+              value: parseFloat(item.tokenValue).toFixed(4),
+              circulation: item.tokensInCirculation || 0
+            };
+          });
           
-          setChartData(formattedData);
+          // Sort by date to ensure chronological order
+          formattedData.sort((a: any, b: any) => a.fullDate.getTime() - b.fullDate.getTime());
+          
+          // Clean up the data before setting state (remove fullDate which is used only for sorting)
+          const cleanData = formattedData.map(({fullDate, ...rest}: any) => rest);
+          setChartData(cleanData);
         } else {
-          // Fallback to mock data if API doesn't return proper history
-          const mockData = generateMockData();
-          setChartData(mockData);
+          // No data available, use default
+          setChartData(generateDefaultData());
         }
       } catch (error) {
         console.error('Error fetching chart data:', error);
-        
-        // Fallback to mock data
-        const mockData = generateMockData();
-        setChartData(mockData);
+        setChartData(generateDefaultData());
+        setError('Failed to load chart data');
+      } finally {
+        setLoading(false);
       }
     };
     
     fetchChartData();
     
-    // Set up interval to refresh data every 30 seconds
-    const refreshInterval = setInterval(fetchChartData, 30000);
+    // Set up an interval to refresh the data every 5 minutes
+    const intervalId = setInterval(fetchChartData, 300000);
     
     // Listen for token balance updates (e.g., when tokens are exchanged)
     const handleTokenUpdate = () => {
@@ -111,8 +124,9 @@ const TokenValueChart = () => {
     window.addEventListener('token-balance-updated', handleTokenUpdate);
     window.addEventListener('storage', handleStorageChange);
     
+    // Clean up the interval and event listeners on component unmount
     return () => {
-      clearInterval(refreshInterval);
+      clearInterval(intervalId);
       window.removeEventListener('token-balance-updated', handleTokenUpdate);
       window.removeEventListener('storage', handleStorageChange);
     };
@@ -129,15 +143,8 @@ const TokenValueChart = () => {
     return `$${value.toFixed(2)}`;
   };
   
-  const formatSupply = (value: number) => {
-    // Format token supply numbers
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`;
-    }
-    return value.toLocaleString();
+  const formatCirculation = (value: number) => {
+    return `${value.toLocaleString()}`;
   };
   
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -160,7 +167,7 @@ const TokenValueChart = () => {
         <div className="bg-gray-900 p-4 border border-gray-700 rounded shadow">
           <p className="text-gray-300">{`Date: ${label}`}</p>
           <p className="text-cyan-500">{`Value: ${formattedValue}`}</p>
-          <p className="text-amber-500">{`Global Supply: ${Number(payload[1].value).toLocaleString()} tokens`}</p>
+          <p className="text-amber-500">{`Tokens in Circulation: ${Number(payload[1].value).toLocaleString()}`}</p>
         </div>
       );
     }
@@ -168,12 +175,29 @@ const TokenValueChart = () => {
     return null;
   };
   
+  // Loading state
+  if (loading && chartData.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mb-4"></div>
+          <p className="text-gray-400">Loading market data...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="w-full h-80 mb-4">
+    <div className="w-full h-full">
+      {error && (
+        <div className="text-yellow-500 text-sm mb-2 p-2 bg-yellow-500 bg-opacity-10 rounded">
+          {error} - Using simulated data
+        </div>
+      )}
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={chartData}
-          margin={{ top: 5, right: 40, left: 35, bottom: 5 }}
+          margin={{ top: 10, right: 90, left: 70, bottom: 10 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
           <XAxis 
@@ -181,6 +205,10 @@ const TokenValueChart = () => {
             stroke="#9CA3AF"
             tick={{ fill: '#9CA3AF' }}
             tickLine={{ stroke: '#4B5563' }}
+            height={35}
+            tickMargin={10}
+            minTickGap={20}
+            padding={{ left: 5, right: 5 }}
           />
           <YAxis 
             yAxisId="left"
@@ -189,7 +217,16 @@ const TokenValueChart = () => {
             tickLine={{ stroke: '#4B5563' }}
             tickFormatter={formatValue}
             domain={['auto', 'auto']}
-            label={{ value: 'Token Value (USD)', angle: -90, position: 'insideLeft', fill: '#9CA3AF', dx: -15 }}
+            label={{ 
+              value: 'Token Value (USD)', 
+              angle: -90, 
+              position: 'outside', 
+              fill: '#9CA3AF',
+              dx: -50,
+              dy: -10
+            }}
+            width={65}
+            tickMargin={5}
           />
           <YAxis 
             yAxisId="right"
@@ -197,12 +234,25 @@ const TokenValueChart = () => {
             stroke="#9CA3AF"
             tick={{ fill: '#9CA3AF' }}
             tickLine={{ stroke: '#4B5563' }}
-            tickFormatter={formatSupply}
+            tickFormatter={formatCirculation}
             domain={['auto', 'auto']}
-            label={{ value: 'Global Token Supply', angle: 90, position: 'insideRight', fill: '#9CA3AF', dx: 15 }}
+            label={{ 
+              value: 'Tokens in Circulation', 
+              angle: 90, 
+              position: 'outside', 
+              fill: '#9CA3AF',
+              dx: 50,
+              dy: 10
+            }}
+            width={75}
+            tickMargin={5}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ color: '#9CA3AF' }} />
+          <Legend 
+            wrapperStyle={{ color: '#9CA3AF' }}
+            verticalAlign="top"
+            height={36}
+          />
           <Line
             yAxisId="left"
             type="monotone"
@@ -215,16 +265,16 @@ const TokenValueChart = () => {
           <Line
             yAxisId="right"
             type="monotone"
-            dataKey="supply"
+            dataKey="circulation"
             stroke="#F59E0B"
             dot={false}
             activeDot={{ r: 8 }}
-            name="Global Token Supply"
+            name="Tokens in Circulation"
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
-};
+}
 
-export default TokenValueChart; 
+export default TokenValueChart;

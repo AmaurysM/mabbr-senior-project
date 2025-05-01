@@ -71,13 +71,13 @@ const TokensHoldingPanel: React.FC<TokensHoldingPanelProps> = ({
   const dailyInterestValue = dailyInterest * tokenValue;
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+    <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-full flex flex-col">
       <div className="flex items-center mb-4">
         <FaCoins className="text-yellow-500 mr-3 h-6 w-6" />
         <h2 className="text-2xl font-bold text-white">Your Token Holdings</h2>
       </div>
       
-      <div className="space-y-4">
+      <div className="space-y-4 flex-grow">
         <div className="bg-gray-700 p-4 rounded-lg">
           <div className="text-gray-400 text-sm mb-1">Your Balance</div>
           <div className="flex justify-between items-center">
