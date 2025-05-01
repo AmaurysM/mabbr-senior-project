@@ -73,7 +73,7 @@ const generateMockData = (days: number = 30): any[] => {
     tokenSupply = Math.max(100, tokenSupply + supplyChange);
     
     // Calculate token value using exponential decay
-    const maxValue = 500000; // Max value is $500,000 per token
+    const maxValue = 250000; // Max value is $250,000 per token (reduced from $500,000)
     const minValue = 0.01; // Min value is $0.01 per token
     const circulationFactor = 0.0001; // Controls how quickly value drops
     
@@ -106,10 +106,10 @@ const createRealDataPoint = async (days: number = 30): Promise<any[]> => {
   });
   
   // Sum total tokens in circulation
-  const totalTokens = users.reduce((sum, user) => sum + (user.tokenCount || 0), 0);
+  const totalTokens = users.reduce((sum: number, user: any) => sum + (user.tokenCount || 0), 0);
   
   // Calculate token value based on circulation
-  const maxValue = 500000; // Max value is $500,000 per token
+  const maxValue = 250000; // Max value is $250,000 per token (reduced from $500,000)
   const minValue = 0.01; // Min value is $0.01 per token
   const circulationFactor = 0.0001; // Controls how quickly value drops
   
@@ -153,9 +153,9 @@ const createRealDataPoint = async (days: number = 30): Promise<any[]> => {
 
 // Function to calculate token value based on circulation
 function calculateTokenValue(tokensInCirculation: number): number {
-  // If only 1 token exists, it's worth $500,000
+  // If only 1 token exists, it's worth $250,000 (changed from $500,000)
   // We'll use an exponential decay function: value = maxValue * e^(-circulationFactor * totalTokens)
-  const maxValue = 500000; // Max value is $500,000 per token
+  const maxValue = 250000; // Max value is $250,000 per token (reduced from $500,000)
   const minValue = 0.01; // Min value is $0.01 per token
   
   // The circulation factor controls how quickly the value drops

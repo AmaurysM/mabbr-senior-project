@@ -19,9 +19,9 @@ export async function GET() {
     // With very few tokens in circulation, value is extremely high
     // As circulation increases, value drops exponentially
     
-    // If only 1 token exists, it's worth $500,000
+    // If only 1 token exists, it's worth $250,000 (changed from $500,000)
     // We'll use an exponential decay function: value = maxValue * e^(-circulationFactor * totalTokens)
-    const maxValue = 500000; // Max value is $500,000 per token
+    const maxValue = 250000; // Max value is $250,000 per token (reduced from $500,000)
     const minValue = 0.01; // Min value is $0.01 per token
     
     // The circulation factor controls how quickly the value drops
@@ -32,7 +32,7 @@ export async function GET() {
     let tokenValue = maxValue * Math.exp(-circulationFactor * totalTokens);
     
     // Ensure value doesn't go below minimum
-    tokenValue = Math.max(minValue, tokenValue);
+    tokenValue = Math.max(minValue, Math.min(maxValue, tokenValue));
     
     // Calculate interest rate based on token value (inverse relationship)
     // Higher token value = lower interest to balance economy
