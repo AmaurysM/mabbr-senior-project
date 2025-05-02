@@ -1,12 +1,11 @@
-import useSWR from 'swr';
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Comment } from '@prisma/client';
 
-const fetcher = (url: string) =>
-  fetch(url).then(res => {
-    if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
-    return res.json();
-  });
+const fetcher = async (url: string): Promise<Comment[]> => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
+  return res.json();
+};
 
 export const useGlobalMarketChat = () => {
   const [messagesData, setMessagesData] = useState<Comment[]>([]);
@@ -14,44 +13,76 @@ export const useGlobalMarketChat = () => {
   const [error, setError] = useState<any>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  const { data, isLoading, mutate } = useSWR<Comment[]>(
-    '/api/chat?limit=20&order=desc',
-    fetcher,
-    {
-      refreshInterval: 5000,
-      onError: (err) => {
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track all messages by ID to prevent duplicates
+  const addMessages = (incoming: Comment[], toStart = false) => {
+    setMessagesData(prev => {
+      const existingIds = new Set(prev.map(m => m.id));
+      const newMessages = incoming.filter(m => !existingIds.has(m.id));
+      return toStart ? [...newMessages, ...prev] : [...prev, ...newMessages];
+    });
+  };
+
+  // Initial load + polling
+  useEffect(() => {
+    const loadInitialMessages = async () => {
+      try {
+        const latest = await fetcher('/api/chat?limit=20&order=desc');
+        addMessages(latest.reverse()); // reverse to chronological order
+        if (latest.length < 20) setHasMore(false);
+        setIsInitialLoad(false);
+      } catch (err) {
         console.error(err);
         setError(err);
-      },
-      onSuccess: (serverList) => {
-        const serverChrono = [...serverList].reverse(); // make server messages chronological
-      
+      }
+    };
+
+    loadInitialMessages();
+
+    // Polling every 5 seconds
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const latest = await fetcher('/api/chat?limit=20&order=desc');
+        const latestChrono = latest.reverse();
+
         setMessagesData(prev => {
           const tempMessages = prev.filter(msg => msg.id.startsWith("temp-"));
-          return [...tempMessages, ...serverChrono];
+          const combined = [...tempMessages, ...latestChrono];
+
+          const seen = new Set<string>();
+          const deduped = combined.filter(msg => {
+            if (seen.has(msg.id)) return false;
+            seen.add(msg.id);
+            return true;
+          });
+
+          return deduped;
         });
-      
-        if (serverList.length < 20) {
-          setHasMore(false);
-        }
+      } catch (err) {
+        console.error('Polling error:', err);
       }
-      
-    }
-  );
+    }, 5000);
+
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
+  }, []);
 
   const oldestMessage = messagesData[0] ?? null;
 
   const loadMoreMessages = async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore || !oldestMessage) return;
     setIsLoadingMore(true);
     try {
-      const before = oldestMessage?.createdAt;
-      const url = `/api/chat?limit=20&order=asc${before ? `&before=${before}` : ''}`;
-      const more = await fetcher(url);
-
-      if (more.length < 20) setHasMore(false);
-      setMessagesData(prev => [...more, ...prev]);
+      const before = oldestMessage.createdAt;
+      const url = `/api/chat?limit=20&order=asc&before=${before}`;
+      const olderMessages = await fetcher(url);
+      addMessages(olderMessages, true);
+      if (olderMessages.length < 20) setHasMore(false);
     } catch (err) {
       console.error(err);
       setError(err);
@@ -68,9 +99,17 @@ export const useGlobalMarketChat = () => {
     const optimistic: Comment = {
       id: `temp-${Date.now()}`,
       content: trimmed,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
       userId: 'current-user',
+      commentableId: null,
+      commentableType: 'GLOBALCHAT',
+      commentDescription: null,
+      stockSymbol: null,
+      parentId: null,
+      image: null,
+      updatedAt: new Date()
     };
+
     setMessagesData(prev => [...prev, optimistic]);
     setNewMessage("");
 
@@ -85,7 +124,6 @@ export const useGlobalMarketChat = () => {
       setMessagesData(prev =>
         prev.map(m => (m.id === optimistic.id ? saved : m))
       );
-      mutate();
     } catch (err) {
       console.error(err);
       setMessagesData(prev => prev.filter(m => m.id !== optimistic.id));
@@ -99,7 +137,7 @@ export const useGlobalMarketChat = () => {
     setNewMessage,
     handleSendMessage,
     error,
-    isLoading,
+    isLoading: isInitialLoad,
     isLoadingMore,
     hasMore,
     loadMoreMessages,
