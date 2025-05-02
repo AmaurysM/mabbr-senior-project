@@ -28,6 +28,7 @@ const CryptoSweeper = () => {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isCashing, setIsCashing] = useState(false); // To prevent multiple cash-out calls
   const hasWonRef = useRef(false); // Tracks if win has been processed
+  const isFirstClickRef = useRef(true); // Track if this is the first click of the game
 
   useEffect(() => {
     // Detect mobile device
@@ -118,12 +119,13 @@ const CryptoSweeper = () => {
       setUserTokens(data.tokenCount);
       setGameTokens(0);
       
-      // Initialize game grid
-      initializeGrid();
+      // Initialize game grid without placing bombs yet - bombs will be placed after first click
+      initializeEmptyGrid();
       setIsGameStarted(true);
       setGameOver(false);
       setWin(false);
       hasWonRef.current = false;
+      isFirstClickRef.current = true; // Reset first click flag
       toast.success(`Game started! ${GAME_COST} tokens deducted. Reveal safe cells to earn tokens!`);
     } catch (error) {
       console.error('Error starting game:', error);
@@ -154,26 +156,13 @@ const CryptoSweeper = () => {
 
       const data = await response.json();
       setUserTokens(data.tokenCount);
-      toast.success(`Success! You cashed out ${gameTokens} tokens!`);
       
       // Reset game state
       setIsGameStarted(false);
       setGameTokens(0);
       
       // Initialize an empty grid
-      const emptyGrid: Grid = [];
-      for (let i = 0; i < rows; i++) {
-        emptyGrid[i] = [];
-        for (let j = 0; j < cols; j++) {
-          emptyGrid[i][j] = {
-            isBomb: false,
-            isRevealed: false,
-            isFlagged: false,
-            adjacentBombs: 0,
-          };
-        }
-      }
-      setGrid(emptyGrid);
+      initializeEmptyGrid();
     } catch (error) {
       console.error('Error cashing out:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to cash out');
@@ -182,22 +171,70 @@ const CryptoSweeper = () => {
     }
   };
 
-  const initializeGrid = () => {
+  // Initialize grid without any bombs - just empty cells
+  const initializeEmptyGrid = () => {
     const newGrid: Grid = [];
     for (let i = 0; i < rows; i++) {
       newGrid[i] = [];
       for (let j = 0; j < cols; j++) {
-        const isBomb = Math.random() < BOMB_PROBABILITY;
-        const isBonus = !isBomb && Math.random() < 0.03; // 3% chance for non-bomb cells to be bonus tiles
         newGrid[i][j] = {
-          isBomb,
+          isBomb: false,
           isRevealed: false,
           isFlagged: false,
           adjacentBombs: 0,
-          isBonus
         };
       }
     }
+    setGrid(newGrid);
+  };
+
+  // Initialize the grid with bombs, avoiding the first clicked cell
+  const initializeGridWithBombs = (firstRow: number, firstCol: number) => {
+    const newGrid: Grid = [];
+    
+    // First create an empty grid
+    for (let i = 0; i < rows; i++) {
+      newGrid[i] = [];
+      for (let j = 0; j < cols; j++) {
+        newGrid[i][j] = {
+          isBomb: false,
+          isRevealed: false,
+          isFlagged: false,
+          adjacentBombs: 0,
+        };
+      }
+    }
+    
+    // Now place bombs, avoiding the first clicked cell and its surrounding cells
+    let bombsPlaced = 0;
+    const totalCells = rows * cols;
+    const targetBombs = Math.floor(totalCells * BOMB_PROBABILITY);
+    
+    while (bombsPlaced < targetBombs) {
+      const i = Math.floor(Math.random() * rows);
+      const j = Math.floor(Math.random() * cols);
+      
+      // Skip the first clicked cell and its adjacent cells
+      if (Math.abs(i - firstRow) <= 1 && Math.abs(j - firstCol) <= 1) {
+        continue;
+      }
+      
+      // If this cell doesn't already have a bomb, place one
+      if (!newGrid[i][j].isBomb) {
+        newGrid[i][j].isBomb = true;
+        bombsPlaced++;
+      }
+    }
+    
+    // Add bonus tiles to non-bomb cells
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        if (!newGrid[i][j].isBomb) {
+          newGrid[i][j].isBonus = Math.random() < 0.03; // 3% chance for bonus tile
+        }
+      }
+    }
+    
     // Calculate adjacent bombs
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < cols; j++) {
@@ -206,11 +243,8 @@ const CryptoSweeper = () => {
         }
       }
     }
-    setGrid(newGrid);
-    setGameOver(false);
-    setWin(false);
-    setIsFlagMode(false); // Reset Flag Mode
-    hasWonRef.current = false; // Reset win flag
+    
+    return newGrid;
   };
 
   const countAdjacentBombs = (grid: Grid, row: number, col: number) => {
@@ -231,6 +265,53 @@ const CryptoSweeper = () => {
   const revealCell = async (row: number, col: number) => {
     if (gameOver || win || !isGameStarted) return;
     if (grid[row][col].isRevealed || grid[row][col].isFlagged) return;
+    
+    // If this is the first click, initialize the grid with bombs
+    // ensuring the first clicked cell and its surrounding cells are safe
+    if (isFirstClickRef.current) {
+      const newGrid = initializeGridWithBombs(row, col);
+      isFirstClickRef.current = false;
+      
+      // Reveal only this specific cell for the first click
+      newGrid[row][col].isRevealed = true;
+      setGrid([...newGrid]);
+      
+      // Process the first click properly instead of recursively calling
+      // Add 1 token for this cell reveal
+      let newTokens = 1;
+      setGameTokens(newTokens);
+      
+      // If it's a bonus tile, apply the bonus
+      if (newGrid[row][col].isBonus) {
+        newTokens = 2; // Double for bonus tile
+        toast.success('Bonus tile! Tokens doubled to 2!');
+        setGameTokens(2);
+      }
+      
+      // If it's an empty cell (0 adjacent bombs), cascade reveal
+      if (newGrid[row][col].adjacentBombs === 0) {
+        const revealedBonusTiles = newGrid[row][col].isBonus ? [{row, col}] : [];
+        const cascadeResult = await cascadeReveal(newGrid, row, col, newTokens, revealedBonusTiles);
+        
+        // Now apply all bonus tile multipliers at the end
+        if (revealedBonusTiles.length > 0) {
+          // Calculate the final token amount with all bonus multipliers
+          const multiplier = Math.pow(2, revealedBonusTiles.length);
+          const finalTokens = cascadeResult.tokens;
+          
+          setGameTokens(finalTokens);
+          await updateTokensWithAPI(finalTokens);
+        } else {
+          setGameTokens(cascadeResult.tokens);
+          await updateTokensWithAPI(cascadeResult.tokens);
+        }
+      } else {
+        await updateTokensWithAPI(newTokens);
+      }
+      
+      checkWin();
+      return;
+    }
     
     const newGrid = [...grid];
     newGrid[row][col].isRevealed = true;
