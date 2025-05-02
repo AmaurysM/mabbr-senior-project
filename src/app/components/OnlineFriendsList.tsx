@@ -47,7 +47,7 @@ export default function OnlineFriendsList() {
           const isOnline =
             last &&
             (Date.now() - new Date(last).getTime()) / 60000 <
-              ONLINE_THRESHOLD_MINUTES;
+            ONLINE_THRESHOLD_MINUTES;
           return { ...f, isOnline };
         });
         setFriends(withStatus);
