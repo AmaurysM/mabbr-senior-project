@@ -6,41 +6,34 @@ import { headers } from 'next/headers';
 import { globalPosts } from '@/lib/prisma_types';
 
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
+  const { searchParams } = new URL(req.url);
 
-    const page  = parseInt(searchParams.get('page')  || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '100', 10);
-    // <-- flip default: only 'asc' gives asc, everything else (including no param) is desc
-    const order: 'asc' | 'desc' =
-      searchParams.get('order') === 'asc' ? 'asc' : 'desc';
+  // parse limit, order, before, page, etc.
+  const limit = parseInt(searchParams.get('limit') || '100', 10);
+  const order: 'asc' | 'desc' =
+    searchParams.get('order') === 'asc' ? 'asc' : 'desc';
 
-    const skip = (page - 1) * limit;
+  const before = searchParams.get('before');
+  const after  = searchParams.get('after');
+  const beforeDate = before ? new Date(before) : undefined;
+  const afterDate  = after  ? new Date(after)  : undefined;
 
-    const before = searchParams.get('before');
-    const beforeDate = before ? new Date(before) : undefined;
-    
-    const messages: globalPosts = await prisma.comment.findMany({
-      where: {
-        commentableType: 'GLOBALCHAT',
-        ...(beforeDate && { createdAt: { lt: beforeDate } }),
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      include: {
-        user: { select: { id: true, name: true, image: true } },
-      },
-    });
+  const messages = await prisma.comment.findMany({
+    where: {
+      commentableType: 'GLOBALCHAT',
+      ...(afterDate  && { createdAt: { gt: afterDate  } }),
+      ...( !afterDate && beforeDate && { createdAt: { lt: beforeDate } }),
+    },
+    orderBy: { createdAt: order },
+    take: limit,
+    include: {
+      user: { select: { id: true, name: true, image: true } },
+    },
+  });
 
-    return NextResponse.json(messages);
-  } catch (error) {
-    console.error('Error fetching chat messages:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch chat messages' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(messages);
 }
+
 
 // POST /api/chat
 export async function POST(req: NextRequest) {

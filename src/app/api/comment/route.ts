@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { SimpleComment } from "@/lib/prisma_types";
 import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
@@ -50,14 +50,13 @@ export async function GET(req: Request) {
 //     }
 //   }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const commentId = searchParams.get("id");
-
+    const commentId = searchParams.get('id');
     if (!commentId) {
       return NextResponse.json(
-        { error: "Missing comment ID" },
+        { error: 'Missing comment ID' },
         { status: 400 }
       );
     }
@@ -65,34 +64,26 @@ export async function DELETE(req: Request) {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
-    
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
     });
-
     if (!comment) {
-      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+    }
+    if (comment.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (comment.userId !== userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    await prisma.comment.delete({
-      where: { id: commentId },
-    });
-
+    await prisma.comment.delete({ where: { id: commentId } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting comment:", error);
+    console.error('Error deleting comment:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

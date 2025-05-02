@@ -324,7 +324,6 @@ const StockList = () => {
         <div className="flex flex-col space-y-2 w-full">
             {/* Search Bar */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 w-full">
-                <h2 className="text-xl font-bold text-white mb-3">Stock Search</h2>
                 <div className="flex items-center gap-2">
                     <div className="relative flex-grow">
                         <input
@@ -342,8 +341,7 @@ const StockList = () => {
                     <button
                         onClick={handleSearchSubmit}
                         className="px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors flex items-center gap-2">
-                        <FaSearch className="text-lg" />
-                        <span>Search for Stock</span>
+                        <FaSearch className="text-lg h-6" />
                     </button>
                 </div>
                 {searchError && <p className="text-red-400 text-sm mt-2 px-2">{searchError}</p>}

@@ -8,7 +8,7 @@ import { useGlobalMarketChat } from "@/hooks/useGlobalMarketChat";
 import { Virtuoso } from "react-virtuoso";
 
 // Skeleton loader for pending messages
-const SkeletonLoader = ({ count = 10 }) => (
+const SkeletonLoader = ({ count = 10 }: { count?: number }) => (
   <div className="space-y-3 animate-pulse">
     {Array.from({ length: count }).map((_, idx) => (
       <div
@@ -22,6 +22,8 @@ const SkeletonLoader = ({ count = 10 }) => (
 const GlobalMarketChat = () => {
   const { data: session } = authClient.useSession();
   const user = session?.user;
+  const router = useRouter();
+  const virtuosoRef = useRef<any>(null);
 
   const {
     messagesData,
@@ -35,23 +37,27 @@ const GlobalMarketChat = () => {
     loadMoreMessages,
   } = useGlobalMarketChat();
 
-  const virtuosoRef = useRef(null);
-  const router = useRouter();
-
-  // Handle form submission while preserving the scroll position
-  const handleSubmit = (e) => {
+  // Preserve scroll when sending
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSendMessage(e);
   };
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 w-full" style={{ minHeight: "800px" }}>
-      <h2 className="text-xl font-bold text-white mb-4">Global Market Chat</h2>
+    <div
+      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 w-full"
+      style={{ minHeight: "800px" }}
+    >
+      <h2 className="text-xl font-bold text-white mb-4">
+        Global Market Chat
+      </h2>
 
       <div className="mb-4 h-[650px] bg-gray-700/20 rounded-xl border border-white/5 overflow-hidden">
         {error ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-yellow-400 mb-3">Unable to load chat messages</p>
+            <p className="text-yellow-400 mb-3">
+              Unable to load chat messages
+            </p>
             <p className="text-gray-400 text-sm text-center">
               There was an error loading the chat. Please try again later.
             </p>
@@ -64,11 +70,13 @@ const GlobalMarketChat = () => {
           </div>
         ) : isLoading ? (
           <div className="p-4">
-            <SkeletonLoader count={6} />
+            <SkeletonLoader count={10} />
           </div>
         ) : messagesData.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-gray-400">No messages yet. Be the first to send one!</p>
+            <p className="text-gray-400">
+              No messages yet. Be the first to send one!
+            </p>
           </div>
         ) : (
           <Virtuoso
@@ -80,27 +88,18 @@ const GlobalMarketChat = () => {
                 <GlobalCommentCard message={message} />
               </div>
             )}
-            firstItemIndex={Math.max(0, messagesData.length - 1 - 20)} // Show last 20 messages initially
-            initialTopMostItemIndex={messagesData.length - 1} // Start at the most recent message
-            alignToBottom={true} // Align content to the bottom
-            followOutput={true} // Follow new messages
-            atBottomStateChange={(atBottom) => {
-              // You could use this to show a "new messages" indicator if needed
+            firstItemIndex={Math.max(0, messagesData.length - 1 - 20)}
+            initialTopMostItemIndex={messagesData.length - 1}
+            alignToBottom={true}
+            followOutput={true}
+            startReached={() => {
+              if (hasMore && !isLoadingMore) loadMoreMessages();
             }}
             components={{
               Header: () =>
                 isLoadingMore ? (
                   <div className="p-4">
                     <SkeletonLoader count={2} />
-                  </div>
-                ) : hasMore ? (
-                  <div className="p-4 flex justify-center">
-                    <button
-                      onClick={loadMoreMessages}
-                      className="text-sm text-blue-400 hover:text-blue-300"
-                    >
-                      Load older messages
-                    </button>
                   </div>
                 ) : null,
             }}

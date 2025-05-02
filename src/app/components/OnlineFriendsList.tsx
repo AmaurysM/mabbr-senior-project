@@ -47,7 +47,7 @@ export default function OnlineFriendsList() {
           const isOnline =
             last &&
             (Date.now() - new Date(last).getTime()) / 60000 <
-              ONLINE_THRESHOLD_MINUTES;
+            ONLINE_THRESHOLD_MINUTES;
           return { ...f, isOnline };
         });
         setFriends(withStatus);
@@ -118,8 +118,11 @@ export default function OnlineFriendsList() {
                 </div>
               )}
               <FaCircle className="text-green-500 text-xs" />
-              <span className="truncate">{f.name || f.id}</span>
+              <div className="max-w-[100px] truncate">
+                <span>{f.name || f.id}</span>
+              </div>
             </button>
+
 
             {contextMenu.visible && contextMenu.friend?.id === f.id && (
               <div
