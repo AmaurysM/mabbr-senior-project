@@ -1,64 +1,113 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// Function to get the actual total tokens in circulation
+async function getTotalTokensInCirculation(): Promise<number> {
+  try {
+    // Get the actual current token count from all users
+    const totalTokens = await prisma.user.aggregate({
+      _sum: {
+        tokenCount: true,
+      },
+    });
+    
+    return totalTokens._sum.tokenCount || 0;
+  } catch (error) {
+    console.error('Error getting total tokens in circulation:', error);
+    return 0;
+  }
+}
+
+// Function to calculate token value based on circulation
+function calculateTokenValue(tokensInCirculation: number): number {
+  // If only 1 token exists, it's worth $250,000 (changed from $500,000)
+  // We'll use an exponential decay function: value = maxValue * e^(-circulationFactor * totalTokens)
+  const maxValue = 250000; // Max value is $250,000 per token (reduced from $500,000)
+  const minValue = 0.01; // Min value is $0.01 per token
+  
+  // The circulation factor controls how quickly the value drops
+  // Higher value = faster drop
+  const circulationFactor = 0.0001; // Adjust this to control the rate of value decrease
+  
+  // Calculate token value with exponential decay
+  let tokenValue = maxValue * Math.exp(-circulationFactor * tokensInCirculation);
+  
+  // Ensure value doesn't go below minimum
+  return Math.max(minValue, Math.min(maxValue, tokenValue));
+}
+
 export async function GET() {
   try {
     // Get total users to calculate token distribution
     const totalUsers = await prisma.user.count();
     
-    // Get sum of all user token counts
-    const tokenSum = await prisma.user.aggregate({
-      _sum: {
-        tokenCount: true
-      }
-    });
-    
-    const totalTokens = tokenSum._sum.tokenCount || 0;
+    // Get total tokens in circulation using the shared function
+    const totalTokens = await getTotalTokensInCirculation();
     
     // Calculate token value based on total tokens in circulation
-    // With very few tokens in circulation, value is extremely high
-    // As circulation increases, value drops exponentially
+    const tokenValue = calculateTokenValue(totalTokens);
     
-    // If only 1 token exists, it's worth $250,000 (changed from $500,000)
-    // We'll use an exponential decay function: value = maxValue * e^(-circulationFactor * totalTokens)
-    const maxValue = 250000; // Max value is $250,000 per token (reduced from $500,000)
-    const minValue = 0.01; // Min value is $0.01 per token
+    // Set a fixed 3% interest rate instead of dynamic calculation
+    const interestRate = 0.03; // 3% fixed daily interest
     
-    // The circulation factor controls how quickly the value drops
-    // Higher value = faster drop
-    const circulationFactor = 0.0001; // Adjust this to control the rate of value decrease
+    // Ensure we're returning accurate data
+    const marketCap = totalTokens * tokenValue;
     
-    // Calculate token value with exponential decay
-    let tokenValue = maxValue * Math.exp(-circulationFactor * totalTokens);
+    // Get daily volume - calculate based on transaction history from the last 24 hours
+    let dailyVolume = 0;
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // Get token exchange transactions from the last 24 hours
+      const recentTransactions = await prisma.tokenMarketDataPoint.findMany({
+        where: {
+          timestamp: {
+            gte: yesterday
+          }
+        },
+        orderBy: {
+          timestamp: 'desc'
+        }
+      });
+      
+      if (recentTransactions.length > 0) {
+        // If we have transaction data, use the average daily volume
+        dailyVolume = Math.floor(totalTokens * 0.05); // Default to 5% if no better data
+        
+        if (recentTransactions.length >= 2) {
+          // Calculate actual change in circulation between points
+          const changes = [];
+          for (let i = 1; i < recentTransactions.length; i++) {
+            const change = Math.abs(
+              recentTransactions[i].tokensInCirculation - 
+              recentTransactions[i-1].tokensInCirculation
+            );
+            changes.push(change);
+          }
+          
+          // Use the average change if we have data
+          if (changes.length > 0) {
+            const averageChange = changes.reduce((sum, val) => sum + val, 0) / changes.length;
+            dailyVolume = Math.floor(averageChange);
+          }
+        }
+      } else {
+        // Default to 5% of total supply as daily volume if no transaction data
+        dailyVolume = Math.floor(totalTokens * 0.05);
+      }
+    } catch (error) {
+      console.error('Error calculating daily volume:', error);
+      // Default to 5% of total supply as daily volume
+      dailyVolume = Math.floor(totalTokens * 0.05);
+    }
     
-    // Ensure value doesn't go below minimum
-    tokenValue = Math.max(minValue, Math.min(maxValue, tokenValue));
-    
-    // Calculate interest rate based on token value (inverse relationship)
-    // Higher token value = lower interest to balance economy
-    const maxInterest = 0.08; // 8% max daily interest
-    const minInterest = 0.01; // 1% min daily interest
-    
-    // Normalize token value to calculate interest
-    // Since token value can range widely, we'll use a logarithmic scale
-    const logMaxValue = Math.log(maxValue);
-    const logMinValue = Math.log(minValue);
-    const logTokenValue = Math.log(tokenValue);
-    
-    // Calculate normalized value (0 = lowest token value, 1 = highest token value)
-    const normalizedValue = (logTokenValue - logMinValue) / (logMaxValue - logMinValue);
-    
-    // Interest rate is inversely related to token value
-    // High token value = low interest, Low token value = high interest
-    const interestRate = minInterest + (maxInterest - minInterest) * (1 - normalizedValue);
-    
-    // Mock market data
     return NextResponse.json({
       tokenValue,
       interestRate,
       tokenSupply: totalTokens,
-      dailyVolume: Math.floor(totalTokens * 0.05), // Assume 5% daily volume
-      marketCap: totalTokens * tokenValue,
+      dailyVolume: dailyVolume,
+      marketCap: marketCap,
     });
   } catch (error) {
     console.error('Error fetching token market data:', error);

@@ -12,40 +12,19 @@ import {
   Legend,
 } from 'recharts';
 
+// Define a type for chart data points
+interface ChartPoint {
+  date: string;
+  fullDate: Date;
+  value: string;
+  circulation: number;
+}
+
 // Improved component that shows actual data with proper time handling
 const TokenValueChart = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Generate default mock data when API fails
-  const generateDefaultData = () => {
-    const data = [];
-    const now = new Date();
-    const startDate = new Date(now);
-    startDate.setDate(now.getDate() - 30);
-    
-    let value = 0.5 + Math.random() * 0.5;
-    let circulation = 500 + Math.floor(Math.random() * 500);
-    
-    for (let i = 0; i < 30; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
-      
-      // Random walk with upward bias
-      value = Math.max(0.1, value + (Math.random() * 0.2 - 0.1));
-      circulation += Math.floor(Math.random() * 100 - 40);
-      circulation = Math.max(100, circulation);
-      
-      data.push({
-        date: currentDate.toLocaleDateString(),
-        value: value.toFixed(4),
-        circulation: circulation
-      });
-    }
-    
-    return data;
-  };
   
   useEffect(() => {
     const fetchChartData = async () => {
@@ -55,19 +34,22 @@ const TokenValueChart = () => {
       try {
         // Always fetch 30 days of data
         const days = 30;
-        const response = await fetch(`/api/token-market/history?limit=${days}`, {
+        // Add cache busting
+        const cacheBuster = Date.now();
+        const response = await fetch(`/api/token-market/history?limit=${days}&t=${cacheBuster}`, {
           method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           }
         });
         
         // Handle HTTP errors
         if (!response.ok) {
           console.error('Token market history API error:', response.status, response.statusText);
-          setChartData(generateDefaultData());
           setLoading(false);
+          setError('Failed to load market data');
           return;
         }
         
@@ -75,70 +57,34 @@ const TokenValueChart = () => {
         
         if (data?.history?.length > 0) {
           // Format the data and ensure proper dates for display
-          const formattedData = data.history.map((item: any) => {
-            const date = new Date(item.timestamp);
+          const formattedData: ChartPoint[] = data.history.map((item: any): ChartPoint => {
+            const dateObj = new Date(item.timestamp);
             return {
-              date: date.toLocaleDateString(),
-              fullDate: date, // Store full date for sorting
+              date: dateObj.toLocaleDateString(),
+              fullDate: dateObj,
               value: parseFloat(item.tokenValue).toFixed(4),
               circulation: item.tokensInCirculation || 0
             };
           });
           
-          // Sort by date to ensure chronological order
-          formattedData.sort((a: any, b: any) => a.fullDate.getTime() - b.fullDate.getTime());
+          // Sort chronologically
+          formattedData.sort((a: ChartPoint, b: ChartPoint) => a.fullDate.getTime() - b.fullDate.getTime());
           
-          // Remove any outlier data points for circulation
-          // This helps prevent showing massive spikes that are data errors
-          const cleanedData = removeOutliers(formattedData);
-          
-          // Fill in missing dates with flat lines
-          const filledData = fillMissingDates(cleanedData);
-          
-          // Clean up the data before setting state (remove fullDate which is used only for sorting)
-          const cleanData = filledData.map(({fullDate, ...rest}: any) => rest);
-          setChartData(cleanData);
+          // Use raw formatted data (no interpolation)
+          setChartData(
+            formattedData.map(({ fullDate, ...rest }: ChartPoint) => rest)
+          );
         } else {
-          // No data available, use default
-          setChartData(generateDefaultData());
+          setError('No market data available');
+          setChartData([]);
         }
       } catch (error) {
         console.error('Error fetching chart data:', error);
-        setChartData(generateDefaultData());
         setError('Failed to load chart data');
+        setChartData([]);
       } finally {
         setLoading(false);
       }
-    };
-    
-    // Function to identify and remove circulation outliers
-    const removeOutliers = (data: any[]) => {
-      if (data.length < 3) return data; // Need at least 3 points to detect outliers
-      
-      // Calculate median token circulation
-      const circulations = data.map(d => d.circulation).sort((a, b) => a - b);
-      const medianCirculation = circulations[Math.floor(circulations.length / 2)];
-      
-      // Define a reasonable threshold for outliers (50% deviation from median)
-      const upperThreshold = medianCirculation * 1.5;
-      const lowerThreshold = medianCirculation * 0.5;
-      
-      return data.map(point => {
-        // If this is an outlier, adjust the circulation to a reasonable value
-        if (point.circulation > upperThreshold || point.circulation < lowerThreshold) {
-          // Use the median value with a small random variation
-          const variation = 0.05; // 5% variation
-          const adjustedCirculation = Math.round(
-            medianCirculation * (1 + ((Math.random() * variation * 2) - variation))
-          );
-          
-          return {
-            ...point,
-            circulation: adjustedCirculation
-          };
-        }
-        return point;
-      });
     };
     
     // Function to fill in missing dates with flat lines (no change in value)
@@ -157,16 +103,19 @@ const TokenValueChart = () => {
       // Create a map of existing dates for quick lookup
       const dateMap = new Map();
       data.forEach(point => {
-        dateMap.set(point.fullDate.toDateString(), point);
+        // Use date string without time for comparison
+        const dateStr = point.fullDate.toISOString().split('T')[0];
+        dateMap.set(dateStr, point);
       });
       
       // Fill in all 30 days
       for (let i = 0; i < 30; i++) {
         const currentDate = new Date(thirtyDaysAgo);
         currentDate.setDate(thirtyDaysAgo.getDate() + i);
+        const currentDateStr = currentDate.toISOString().split('T')[0];
         
         // Check if we have data for this date
-        const existingPoint = dateMap.get(currentDate.toDateString());
+        const existingPoint = dateMap.get(currentDateStr);
         
         if (existingPoint) {
           // Use existing data point
@@ -217,8 +166,8 @@ const TokenValueChart = () => {
     
     fetchChartData();
     
-    // Set up an interval to refresh the data more frequently (every minute)
-    const intervalId = setInterval(fetchChartData, 60000);
+    // Set up an interval to refresh the data periodically (every 5 minutes)
+    const intervalId = setInterval(fetchChartData, 300000);
     
     // Listen for token balance updates (e.g., when tokens are exchanged)
     const handleTokenUpdate = () => {
@@ -248,14 +197,11 @@ const TokenValueChart = () => {
     if (value >= 1000) {
       return `$${(value / 1000).toFixed(1)}k`;
     }
-    if (value >= 100) {
-      return `$${value.toFixed(0)}`;
-    }
-    return `$${value.toFixed(2)}`;
+    return `$${parseFloat(value.toString()).toFixed(2)}`;
   };
   
   const formatCirculation = (value: number) => {
-    return `${value.toLocaleString()}`;
+    return value.toLocaleString();
   };
   
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -298,11 +244,23 @@ const TokenValueChart = () => {
     );
   }
   
+  // Error state with empty chart
+  if (error && chartData.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
+        <div className="text-center p-4">
+          <p className="text-yellow-500 mb-2">{error}</p>
+          <p className="text-gray-400 text-sm">No market data is available yet. Data will appear as token transactions occur.</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="w-full h-full">
       {error && (
         <div className="text-yellow-500 text-sm mb-2 p-2 bg-yellow-500 bg-opacity-10 rounded">
-          {error} - Using simulated data
+          {error}
         </div>
       )}
       <ResponsiveContainer width="100%" height="100%">
@@ -359,33 +317,29 @@ const TokenValueChart = () => {
             tickMargin={5}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            wrapperStyle={{ color: '#9CA3AF' }}
-            verticalAlign="top"
-            height={36}
-          />
+          <Legend />
           <Line
             yAxisId="left"
             type="monotone"
             dataKey="value"
-            stroke="#06B6D4"
+            stroke="#06b6d4"
             dot={false}
-            activeDot={{ r: 8 }}
             name="Token Value"
+            strokeWidth={2}
           />
           <Line
             yAxisId="right"
             type="monotone"
             dataKey="circulation"
-            stroke="#F59E0B"
+            stroke="#f59e0b"
             dot={false}
-            activeDot={{ r: 8 }}
             name="Tokens in Circulation"
+            strokeWidth={2}
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
-}
+};
 
 export default TokenValueChart;

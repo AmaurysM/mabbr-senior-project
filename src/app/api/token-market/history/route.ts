@@ -92,65 +92,6 @@ const generateMockData = (days: number = 30): any[] => {
   return data;
 };
 
-// Function to create a real data point based on actual users
-const createRealDataPoint = async (days: number = 30): Promise<any[]> => {
-  const data = [];
-  const now = new Date();
-  
-  // Get all users and their token counts
-  const users = await prisma.user.findMany({
-    select: {
-      tokenCount: true,
-      id: true
-    }
-  });
-  
-  // Sum total tokens in circulation
-  const totalTokens = users.reduce((sum: number, user: any) => sum + (user.tokenCount || 0), 0);
-  
-  // Calculate token value based on circulation
-  const maxValue = 250000; // Max value is $250,000 per token (reduced from $500,000)
-  const minValue = 0.01; // Min value is $0.01 per token
-  const circulationFactor = 0.0001; // Controls how quickly value drops
-  
-  // Token value with exponential decay
-  const tokenValue = Math.max(minValue, maxValue * Math.exp(-circulationFactor * totalTokens));
-  
-  // Create a data point for the current time
-  data.push({
-    id: uuidv4(),
-    timestamp: now,
-    tokenValue: tokenValue,
-    tokensInCirculation: totalTokens,
-    totalTransactionValue: tokenValue * totalTokens
-  });
-  
-  // Generate historical data points
-  for (let i = 1; i < days; i++) {
-    const previousDate = new Date(now);
-    previousDate.setDate(now.getDate() - i);
-    
-    // Simulate slightly different token counts for past days
-    const variationFactor = 0.05; // 5% variation day to day
-    const randomVariation = 1 + (Math.random() * variationFactor * 2 - variationFactor);
-    const historicalTokens = Math.floor(totalTokens * randomVariation);
-    
-    // Calculate historical token value
-    const historicalValue = Math.max(minValue, maxValue * Math.exp(-circulationFactor * historicalTokens));
-    
-    data.push({
-      id: uuidv4(),
-      timestamp: previousDate,
-      tokenValue: historicalValue,
-      tokensInCirculation: historicalTokens,
-      totalTransactionValue: historicalValue * historicalTokens
-    });
-  }
-  
-  // Sort by date ascending
-  return data.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-};
-
 // Function to calculate token value based on circulation
 function calculateTokenValue(tokensInCirculation: number): number {
   // If only 1 token exists, it's worth $250,000 (changed from $500,000)
@@ -169,151 +110,116 @@ function calculateTokenValue(tokensInCirculation: number): number {
   return Math.max(minValue, Math.min(maxValue, tokenValue));
 }
 
+// Function to get the actual total tokens in circulation
+async function getTotalTokensInCirculation(): Promise<number> {
+  try {
+    // Get the actual current token count from all users
+    const totalTokens = await prisma.user.aggregate({
+      _sum: {
+        tokenCount: true,
+      },
+    });
+    
+    return totalTokens._sum.tokenCount || 0;
+  } catch (error) {
+    console.error('Error getting total tokens in circulation:', error);
+    return 0;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '30');
 
-    // Get the actual current token count
-    const totalTokens = await prisma.user.aggregate({
-      _sum: {
-        tokenCount: true,
-      },
-    });
-    
-    const currentTokensInCirculation = totalTokens._sum.tokenCount || 0;
-
-    // Fetch history from the database
-    let history;
-    
-    try {
-      // Try to get existing data from the database
-      history = await prisma.tokenMarketDataPoint.findMany({
-        orderBy: { timestamp: 'desc' },
-        take: limit
-      });
-      
-      // Fix any outlier data points where tokensInCirculation is significantly off
-      // Only modify the data for display, not in the database
-      const fixedHistory = history.map((point: any) => {
-        // If a data point shows more than 150% of current circulation or less than 50%,
-        // it's likely an error - adjust it to be closer to the current value
-        if (point.tokensInCirculation > currentTokensInCirculation * 1.5 || 
-            point.tokensInCirculation < currentTokensInCirculation * 0.5) {
-          
-          // Create a variation from the current value
-          const variation = 0.1; // 10% variation
-          const randomFactor = 1 + ((Math.random() * variation * 2) - variation);
-          const adjustedCirculation = Math.round(currentTokensInCirculation * randomFactor);
-          
-          // Recalculate token value based on the adjusted circulation
-          const adjustedValue = calculateTokenValue(adjustedCirculation);
-          
-          return {
-            ...point,
-            tokensInCirculation: adjustedCirculation,
-            tokenValue: adjustedValue,
-            totalTransactionValue: adjustedValue * adjustedCirculation
-          };
-        }
-        
-        return point;
-      });
-      
-      // If we don't have enough data points, create what we have
-      if (fixedHistory.length === 0) {
-        console.log('No history found, generating initial data point');
-        
-        const tokenValue = calculateTokenValue(currentTokensInCirculation);
-        const totalTransactionValue = tokenValue * currentTokensInCirculation;
-
-        // Create at least one data point for now
-        const dataPoint = await prisma.tokenMarketDataPoint.create({
-          data: {
-            tokenValue,
-            tokensInCirculation: currentTokensInCirculation,
-            totalTransactionValue
-          }
-        });
-        
-        history = [dataPoint];
-      } else {
-        history = fixedHistory;
-      }
-      
-      // Sort history by timestamp (oldest first)
-      history = history.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      
-    } catch (dbError) {
-      console.error('Error retrieving token market data from database:', dbError);
-      
-      // Calculate current token value
-      const tokenValue = calculateTokenValue(currentTokensInCirculation);
-      
-      // Create a minimal history array with just the current point
-      history = [{
-        id: uuidv4(),
-        timestamp: new Date(),
-        tokenValue,
-        tokensInCirculation: currentTokensInCirculation,
-        totalTransactionValue: tokenValue * currentTokensInCirculation
-      }];
+    const now = new Date();
+    // Compute array of past dates (YYYY-MM-DD) for the last <limit> days
+    const dates: string[] = [];
+    for (let i = limit - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      dates.push(d.toISOString().split('T')[0]);
     }
-    
+
+    // Earliest timestamp
+    const earliest = new Date();
+    earliest.setDate(now.getDate() - (limit - 1));
+
+    // Fetch all data points in the time window
+    const rawPoints: TokenMarketHistoryRecord[] = await prisma.tokenMarketDataPoint.findMany({
+      where: { timestamp: { gte: earliest } },
+      orderBy: { timestamp: 'desc' }
+    });
+
+    // Group by date string and keep latest point for each day
+    const latestByDate = new Map<string, any>();
+    rawPoints.forEach((pt: TokenMarketHistoryRecord) => {
+      const dateKey = pt.timestamp.toISOString().split('T')[0];
+      if (!latestByDate.has(dateKey)) {
+        latestByDate.set(dateKey, pt);
+      }
+    });
+
+    // Build daily history with flat lines for missing days
+    const history = [];
+    let lastPoint: any = null;
+    for (const dateKey of dates) {
+      if (latestByDate.has(dateKey)) {
+        lastPoint = latestByDate.get(dateKey);
+      }
+      if (lastPoint) {
+        history.push({
+          id: lastPoint.id,
+          timestamp: new Date(dateKey),
+          tokenValue: lastPoint.tokenValue,
+          tokensInCirculation: lastPoint.tokensInCirculation,
+          totalTransactionValue: lastPoint.totalTransactionValue
+        });
+      }
+    }
+
     return NextResponse.json({ history });
   } catch (error) {
     console.error('Error fetching token market history:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch token market history',
-      history: [] 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch token market history', history: [] }, { status: 500 });
   }
 }
 
 export async function POST() {
   try {
-    // Calculate total tokens in circulation
-    const totalTokens = await prisma.user.aggregate({
-      _sum: {
-        tokenCount: true,
-      },
-    });
-
-    const tokensInCirculation = totalTokens._sum.tokenCount || 0;
+    // Get accurate token circulation
+    const tokensInCirculation = await getTotalTokensInCirculation();
+    
+    // Skip if we couldn't get accurate token count
+    if (tokensInCirculation <= 0) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Failed to get accurate token count' 
+      }, { status: 500 });
+    }
+    
     const tokenValue = calculateTokenValue(tokensInCirculation);
     const totalTransactionValue = tokenValue * tokensInCirculation;
 
-    // Check if we already have a data point for the current hour
-    const currentHour = new Date();
-    currentHour.setMinutes(0, 0, 0); // Set to the start of the current hour
-    
-    const nextHour = new Date(currentHour);
-    nextHour.setHours(currentHour.getHours() + 1);
-    
-    // Look for existing data point in this hour
-    const existingDataPoint = await prisma.tokenMarketDataPoint.findFirst({
-      where: {
-        timestamp: {
-          gte: currentHour,
-          lt: nextHour
-        }
-      }
+    // Find the most recent data point
+    const lastDataPoint = await prisma.tokenMarketDataPoint.findFirst({
+      orderBy: { timestamp: 'desc' }
     });
-    
+
     let dataPoint;
-    
-    if (existingDataPoint) {
-      // Update the existing data point
+
+    if (lastDataPoint && lastDataPoint.tokensInCirculation === tokensInCirculation) {
+      // No change in circulation, just update token value/time
       dataPoint = await prisma.tokenMarketDataPoint.update({
-        where: { id: existingDataPoint.id },
+        where: { id: lastDataPoint.id },
         data: {
           tokenValue,
-          tokensInCirculation,
-          totalTransactionValue
+          totalTransactionValue,
+          timestamp: new Date()
         }
       });
     } else {
-      // Create a new data point
+      // Create a new data point capturing the change
       dataPoint = await prisma.tokenMarketDataPoint.create({
         data: {
           tokenValue,
@@ -321,6 +227,22 @@ export async function POST() {
           totalTransactionValue
         }
       });
+    }
+    
+    // Clean up data older than 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    try {
+      await prisma.tokenMarketDataPoint.deleteMany({
+        where: {
+          timestamp: {
+            lt: thirtyDaysAgo
+          }
+        }
+      });
+    } catch (cleanupError) {
+      console.error('Error cleaning up old data points:', cleanupError);
     }
     
     return NextResponse.json({ 
@@ -339,21 +261,9 @@ export async function POST() {
 // Helper function to save a data point to the database
 async function saveDataPoint(dataPoint: any): Promise<void> {
   try {
-    // Try different model name casing patterns
-    if (typeof (prisma as any).TokenMarketDataPoint !== 'undefined') {
-      // CamelCase version
-      await (prisma as any).TokenMarketDataPoint.create({
-        data: dataPoint
-      });
-    } else if (typeof (prisma as any).tokenMarketDataPoint !== 'undefined') {
-      // camelCase version
-      await (prisma as any).tokenMarketDataPoint.create({
-        data: dataPoint
-      });
-    } else {
-      console.log('Token market data point model not found - data point not saved');
-      throw new Error('Token market data point model not found');
-    }
+    await prisma.tokenMarketDataPoint.create({
+      data: dataPoint
+    });
   } catch (error) {
     console.error('Error saving data point:', error);
     throw error;

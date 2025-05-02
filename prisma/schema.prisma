@@ -58,6 +58,8 @@ model User {
   dailyDrawWinnings      DailyDrawWinner[]
 
   gameHistory GameHistory[]
+  
+  interestClaims InterestClaim[]
 
   @@map("user")
 }
@@ -534,4 +536,19 @@ model TokenMarketDataPoint {
   
   @@index([timestamp])
   @@map("token_market_data_point")
+}
+
+// Add InterestClaim model to track interest claims
+model InterestClaim {
+  id            String   @id @default(cuid()) @map("_id")
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokensAdded   Float
+  tokenCount    Int      // Token count before interest
+  interestRate  Float
+  claimedAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([claimedAt])
+  @@map("interest_claim")
 }

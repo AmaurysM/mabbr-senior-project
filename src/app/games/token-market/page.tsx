@@ -8,29 +8,7 @@ import TokenValueChart from "./components/TokenValueChart";
 import TokensHoldingPanel from "./components/TokensHoldingPanel";
 import TokenExchangePanel from "./components/TokenExchangePanel";
 import MarketStatisticsPanel from "./components/MarketStatisticsPanel";
-import dynamic from 'next/dynamic';
-
-// Dynamically import DailyInterestPanel to avoid build errors
-const DailyInterestPanel = dynamic(() => import("./components/DailyInterestPanel"), {
-  ssr: false,
-  loading: () => (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-full">
-      <div className="flex items-center mb-4">
-        <div className="w-6 h-6 mr-3 bg-gray-700 rounded animate-pulse"></div>
-        <div className="h-8 w-32 bg-gray-700 rounded animate-pulse"></div>
-      </div>
-      <div className="space-y-4">
-        <div className="h-4 w-3/4 bg-gray-700 rounded animate-pulse"></div>
-        <div className="h-20 bg-gray-700 rounded animate-pulse"></div>
-        <div className="space-y-3">
-          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
-          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
-          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
-        </div>
-      </div>
-    </div>
-  )
-});
+import DailyInterestPanel from "./components/DailyInterestPanel";
 
 export default function TokenMarket() {
   const { data: session } = authClient.useSession();
@@ -67,28 +45,46 @@ export default function TokenMarket() {
     // Fetch market data
     const fetchMarketData = async () => {
       try {
-        const response = await fetch('/api/token-market');
+        // Add a timestamp to prevent caching
+        const cacheBuster = Date.now();
+        const response = await fetch(`/api/token-market?t=${cacheBuster}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
         if (response.ok) {
           const data = await response.json();
           setMarketData(data);
           setTokenValue(data.tokenValue || 0.01);
           
-          // Record token market history
+          // Record token market history with cache busting
           try {
-            await fetch('/api/token-market/history', {
+            await fetch(`/api/token-market/history?t=${cacheBuster}`, {
               method: 'POST',
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+              }
             });
+            // Trigger chart refresh
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('token-balance-updated'));
+            }
           } catch (historyError) {
             console.error('Error recording token market history:', historyError);
           }
         }
       } catch (error) {
         console.error('Error fetching market data:', error);
-        // Mock data for now
+        // Fallback data
         setMarketData({
           dailyVolume: 25000,
           tokenSupply: 1000000,
-          interestRate: 0.05, // 5% daily interest
+          interestRate: 0.03, // 3% daily interest
           marketCap: 10000
         });
         setTokenValue(0.01);
