@@ -1,6 +1,6 @@
 "use client";
 import { useMarketSentiment } from "@/hooks/useMarkteSentiment";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import LoadingStateAnimation from "./LoadingState";
 import Link from "next/link";
 
@@ -145,23 +145,59 @@ const StockTooltip = ({ symbol, children }: { symbol: string; children: React.Re
   );
 };
 
+
 const MarketSentimentTable = () => {
   const { sentiment, isLoading } = useMarketSentiment();
-  
-  // Make sure topPicks and marketTrend are always arrays even if they're undefined or not arrays
-  const topPicks = Array.isArray(sentiment?.topPicks) ? sentiment.topPicks : [];
-  const marketTrend = Array.isArray(sentiment?.marketTrend) ? sentiment.marketTrend : [];
+
+  const topPicks = useMemo(() => (
+    Array.isArray(sentiment?.topPicks) ? sentiment.topPicks : []
+  ), [sentiment?.topPicks]);
+
+  const marketTrend = useMemo(() => (
+    Array.isArray(sentiment?.marketTrend) ? sentiment.marketTrend : []
+  ), [sentiment?.marketTrend]);
+
+  const bullishPercentage = useMemo(() => {
+    const bullish = sentiment?.bullishCount || 0;
+    const bearish = sentiment?.bearishCount || 0;
+    const total = bullish + bearish;
+    return total === 0 ? null : Math.round((bullish / total) * 100);
+  }, [sentiment?.bullishCount, sentiment?.bearishCount]);
 
   if (isLoading) {
-    return <div className="text-white"><LoadingStateAnimation /></div>;
+    return (
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 w-full space-y-4 animate-pulse" style={{ minHeight: "300px" }}>
+        <div className="h-6 bg-gray-700 rounded w-1/3" />
+        <div className="space-y-4">
+          <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5 space-y-2">
+            <div className="flex justify-between items-center">
+              <div className="h-4 bg-gray-600 rounded w-1/4" />
+              <div className="h-4 bg-gray-600 rounded w-1/6" />
+            </div>
+            <div className="w-full bg-gray-600/50 rounded-full h-2.5">
+              <div className="bg-gray-500 h-2.5 rounded-full w-1/2" />
+            </div>
+          </div>
+          <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5 space-y-2">
+            <div className="h-4 bg-gray-600 rounded w-1/3" />
+            <div className="flex gap-2 flex-wrap">
+              {[...Array(3)].map((_, idx) => (
+                <div key={idx} className="h-6 w-16 bg-gray-600 rounded-full" />
+              ))}
+            </div>
+          </div>
+          <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5 space-y-2">
+            <div className="h-4 bg-gray-600 rounded w-1/3" />
+            <div className="flex gap-2 flex-wrap">
+              {[...Array(2)].map((_, idx) => (
+                <div key={idx} className="h-6 w-24 bg-gray-600 rounded-full" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
-
-  const calculateBullishPercentage = () => {
-    const total = (sentiment?.bullishCount || 0) + (sentiment?.bearishCount || 0);
-    return sentiment && total === 0 ? null : Math.round(((sentiment?.bullishCount || 0) / total) * 100);
-  };
-
-  const bullishPercentage = calculateBullishPercentage();
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10 w-full" style={{ minHeight: "300px" }}>
@@ -179,17 +215,13 @@ const MarketSentimentTable = () => {
                 {bullishPercentage}% Bullish
               </span>
             ) : (
-              <span className="text-gray-400">
-                No Votes
-              </span>
+              <span className="text-gray-400">No Votes</span>
             )}
           </div>
           <div className="w-full bg-gray-600/50 rounded-full h-2.5">
             <div
               className="bg-green-500 h-2.5 rounded-full"
-              style={{
-                width: bullishPercentage !== null ? `${bullishPercentage}%` : '0%'
-              }}
+              style={{ width: bullishPercentage !== null ? `${bullishPercentage}%` : '0%' }}
             />
           </div>
         </div>
@@ -198,7 +230,7 @@ const MarketSentimentTable = () => {
         <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-300">Most Likely to Outperform</span>
-            {topPicks.length > 0 && (
+            {topPicks[0] && (
               <StockTooltip symbol={topPicks[0].symbol}>
                 <span className="text-blue-400">{topPicks[0].symbol}</span>
               </StockTooltip>
@@ -209,7 +241,7 @@ const MarketSentimentTable = () => {
               topPicks.map(stock => (
                 <StockTooltip key={stock.symbol} symbol={stock.symbol}>
                   <Link href={`/stock/${stock.symbol}`} className="inline-block relative group">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-900/20 text-green-300 border border-green-700/30 cursor-pointer hover:bg-green-900/30 transition-colors`}>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-900/20 text-green-300 border border-green-700/30 cursor-pointer hover:bg-green-900/30 transition-colors">
                       {stock.symbol}
                       <span className="ml-1 font-mono">↑</span>
                     </span>
@@ -226,7 +258,7 @@ const MarketSentimentTable = () => {
         <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-300">Top Index Prediction</span>
-            {marketTrend.length > 0 && marketTrend[0]?.trend && (
+            {marketTrend[0]?.trend && (
               <span className="text-yellow-400">{marketTrend[0].trend}</span>
             )}
           </div>
