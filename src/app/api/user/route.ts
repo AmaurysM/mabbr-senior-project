@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { safeApiHandler, handleCors, emptyOkResponse } from '../api-utils';
+import { truncateByDomain } from 'recharts/types/util/ChartUtils';
 
 // GET /api/user
 // Get the currently logged in user's data
@@ -61,7 +62,21 @@ export async function GET(request: NextRequest) {
                         name: true,
                         email: true,
                         image: true,
-                        tokenCount: true
+                        tokenCount: true,
+                        banner:true,
+                        bio:true,
+                        balance: true,
+                        following: true,
+                        achievements: true,
+                        transactions: true,
+                        portfolioHistory: true,
+                        followers:true,
+                        performanceMetrics: true,
+                        backgroundImage: true,
+                        createdAt:true,
+                        role:true,
+                        userStocks:true,
+                        
                     },
                 });
             } catch (detailsError) {
@@ -72,6 +87,7 @@ export async function GET(request: NextRequest) {
                     name: session.user.name,
                     email: session.user.email,
                     image: session.user.image,
+                    bio: "No Bio Yet",
                     tokenCount: 0
                 };
             }
@@ -98,10 +114,9 @@ export async function GET(request: NextRequest) {
 // PATCH /api/user
 // Update the currently logged in user
 export async function PATCH(request: NextRequest) {
-    // Handle CORS preflight requests
     const corsResponse = handleCors(request);
     if (corsResponse) return corsResponse;
-    
+
     return safeApiHandler(request, async (req) => {
         console.log('[USER PATCH] Request received');
         const session = await auth.api.getSession({
@@ -129,13 +144,22 @@ export async function PATCH(request: NextRequest) {
             );
         }
 
-        const { tokenCount } = requestData;
-        let updateData: any = {};
+        const allowedFields = [
+            'name',
+            'email',
+            'bio',
+            'banner',
+            'backgroundImage',
+            'badgeImage',
+            'tokenCount'
+        ];
 
-        console.log('[USER PATCH] Update data received:', requestData);
-
-        // Only include fields that were provided and exist in the database
-        if (tokenCount !== undefined) updateData.tokenCount = tokenCount;
+        const updateData: Record<string, any> = {};
+        for (const field of allowedFields) {
+            if (requestData[field] !== undefined) {
+                updateData[field] = requestData[field];
+            }
+        }
 
         if (Object.keys(updateData).length === 0) {
             console.log('[USER PATCH] No fields to update');
@@ -157,7 +181,11 @@ export async function PATCH(request: NextRequest) {
                     name: true,
                     email: true,
                     image: true,
-                    tokenCount: true
+                    tokenCount: true,
+                    bio: true,
+                    banner: true,
+                    backgroundImage: true,
+                    badgeImage: true
                 },
             });
 
@@ -175,6 +203,7 @@ export async function PATCH(request: NextRequest) {
         }
     });
 }
+
 
 // OPTIONS handler for CORS
 export async function OPTIONS() {
