@@ -1,110 +1,131 @@
-import { globalPosts } from "@/lib/prisma_types";
-import { useState } from "react";
-import useSWR from "swr";
+import { useEffect, useState } from "react";
+import { Comment } from '@prisma/client'
 
-interface StockSymbolData {
-  symbol: string;
-  price: number;
-  change: number;
-  changePercent: number;
-  isPositive: boolean;
-}
-
-const stockDataCache: Record<string, StockSymbolData> = {};
-
-const fetchMessages = async (): Promise<globalPosts> => {
-  try {
-    const res = await fetch("/api/chat", {
-      method: "GET",
-      headers: {
-        "Cache-Control": "no-cache",
-      },
-    });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("Chat response not ok:", res.status, errorText);
-      throw new Error("Failed to fetch messages");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    throw error; // Re-throw to be handled by SWR's error state
-  }
+// Assuming this is your type definition
+type GlobalPost = {
+  id: string;
+  content: string;
+  createdAt: string;
+  // Add other fields as needed
 };
 
+//export type globalPosts = GlobalPost[];
+
 export const useGlobalMarketChat = () => {
-  const [newMessage, setNewMessage] = useState<string>("");
+  const [messagesData, setMessagesData] = useState<Comment[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [error, setError] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-  const {
-    data: messagesData = [],
-    error,
-    mutate,
-  } = useSWR<globalPosts>("/api/chat", fetchMessages, {
-    revalidateOnFocus: false,
-    refreshInterval: 5000,
-  });
+  // For loading older messages, we use the oldest message currently in the list
+  const oldestMessage = messagesData.length > 0 ? messagesData[0] : null;
 
-  const fetchStockData = async (symbol: string): Promise<StockSymbolData | null> => {
+  const loadMoreMessages = async () => {
+    if (isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+
     try {
-      if (stockDataCache[symbol]) return stockDataCache[symbol];
+      const before = oldestMessage?.createdAt;
+      const res = await fetch(`/api/chat?limit=20&order=asc${before ? `&before=${before}` : ''}`);
+      
+      if (!res.ok) {
+        throw new Error(`Failed to load more messages: ${res.status}`);
+      }
+      
+      const more = await res.json();
 
-      const res = await fetch(`/api/stocks?symbols=${symbol}`);
-      if (!res.ok) throw new Error(`Failed to fetch stock data for ${symbol}`);
+      if (more.length < 20) setHasMore(false);
 
-      const data = await res.json();
-      if (!data.stocks?.length) return null;
-
-      const stockData: StockSymbolData = {
-        symbol: data.stocks[0].symbol,
-        price: data.stocks[0].price,
-        change: data.stocks[0].change,
-        changePercent: data.stocks[0].changePercent,
-        isPositive: data.stocks[0].change >= 0,
-      };
-
-      stockDataCache[symbol] = stockData;
-      return stockData;
-    } catch (error) {
-      console.error(`Error fetching stock data for ${symbol}:`, error);
-      return null;
+      // Prepend older messages to the beginning of the array
+      setMessagesData((prev) => [...more, ...prev]);
+    } catch (err) {
+      console.error(err);
+      setError(err);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmed = newMessage.trim();
+    if (!trimmed) return;
 
-    if (!newMessage.trim()) return;
+    // Optimistically add message to UI
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`,
+      content: trimmed,
+      createdAt: new Date().toISOString(),
+      // Add any other required fields with placeholder values
+      userId: "current-user", // This would be replaced by the actual user ID from the server
+    };
+
+    // Add new message to the end of the array (most recent at the bottom)
+    setMessagesData((prev) => [...prev, optimisticMessage]);
+    setNewMessage("");
 
     try {
-      const stockSymbols = newMessage.match(/#([A-Za-z]{1,5})\b/g);
-      if (stockSymbols) {
-        await Promise.all(
-          stockSymbols.map((symbolWithHash) => {
-            const symbol = symbolWithHash.substring(1).toUpperCase();
-            return stockDataCache[symbol] ? Promise.resolve(null) : fetchStockData(symbol);
-          })
-        );
-      }
-
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newMessage.trim() }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: trimmed }),
       });
 
-      if (!res.ok) throw new Error("Failed to send message");
+      if (!res.ok) {
+        throw new Error(`Failed to send message: ${res.status}`);
+      }
 
-      const newMessageData = await res.json();
-
-      mutate([...messagesData, newMessageData], false);
-
-      setNewMessage("");
-    } catch (error) {
-      console.error("Error sending message:", error);
+      const saved = await res.json();
+      
+      // Replace optimistic message with saved message from server
+      setMessagesData((prev) => 
+        prev.map(msg => 
+          msg.id === optimisticMessage.id ? saved : msg
+        )
+      );
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      // Remove optimistic message on error
+      setMessagesData((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
+      // Show error to user
+      setError("Failed to send message. Please try again.");
     }
   };
+
+  useEffect(() => {
+    const fetchInitialMessages = async () => {
+      try {
+        // Load messages in descending order (newest first)
+        const res = await fetch(`/api/chat?limit=20&order=desc`);
+        
+        if (!res.ok) {
+          throw new Error(`Failed to load messages: ${res.status}`);
+        }
+        
+        const initial = await res.json();
+        
+        // Reverse the order to display oldest first, newest last
+        // This way, the chat will show messages chronologically
+        setMessagesData(initial.reverse());
+        
+        if (initial.length < 20) {
+          setHasMore(false);
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialMessages();
+  }, []);
 
   return {
     messagesData,
@@ -112,5 +133,9 @@ export const useGlobalMarketChat = () => {
     setNewMessage,
     handleSendMessage,
     error,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    loadMoreMessages,
   };
 };
