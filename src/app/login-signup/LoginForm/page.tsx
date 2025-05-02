@@ -25,6 +25,7 @@ import GoogleLoginButton from "@/app/components/LoginWithGoogle";
 import DiscordLoginButton from "@/app/components/LoginWithDiscord";
 import { Toaster } from "@/app/components/ui/sonner";
 import { MdVisibility, MdVisibilityOff } from "react-icons/md";
+import RandomStockQuote from '../../components/RandomStockQuote';
 
 const LoginForm: React.FC = () => {
     const [isLogin, setIsLogin] = useState<boolean>(true);
@@ -121,8 +122,9 @@ const LoginForm: React.FC = () => {
 
     return (
         <div className="relative w-full min-h-screen flex overflow-hidden">
-            {/* Login Form */}
+            {/* Toaster for notifications */}
             <Toaster />
+            {/* Login Form */}
             <div
                 className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
                     isLogin
@@ -194,8 +196,13 @@ const LoginForm: React.FC = () => {
                                 onClick={() => setIsLogin(false)}
                                 className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
                             >
-                                Don&apos;t have an account? Sign up
+                                Don't have an account? Sign up
                             </button>
+                        </div>
+
+                        {/* Random Stock Quote */}
+                        <div className="mt-8 bg-white bg-opacity-70 p-4 rounded-md text-center">
+                            <RandomStockQuote />
                         </div>
                     </CardContent>
                 </Card>
@@ -353,6 +360,11 @@ const LoginForm: React.FC = () => {
                             >
                                 Already have an account? Sign in
                             </button>
+                        </div>
+
+                        {/* Random Stock Quote */}
+                        <div className="mt-8 bg-white bg-opacity-70 p-4 rounded-md text-center">
+                            <RandomStockQuote />
                         </div>
                     </CardContent>
                 </Card>
