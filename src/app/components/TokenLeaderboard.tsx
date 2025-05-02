@@ -21,8 +21,8 @@ const TokenLeaderboard: React.FC = () => {
   const { data: session } = authClient.useSession();
   const router = useRouter();
 
-  // Poll for updates every minute for more responsive display
-  const POLLING_INTERVAL_MS = 60000;
+  // Poll for updates every 30 seconds for more responsive display
+  const POLLING_INTERVAL_MS = 30000;
 
   useEffect(() => {
     const fetchTokenLeaderboard = async () => {
@@ -33,7 +33,10 @@ const TokenLeaderboard: React.FC = () => {
         }
         
         // Use the actual API endpoint for token leaderboard
-        const res = await fetch("/api/user/token-leaderboard", { credentials: "include" });
+        const res = await fetch("/api/user/token-leaderboard", { 
+          credentials: "include",
+          cache: "no-store" // Prevent caching
+        });
         
         if (!res.ok) {
           console.error("Error fetching token leaderboard:", await res.text());
@@ -64,11 +67,20 @@ const TokenLeaderboard: React.FC = () => {
       fetchTokenLeaderboard();
     };
     
+    // Listen for storage events as well
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token-refresh' || e.key === 'token-balance-updated') {
+        fetchTokenLeaderboard();
+      }
+    };
+    
     window.addEventListener('token-balance-updated', handleTokenUpdate);
+    window.addEventListener('storage', handleStorageChange);
     
     return () => {
       clearInterval(interval);
       window.removeEventListener('token-balance-updated', handleTokenUpdate);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, [session?.user?.id]);
 

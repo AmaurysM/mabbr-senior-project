@@ -13,9 +13,23 @@ import dynamic from 'next/dynamic';
 // Dynamically import DailyInterestPanel to avoid build errors
 const DailyInterestPanel = dynamic(() => import("./components/DailyInterestPanel"), {
   ssr: false,
-  loading: () => <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
-    <LoadingStateAnimation />
-  </div>
+  loading: () => (
+    <div className="bg-gray-800 p-6 rounded-lg shadow-lg h-full">
+      <div className="flex items-center mb-4">
+        <div className="w-6 h-6 mr-3 bg-gray-700 rounded animate-pulse"></div>
+        <div className="h-8 w-32 bg-gray-700 rounded animate-pulse"></div>
+      </div>
+      <div className="space-y-4">
+        <div className="h-4 w-3/4 bg-gray-700 rounded animate-pulse"></div>
+        <div className="h-20 bg-gray-700 rounded animate-pulse"></div>
+        <div className="space-y-3">
+          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-16 bg-gray-700 rounded animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+  )
 });
 
 export default function TokenMarket() {
@@ -31,7 +45,7 @@ export default function TokenMarket() {
     marketCap: 0
   });
 
-  // Fetch user token balance
+  // Fetch user token balance and market data
   useEffect(() => {
     const fetchUserData = async () => {
       if (!session?.user) return;
@@ -84,8 +98,32 @@ export default function TokenMarket() {
       }
     };
 
+    // Initial data fetch
     fetchUserData();
     fetchMarketData();
+    
+    // Set up a timer to refresh market data periodically (every 30 seconds)
+    const marketRefreshInterval = setInterval(() => {
+      fetchMarketData();
+    }, 30000);
+    
+    // Listen for token balance update events from games or other components
+    const handleTokenUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.newBalance !== undefined) {
+        setUserTokens(customEvent.detail.newBalance);
+        // Also refresh market data when token balance changes
+        fetchMarketData();
+      }
+    };
+    
+    window.addEventListener('token-balance-updated', handleTokenUpdate);
+    
+    // Clean up on component unmount
+    return () => {
+      clearInterval(marketRefreshInterval);
+      window.removeEventListener('token-balance-updated', handleTokenUpdate);
+    };
   }, [session?.user]);
 
   const handleTokenExchange = async (amount: number) => {
@@ -126,20 +164,30 @@ export default function TokenMarket() {
 
       const data = await response.json();
       
-      // Update token count from response
+      // 1. Update local token count from response immediately
       setUserTokens(data.newTokenCount);
+      
+      // 2. Save to localStorage to help with persistence across page navigations
+      if (typeof window !== 'undefined' && session.user.id) {
+        localStorage.setItem(`user-${session.user.id}-tokens`, data.newTokenCount.toString());
+      }
 
-      // Refresh market data after exchange to show updated token value
+      // 3. Refresh market data after exchange to show updated token value
       const marketResponse = await fetch('/api/token-market');
       if (marketResponse.ok) {
         const marketData = await marketResponse.json();
         setMarketData(marketData);
         setTokenValue(marketData.tokenValue);
       }
+      
+      // 4. Update token market history to update the graph
+      await fetch('/api/token-market/history', {
+        method: 'POST',
+      });
 
-      // Broadcast the token update to other components
+      // 5. Broadcast the token update to other components using multiple methods
       if (typeof window !== 'undefined') {
-        // Update localStorage
+        // Update the token-balance-updated value that components listen for
         window.localStorage.setItem('token-balance-updated', Date.now().toString());
         
         // Create and dispatch a custom event
@@ -147,6 +195,22 @@ export default function TokenMarket() {
           detail: { newBalance: data.newTokenCount } 
         });
         window.dispatchEvent(tokenUpdateEvent);
+        
+        // Also trigger a storage event for components that listen to that
+        const storageEvent = new StorageEvent('storage', {
+          key: 'token-refresh',
+          newValue: Date.now().toString()
+        });
+        window.dispatchEvent(storageEvent);
+        
+        // Update user-specific token storage for UserTokenDisplay
+        if (session.user.id) {
+          const userTokenEvent = new StorageEvent('storage', {
+            key: `user-${session.user.id}-tokens`,
+            newValue: data.newTokenCount.toString()
+          });
+          window.dispatchEvent(userTokenEvent);
+        }
       }
 
       toast({
@@ -180,24 +244,30 @@ export default function TokenMarket() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Token Holdings Panel - First column */}
         <div className="lg:col-span-1">
-          <TokensHoldingPanel 
-            tokenCount={userTokens || 0} 
-            tokenValue={tokenValue} 
-            interestRate={marketData.interestRate}
-          />
+          <div className="h-[450px]">
+            <TokensHoldingPanel 
+              tokenCount={userTokens || 0} 
+              tokenValue={tokenValue} 
+              interestRate={marketData.interestRate}
+            />
+          </div>
         </div>
         
         {/* Token Value Chart - Second and third column */}
-        <div className="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold text-white mb-4">Token Value History</h2>
-          <TokenValueChart />
+        <div className="lg:col-span-2">
+          <div className="h-[450px] bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-white mb-4">Token Value History</h2>
+            <div className="h-[calc(100%-2.5rem)]">
+              <TokenValueChart />
+            </div>
+          </div>
         </div>
       </div>
       
       {/* Second row of components - with extra margin-top to prevent overlap */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-12">
         {/* Exchange Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 h-[350px]">
           <TokenExchangePanel 
             tokenCount={userTokens || 0} 
             tokenValue={tokenValue}
@@ -206,7 +276,7 @@ export default function TokenMarket() {
         </div>
         
         {/* Daily Interest Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 h-[350px]">
           <DailyInterestPanel 
             interestRate={marketData.interestRate} 
             tokenCount={userTokens || 0}
@@ -215,7 +285,7 @@ export default function TokenMarket() {
         </div>
         
         {/* Market Statistics Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 h-[350px]">
           <MarketStatisticsPanel 
             totalSupply={marketData.tokenSupply}
             dailyVolume={marketData.dailyVolume}
