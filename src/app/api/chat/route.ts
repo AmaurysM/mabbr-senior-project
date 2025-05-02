@@ -1,35 +1,34 @@
+// app/api/chat/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { globalPosts } from '@/lib/prisma_types';
 
-// GET /api/chat - Get chat messages
 export async function GET(req: NextRequest) {
   try {
-
-    // Get query parameters
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '100');
-    //const before = searchParams.get('before');
 
-    // Fetch messages with user data
+    const page  = parseInt(searchParams.get('page')  || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
+    // <-- flip default: only 'asc' gives asc, everything else (including no param) is desc
+    const order: 'asc' | 'desc' =
+      searchParams.get('order') === 'asc' ? 'asc' : 'desc';
+
+    const skip = (page - 1) * limit;
+
+    const before = searchParams.get('before');
+    const beforeDate = before ? new Date(before) : undefined;
+    
     const messages: globalPosts = await prisma.comment.findMany({
-      where:{
-        commentableType: "GLOBALCHAT"
+      where: {
+        commentableType: 'GLOBALCHAT',
+        ...(beforeDate && { createdAt: { lt: beforeDate } }),
       },
-      orderBy: {
-        createdAt: 'asc'
-      },
+      orderBy: { createdAt: 'desc' },
       take: limit,
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
+        user: { select: { id: true, name: true, image: true } },
       },
     });
 
@@ -43,7 +42,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/chat - Create a new chat message
+// POST /api/chat
 export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({
@@ -88,4 +87,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
