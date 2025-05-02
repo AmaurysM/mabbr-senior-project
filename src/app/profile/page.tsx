@@ -579,10 +579,10 @@ const CombinedProfilePage = () => {
                     {/* Friends Tab Content */}
                     {activeTab === 'friends' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                            <div className=" backdrop-blur-sm rounded-2xl">
                                 <AddFriendCard />
                             </div>
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                            <div className="backdrop-blur-sm rounded-2xl">
                                 <FriendsList />
                             </div>
                         </div>
