@@ -162,27 +162,13 @@ const SkeletonLoader = ({ type }: { type: 'avatar' | 'name' | 'text' | 'image' |
       );
     case 'image':
       return <div className="mt-2 w-full h-48 bg-gray-700 rounded-lg animate-pulse"></div>;
-    case 'reactions':
-      return (
-        <div className="flex space-x-1 mt-2">
-          <div className="h-6 w-16 bg-gray-700 rounded-full animate-pulse"></div>
-          <div className="h-6 w-16 bg-gray-700 rounded-full animate-pulse"></div>
-        </div>
-      );
-    case 'actions':
-      return (
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-700/50">
-          <div className="flex items-center space-x-4">
-            <div className="h-6 w-16 bg-gray-700 rounded animate-pulse"></div>
-          </div>
-        </div>
-      );
+
     default:
       return null;
   }
 };
 
-const GlobalCommentCard = ({ message }: { message: Comment }) => {
+const GlobalCommentCard = ({ message, onDelete }: { message: Comment, onDelete?: (id: string) => void }) => {
   const { data: session } = authClient.useSession()
   const [poster, setPoster] = useState<User | null>(null)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
@@ -193,6 +179,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleted, setIsDeleted] = useState(false)
   const router = useRouter()
 
   const emojiPickerRef = useRef<HTMLDivElement>(null)
@@ -388,16 +375,18 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
       });
 
       if (!res.ok) throw new Error('Failed to delete comment');
-
-      // Refresh the page or remove the comment from UI
-      // This depends on how your app handles updates
-      window.location.reload();
+      
+      // Set the comment as deleted in the local state
+      setIsDeleted(true);
+      
+      // Call the onDelete callback to notify parent component
+      if (onDelete) {
+        onDelete(message.id);
+      }
     } catch (error) {
       console.error('Error deleting comment:', error);
       setIsDeleting(false);
     }
-
-    setShowActionMenu(false);
   }
 
   // Extract stock symbols from content
@@ -500,7 +489,8 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
-          console.error(data.error);
+          console.warn("User fetch warning:", data.error); 
+          return;
         } else {
           setPoster(data);
         }
@@ -512,6 +502,11 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
         setIsLoadingUser(false);
       });
   }, [message.userId]);
+  
+  // If comment has been deleted, don't render anything
+  if (isDeleted) {
+    return null;
+  }
 
   return (
     <div
@@ -617,22 +612,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
               )}
             </div>
           </div>
-
-          {/* More actions button */}
-          {session?.user.id === message.userId && (
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="w-full text-left px-4 py-2 text-sm text-red-400 flex items-center gap-2"
-            >
-              <Trash size={16} />
-              {isDeleting ? 'Deleting...' : 'Delete comment'}
-            </button>
-          )}
-        </div>
-
-
-        {/* Display reactions */}
+{/* Display reactions */}
         {isLoadingReactions ? (
           <SkeletonLoader type="reactions" />
         ) : reactions && reactions.length > 0 ? (
@@ -654,6 +634,18 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
             ))}
           </div>
         ) : null}
+          {/* Delete button */}
+          {session?.user.id === message.userId && (
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-left px-4 py-2 text-sm text-red-400 flex items-center gap-2 hover:text-red-300 transition-colors"
+            >
+              <Trash size={16} />
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
