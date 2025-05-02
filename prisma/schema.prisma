@@ -427,8 +427,6 @@ model AlphaVantageNews {
   @@map("alphavantage_news")
 }
 
-
-
 model MarketSentiment {
   id            String   @id @default(cuid()) @map("_id")
   date          String   @unique // Format: YYYY-MM-DD
