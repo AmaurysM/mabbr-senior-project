@@ -94,7 +94,9 @@ const HomePage = () => {
             {user ? (
               isFriendActivityOpen && (
                 <>
-                  <AddFriendCard />
+                  <div className="pb-2">
+                    <AddFriendCard />
+                  </div>
                   <FriendTradeActivity />
                 </>
               )
