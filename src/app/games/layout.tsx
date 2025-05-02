@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Toaster } from "@/app/components/ui/sonner";
-import { FaAngleLeft, FaAngleRight, FaGamepad, FaGift, FaTicketAlt, FaChartBar, FaCoins, FaRocket, FaChartLine, FaClock, FaHourglassHalf } from "react-icons/fa";
+import { FaAngleLeft, FaAngleRight, FaGamepad, FaGift, FaTicketAlt, FaChartBar, FaCoins, FaRocket, FaChartLine, FaClock, FaHourglassHalf, FaBomb } from "react-icons/fa";
 import TokenLeaderboard from "../components/TokenLeaderboard";
+import UserTokenDisplay from "../components/UserTokenDisplay";
 import { useRouter, usePathname } from "next/navigation";
 
 enum Tab {
@@ -12,7 +13,8 @@ enum Tab {
   scratchOffs = "scratch-offs",
   stocket = "stocket",
   stockPredictor = "stock-predictor",
-  tokenMarket = "token-market",
+  cryptoMinesweeper = "crypto-minesweeper",
+  tokenMarket = "token-market"
 }
 
 const getDailyDrawTimeRemaining = () => {
@@ -60,6 +62,7 @@ export default function GamesLayout({
     if (pathname.includes('scratch-offs')) return Tab.scratchOffs;
     if (pathname.includes('stocket')) return Tab.stocket;
     if (pathname.includes('stock-predictor')) return Tab.stockPredictor;
+    if (pathname.includes('crypto-minesweeper')) return Tab.cryptoMinesweeper;
     if (pathname.includes('token-market')) return Tab.tokenMarket;
     return Tab.dailyDraw; // default
   };
@@ -141,6 +144,8 @@ export default function GamesLayout({
         return "Stocket";
       case Tab.stockPredictor:
         return "Stock Predictor";
+      case Tab.cryptoMinesweeper:
+        return "Crypto Sweeper";
       case Tab.tokenMarket:
         return "Token Market";
       default:
@@ -160,6 +165,8 @@ export default function GamesLayout({
         return <FaRocket className="w-5 h-5" />;
       case Tab.stockPredictor:
         return <FaChartLine className="w-5 h-5" />;
+      case Tab.cryptoMinesweeper:
+        return <FaBomb className="w-5 h-5" />;
       case Tab.tokenMarket:
         return <FaCoins className="w-5 h-5" />;
       default:
@@ -173,6 +180,12 @@ export default function GamesLayout({
       <div ref={sidebarRef}
         className={`fixed lg:relative inset-y-0 left-0 w-64 lg:w-60 min-w-60 overflow-y-auto bg-gray-800 p-4 border-r border-gray-700 z-50 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}>
+        
+        {/* User Token Display at the top of sidebar */}
+        <div className="mb-4">
+          <UserTokenDisplay />
+        </div>
+        
         <nav className="space-y-2 sticky top-0">
           {Object.values(Tab).map((value) => (
             <button
@@ -194,7 +207,6 @@ export default function GamesLayout({
           ))}
         </nav>
         
-        {/* Token Leaderboard */}
         <div className="mt-8">
           <TokenLeaderboard />
         </div>

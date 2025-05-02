@@ -1,20 +1,23 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Gift, Trophy } from "lucide-react";
 import toast from "react-hot-toast";
 import useSWRInfinite from "swr/infinite";
 
 interface NotificationItem {
   id: string;
-  status: "pending" | "accepted" | "rejected";
+  type: "FRIEND_REQUEST" | "DAILY_DRAW_WIN";
+  status?: "pending" | "accepted" | "rejected";
   createdAt: string;
-  friendInfo: {
+  friendInfo?: {
     id: string;
     name: string;
     email: string;
     hasPosted: boolean;
   };
+  tokens?: number;
+  drawDate?: string;
 }
 
 interface NotificationsResponse {
@@ -122,6 +125,24 @@ const Notifications = () => {
     }
   };
 
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch("/api/user/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationIds: [notificationId] }),
+      });
+
+      if (response.ok) {
+        mutate(); // Refresh notifications after marking as read
+      } else {
+        console.error("Failed to mark notification as read");
+      }
+    } catch (error) {
+      console.error("Failed to mark notification as read", error);
+    }
+  };
+
   if (error) {
     return (
       <div className="w-full p-4 text-red-500 bg-red-100 rounded-md">
@@ -153,32 +174,61 @@ const Notifications = () => {
                 key={notification.id}
                 className="w-full p-4 border-b border-gray-700 bg-gray-900 text-gray-200 flex justify-between items-center"
               >
-                <div>
-                  <div className="text-base font-semibold">
-                    {notification.friendInfo.name} ({notification.friendInfo.email})
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    {notification.status === "pending" ? "Sent request" : "Became friends"} on{" "}
-                    {new Date(notification.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
+                {notification.type === "FRIEND_REQUEST" ? (
+                  // Friend request notification
+                  <>
+                    <div>
+                      <div className="text-base font-semibold">
+                        {notification.friendInfo?.name} ({notification.friendInfo?.email})
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {notification.status === "pending" ? "Sent request" : "Became friends"} on{" "}
+                        {new Date(notification.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
 
-                {notification.status === "pending" && (
-                  <div className="flex space-x-2">
+                    {notification.status === "pending" && (
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleAcceptRequest(notification.id)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleRejectRequest(notification.id)}
+                          className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : notification.type === "DAILY_DRAW_WIN" ? (
+                  // Daily Draw win notification
+                  <>
+                    <div className="flex items-center">
+                      <Trophy className="w-5 h-5 text-yellow-500 mr-3" />
+                      <div>
+                        <div className="text-base font-semibold">
+                          Daily Draw Winner!
+                        </div>
+                        <p className="text-sm text-yellow-300 font-medium">
+                          You won {notification.tokens?.toLocaleString()} tokens
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          From the drawing on {notification.drawDate}
+                        </p>
+                      </div>
+                    </div>
                     <button
-                      onClick={() => handleAcceptRequest(notification.id)}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm transition-colors"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => handleRejectRequest(notification.id)}
+                      onClick={() => handleMarkAsRead(notification.id)}
                       className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
                     >
-                      Reject
+                      Dismiss
                     </button>
-                  </div>
-                )}
+                  </>
+                ) : null}
               </li>
             ))}
           </ul>
