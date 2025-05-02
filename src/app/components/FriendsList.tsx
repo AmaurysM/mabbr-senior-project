@@ -2,6 +2,7 @@
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import SkeletonLoader from "@/app/components/SkeletonLoader";
+import { useRouter } from 'next/navigation';
 
 interface Friend {
   id: string;
@@ -11,6 +12,7 @@ interface Friend {
 }
 
 const FriendsList: React.FC = () => {
+  const router = useRouter();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,11 +21,11 @@ const FriendsList: React.FC = () => {
     const fetchFriends = async () => {
       try {
         const res = await fetch("/api/user/friends", { credentials: "include" });
-        
+
         if (!res.ok) {
           throw new Error(`Failed to fetch friends: ${res.status} ${res.statusText}`);
         }
-        
+
         const data = await res.json();
         setFriends(data.friends || []);
       } catch (err: any) {
@@ -46,6 +48,11 @@ const FriendsList: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  const handleFriendClick = (friendID: string) => {
+    sessionStorage.setItem("selectedUserId", friendID);
+    router.push(`/friendsProfile`);
   }
 
   return (
@@ -77,7 +84,11 @@ const FriendsList: React.FC = () => {
       ) : (
         <ul className="space-y-4">
           {friends.map((friend) => (
-            <li key={friend.id} className="flex items-center space-x-4">
+            <li
+              key={friend.id}
+              onClick={() => handleFriendClick(friend.id)}
+              className="flex items-center space-x-4 p-2 rounded-lg transition-all duration-200 hover:bg-gray-700/50 hover:shadow-md cursor-pointer"
+            >
               {friend.image ? (
                 <Image
                   src={friend.image}
