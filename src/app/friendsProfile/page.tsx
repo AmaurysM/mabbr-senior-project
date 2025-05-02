@@ -328,7 +328,7 @@ const FriendsProfilePage = () => {
                                 <div className="flex">
                                     <div className="relative h-36 w-36 rounded-full ring-4 ring-gray-700 bg-gray-800/50 overflow-hidden">
                                         <Image
-                                            src={user.image || "/default-avatar.png"}
+                                            src={user.image || "/default-profile.png"}
                                             alt={`${user.name}'s profile`}
                                             fill
                                             className="object-cover"

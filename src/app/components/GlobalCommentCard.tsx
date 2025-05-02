@@ -24,7 +24,7 @@ interface StockSymbolData {
 const stockDataCache: Record<string, StockSymbolData> = {};
 
 // Update the StockTooltip component to include company name
-const StockTooltip = ({ symbol, data }: { symbol: string, data: StockSymbolData | null }) => {
+const StockTooltip = ({ symbol, data, isLoading }: { symbol: string, data: StockSymbolData | null, isLoading: boolean }) => {
   // Map of stock symbols to company names
   const companyNames: Record<string, string> = {
     'AAPL': 'Apple Inc.',
@@ -62,10 +62,27 @@ const StockTooltip = ({ symbol, data }: { symbol: string, data: StockSymbolData 
   // Get company name or use a default
   const companyName = companyNames[symbol] || 'Corporation';
 
+  if (isLoading) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3 min-w-[180px]">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="text-white font-bold">{symbol}</div>
+            <div className="h-4 w-24 bg-gray-700 rounded animate-pulse mt-1"></div>
+          </div>
+          <div className="h-5 w-16 bg-gray-700 rounded animate-pulse"></div>
+        </div>
+        <div className="flex justify-between items-center mt-3">
+          <div className="h-4 w-20 bg-gray-700 rounded animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
+
   if (!data) {
     return (
       <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3">
-        <div className="text-gray-400 text-center">Loading...</div>
+        <div className="text-gray-400 text-center">No data available</div>
       </div>
     );
   }
@@ -129,11 +146,50 @@ const commonEmojis = [
   { emoji: "🤔", label: "Thinking" }
 ];
 
+// Skeleton loader for different parts of the comment card
+const SkeletonLoader = ({ type }: { type: 'avatar' | 'name' | 'text' | 'image' | 'reactions' | 'actions' }) => {
+  switch (type) {
+    case 'avatar':
+      return <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 animate-pulse"></div>;
+    case 'name':
+      return <div className="h-5 w-32 bg-gray-700 rounded animate-pulse"></div>;
+    case 'text':
+      return (
+        <div className="space-y-2 w-full">
+          <div className="h-4 bg-gray-700 rounded animate-pulse w-full"></div>
+          <div className="h-4 bg-gray-700 rounded animate-pulse w-3/4"></div>
+        </div>
+      );
+    case 'image':
+      return <div className="mt-2 w-full h-48 bg-gray-700 rounded-lg animate-pulse"></div>;
+    case 'reactions':
+      return (
+        <div className="flex space-x-1 mt-2">
+          <div className="h-6 w-16 bg-gray-700 rounded-full animate-pulse"></div>
+          <div className="h-6 w-16 bg-gray-700 rounded-full animate-pulse"></div>
+        </div>
+      );
+    case 'actions':
+      return (
+        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-700/50">
+          <div className="flex items-center space-x-4">
+            <div className="h-6 w-16 bg-gray-700 rounded animate-pulse"></div>
+          </div>
+        </div>
+      );
+    default:
+      return null;
+  }
+};
+
 const GlobalCommentCard = ({ message }: { message: Comment }) => {
   const { data: session } = authClient.useSession()
   const [poster, setPoster] = useState<User | null>(null)
+  const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [stockData, setStockData] = useState<Record<string, StockSymbolData>>({})
+  const [loadingStocks, setLoadingStocks] = useState<string[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
+  const [isLoadingReactions, setIsLoadingReactions] = useState(true)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -146,6 +202,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
   useClickAway(actionMenuRef, () => setShowActionMenu(false))
 
   const fetchReactions = useCallback(async () => {
+    setIsLoadingReactions(true);
     try {
       const res = await fetch(`/api/comment/reaction?messageId=${message.id}`, {
         method: 'GET',
@@ -160,6 +217,8 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
       setReactions(data.reactions);
     } catch (error) {
       console.error('Error fetching reactions:', error);
+    } finally {
+      setIsLoadingReactions(false);
     }
   }, [message.id]);
 
@@ -220,6 +279,9 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
 
   const fetchStockData = async (symbols: string[]): Promise<void> => {
     try {
+      // Update loading state for symbols
+      setLoadingStocks(symbols);
+      
       // Filter out symbols that are already in the cache
       const symbolsToFetch = symbols.filter(symbol => !stockDataCache[symbol]);
 
@@ -232,6 +294,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
           }
         });
         setStockData(prevData => ({ ...prevData, ...cachedData }));
+        setLoadingStocks([]);
         return;
       }
 
@@ -239,28 +302,32 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
       if (!res.ok) throw new Error('Failed to fetch stock data');
 
       const data = await res.json();
-      if (!data.stocks || data.stocks.length === 0) return;
-
+      
       const newStockData: Record<string, StockSymbolData> = {};
 
-      data.stocks.forEach((stock: { symbol: string; price: number; change: number; changePercent: number }) => {
-        const result = {
-          symbol: stock.symbol,
-          price: stock.price,
-          change: stock.change,
-          changePercent: stock.changePercent,
-          isPositive: stock.change >= 0
-        };
+      if (data.stocks && data.stocks.length > 0) {
+        data.stocks.forEach((stock: { symbol: string; price: number; change: number; changePercent: number }) => {
+          const result = {
+            symbol: stock.symbol,
+            price: stock.price,
+            change: stock.change,
+            changePercent: stock.changePercent,
+            isPositive: stock.change >= 0
+          };
 
-        // Update cache
-        stockDataCache[stock.symbol] = result;
-        newStockData[stock.symbol] = result;
-      });
+          // Update cache
+          stockDataCache[stock.symbol] = result;
+          newStockData[stock.symbol] = result;
+        });
+      }
 
       // Update state with new data
       setStockData(prevData => ({ ...prevData, ...newStockData }));
     } catch (error) {
       console.error('Error fetching stock data:', error);
+    } finally {
+      // Clear loading state
+      setLoadingStocks([]);
     }
   };
 
@@ -372,20 +439,27 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
         const symbol = parts[i + 1]?.toUpperCase(); // Convert to uppercase for consistency
         if (symbol) {
           const data = stockData[symbol] || stockDataCache[symbol];
+          const isLoading = loadingStocks.includes(symbol);
           const isPositive = data?.isPositive ?? true;
 
           formattedContent.push(
             <Link href={`/stock/${symbol}`} key={`stock-${i}`} className="inline-block relative group">
               <span
-                className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${isPositive
-                  ? 'bg-green-900/20 text-green-300 border border-green-700/30'
-                  : 'bg-red-900/20 text-red-300 border border-red-700/30'
+                className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${isLoading 
+                  ? 'bg-gray-700/50 text-gray-300 border border-gray-600/30' 
+                  : isPositive
+                    ? 'bg-green-900/20 text-green-300 border border-green-700/30'
+                    : 'bg-red-900/20 text-red-300 border border-red-700/30'
                   } cursor-pointer hover:opacity-80 transition-opacity`}
               >
                 {symbol}
-                <span className="ml-1 font-mono">
-                  {isPositive ? '↑' : '↓'}
-                </span>
+                {isLoading ? (
+                  <span className="ml-1 w-3 h-3 rounded-full bg-gray-600 animate-pulse"></span>
+                ) : (
+                  <span className="ml-1 font-mono">
+                    {isPositive ? '↑' : '↓'}
+                  </span>
+                )}
               </span>
 
               {/* Tooltip with fixed position above the symbol */}
@@ -396,7 +470,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
                   transform: 'translateX(-50%)',
                   marginBottom: '5px'
                 }}>
-                <StockTooltip symbol={symbol} data={data || null} />
+                <StockTooltip symbol={symbol} data={data || null} isLoading={isLoading} />
               </div>
             </Link>
           );
@@ -415,6 +489,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
   }, [fetchReactions]);
 
   useEffect(() => {
+    setIsLoadingUser(true);
     fetch("/api/user/getUser", {
       method: "POST",
       headers: {
@@ -432,6 +507,9 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
       })
       .catch(() => {
         console.error("Error fetching user");
+      })
+      .finally(() => {
+        setIsLoadingUser(false);
       });
   }, [message.userId]);
 
@@ -443,41 +521,55 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
         : 'bg-gray-800/50 rounded-xl border border-gray-700/50 hover:bg-gray-800/80 transition-colors'
         }`}
     >
-      <div
-        className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center cursor-pointer ring-2 ring-gray-700 hover:ring-blue-500 transition-all"
-        onClick={handleProfileClick}
-      >
-        {poster?.image ? (
-          <Image
-            src={poster.image}
-            alt={poster.name || 'User avatar'}
-            width={40}
-            height={40}
-            className="object-cover"
-          />
-        ) : (
-          <UserCircle className="w-10 h-10 text-gray-400" />
-        )}
-      </div>
+      {/* User avatar - show skeleton loader when loading */}
+      {isLoadingUser ? (
+        <SkeletonLoader type="avatar" />
+      ) : (
+        <div
+          className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center cursor-pointer ring-2 ring-gray-700 hover:ring-blue-500 transition-all"
+          onClick={handleProfileClick}
+        >
+          {poster?.image ? (
+            <Image
+              src={poster.image}
+              alt={poster.name || 'User avatar'}
+              width={40}
+              height={40}
+              className="object-cover"
+            />
+          ) : (
+            <UserCircle className="w-10 h-10 text-gray-400" />
+          )}
+        </div>
+      )}
 
       <div className="flex-grow">
         <div className="flex justify-between items-center mb-1">
-          <div
-            className="font-semibold text-white cursor-pointer hover:underline"
-            onClick={handleProfileClick}
-          >
-            <div className="flex items-center space-x-2">
-              <span className="font-semibold text-gray-200">{poster?.name || "Unknown User"}</span>
-              <UserVerificationIcon userRole={poster?.role} className="h-3 w-3 text-blue-500" />
+          {/* User name - show skeleton loader when loading */}
+          {isLoadingUser ? (
+            <SkeletonLoader type="name" />
+          ) : (
+            <div
+              className="font-semibold text-white cursor-pointer hover:underline"
+              onClick={handleProfileClick}
+            >
+              <div className="flex items-center space-x-2">
+                <span className="font-semibold text-gray-200">{poster?.name || "Unknown User"}</span>
+                <UserVerificationIcon userRole={poster?.role} className="h-3 w-3 text-blue-500" />
+              </div>
             </div>
-          </div>
+          )}
           <span className="text-xs text-gray-400">{formatTimestamp(message.createdAt)}</span>
         </div>
 
-        {message.content && (
+        {/* Message content - show skeleton loader when loading */}
+        {message.content ? (
           <div className="text-white mb-2">{formatMessageContent(message.content)}</div>
+        ) : (
+          <SkeletonLoader type="text" />
         )}
 
+        {/* Message image - show skeleton loader when loading */}
         {message.image && (
           <div className="mt-2 rounded-lg overflow-hidden">
             <Image
@@ -541,14 +633,16 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
 
 
         {/* Display reactions */}
-        {reactions && reactions.length > 0 && (
+        {isLoadingReactions ? (
+          <SkeletonLoader type="reactions" />
+        ) : reactions && reactions.length > 0 ? (
           <div className="flex flex-wrap gap-1 mt-2">
             {reactions.map((reaction) => (
               <button
                 key={reaction.emoji}
                 onClick={() => handleToggleReaction(reaction.emoji)}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium border transition
-          ${reaction.me
+                ${reaction.me
                     ? 'bg-blue-500 text-white border-blue-500'
                     : 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
                   }`}
@@ -559,9 +653,7 @@ const GlobalCommentCard = ({ message }: { message: Comment }) => {
               </button>
             ))}
           </div>
-        )}
-
-
+        ) : null}
       </div>
     </div>
   );

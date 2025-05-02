@@ -168,11 +168,16 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
 
       toast({
         title: "Success",
-        description: `Vote submitted successfully! You earned 1 token. Current tokens: ${bonusData.tokenCount}`,
+        description: `Vote submitted successfully! You earned 50 tokens. Current tokens: ${bonusData.tokenCount}`,
       });
 
       // Set hasVoted to true instead of closing the panel
       setHasVoted(true);
+      
+      // Trigger a token update event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('token-update'));
+      }
       
       // Call the callback if provided
       if (onVoteSubmit) {

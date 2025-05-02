@@ -165,14 +165,6 @@ const TopicsPage = () => {
                         Create Topic
                     </button>
                 </div>
-
-                {/* Create Topic Form */}
-                {showCreateForm && (
-                    < TopicsForm setShowCreateForm={setShowCreateForm} 
-                        onTopicCreated={() => {
-                        mutate()
-                      }}/>
-                )}
             </div>
 
             {/* Sorting options */}
@@ -194,6 +186,20 @@ const TopicsPage = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Create Topic Form */}
+            {showCreateForm && (
+                <div className="fixed inset-0 z-100 flex items-start justify-center pt-24 bg-black/40 backdrop-blur-sm">
+                    <div className="rounded-2xl p-6 shadow-2xl w-full max-w-lg mx-4">
+                        <TopicsForm
+                            setShowCreateForm={setShowCreateForm}
+                            onTopicCreated={() => {
+                                mutate();
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Error message */}
             {error && (
