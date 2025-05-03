@@ -22,7 +22,10 @@ export async function GET() {
     
     // Get user's transactions
     const userTransactions = await prisma.transaction.findMany({
-      where: { userId: userId },
+      where: {
+        userId: userId,
+        status: { not: 'SCRATCH_WIN' }
+      },
       orderBy: { timestamp: 'desc' },
       take: 20, // Limit to recent transactions
       select: {

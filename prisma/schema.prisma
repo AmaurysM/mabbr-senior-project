@@ -135,7 +135,7 @@ model User {
   banExpires     Int?
   balance        Float         @default(100000.0)
   bio            String?       @default("No bio yet.")
-  tokenCount     Int           @default(0)
+  tokenCount     Int           @default(250)
 
   votes          UserVote[]
   favoriteStocks String[]      @default([])
