@@ -562,6 +562,7 @@ const ScratchOffPlayContent = () => {
   const ticketId = searchParams.get("ticketId");
   const { toast } = useToast();
   const { data: session } = authClient.useSession();
+  const prizeClaimedRef = useRef(false);
   
   const [ticket, setTicket] = useState<UserScratchTicket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1091,49 +1092,7 @@ const ScratchOffPlayContent = () => {
 
       // Auto-reveal when enough is scratched
       if (percentage > 45 && !isRevealed) {
-        setIsRevealed(true);
-        
-        // Scratch all cells
-        setGrid(prev => 
-          prev.map(cell => ({
-            ...cell,
-            scratched: true
-          }))
-        );
-        
-        // Check for winning combinations
-        const fullScratchedGrid = grid.map(cell => ({
-          ...cell,
-          scratched: true
-        }));
-        
-        const { wins: finalWins, winningCells: finalWinningCells } = checkWinningPatterns(fullScratchedGrid);
-        setWins(finalWins);
-        setWinningCells(finalWinningCells);
-        
-        // Calculate prize outside this function to avoid dependency issues
-        calculatePrize(finalWins).then(prizeData => {
-          setPrize(prizeData);
-          
-          // If there's a winning prize, trigger the confetti animation
-          if (prizeData.tokens > 0 || prizeData.cash > 0 || prizeData.stocks > 0) {
-            triggerWinAnimation();
-          }
-        }).catch(error => {
-          console.error('Error calculating prize:', error);
-        });
-
-        // Mark as played for API update
-        fetch(`/api/users/scratch-tickets/${ticketId}/scratch`, {
-          method: 'POST',
-        }).catch(error => {
-          console.error('Error marking ticket as scratched:', error);
-          // Fallback to localStorage if API fails
-          markTicketAsPlayedInLocalStorage();
-        });
-
-        // Save results to localStorage for future reference
-        saveTicketResultsToLocalStorage(finalWins, finalWinningCells);
+        revealAll();
       }
     };
 
@@ -1323,16 +1282,11 @@ const ScratchOffPlayContent = () => {
           removeTicketFromLocalStorage(ticket.id);
           
           // Calculate prize amounts - only if there are wins
-          if (finalWins.length > 0) {
-            calculatePrize(finalWins).then(prizeData => {
-              setPrize(prizeData);
-              
-              // If there's a prize, trigger confetti
-              triggerWinAnimation();
-            }).catch(error => {
-              console.error('Error calculating prize:', error);
-            });
-          }
+          calculatePrize(finalWins).then(prizeData => {
+            setPrize(prizeData);
+          }).catch(error => {
+            console.error('Error calculating prize:', error);
+          });
         } else {
           console.error('Failed to mark ticket as scratched', await response.text());
           
@@ -1548,85 +1502,62 @@ const ScratchOffPlayContent = () => {
       
       setPrize(finalPrize);
       
-      // Show toast with prize details - SINGLE TOAST ONLY
-      if (tokenPrize > 0 || cashPrize > 0 || stockPrize > 0) {
-        let prizeText = "";
-        if (tokenPrize > 0) prizeText += `${tokenPrize} tokens `;
-        if (cashPrize > 0) prizeText += `$${cashPrize} `;
-        
-        // For stock shares, list them individually
-        if (Object.keys(stockShares).length > 0) {
-          const stockText = Object.entries(stockShares)
-            .map(([symbol, info]) => `${info.shares.toFixed(2)} ${symbol}`)
-            .join(', ');
-          prizeText += `${stockText} `;
-        } else if (stockPrize > 0) {
-          prizeText += `${stockPrize} stock points `;
-        }
-        
-        // Just one toast message
-        toast({
-          title: "You Won!",
-          description: `Congratulations! You've won ${prizeText.trim()}`,
-          duration: 5000, // Longer duration for win messages
-        });
-        
-        // Trigger confetti animation for winners
-        triggerWinAnimation();
-        
-        // Send API request to update the user's tokens/assets
-        try {
-          // Create the request data
-          const requestData = {
-            ticketId: ticketId,
-            prize: finalPrize
-          };
-          
-          const response = await fetch('/api/users/scratch-tickets/claim-prize', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData),
-          });
-          
-          if (!response.ok) {
-            console.error('Error claiming prize:', await response.text());
-            throw new Error('Failed to update tokens');
+      // Only run toast/confetti/API side effects once
+      if (!prizeClaimedRef.current) {
+        prizeClaimedRef.current = true;
+        if (tokenPrize > 0 || cashPrize > 0 || stockPrize > 0) {
+          let prizeText = "";
+          if (tokenPrize > 0) prizeText += `${tokenPrize} tokens `;
+          if (cashPrize > 0) prizeText += `$${cashPrize} `;
+          if (Object.keys(stockShares).length > 0) {
+            const stockText = Object.entries(stockShares)
+              .map(([symbol, info]) => `${info.shares.toFixed(2)} ${symbol}`)
+              .join(', ');
+            prizeText += `${stockText} `;
+          } else if (stockPrize > 0) {
+            prizeText += `${stockPrize} stock points `;
           }
-          
-          // Success! Token balance has been updated on the server
-          // Trigger token refresh in all components by updating localStorage
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('token-refresh', Date.now().toString());
-            // Fire a storage event to update other tabs
-            window.dispatchEvent(new StorageEvent('storage', {
-              key: 'token-refresh',
-              newValue: Date.now().toString()
-            }));
+          toast({
+            title: "You Won!",
+            description: `Congratulations! You've won ${prizeText.trim()}`,
+            duration: 5000,
+          });
+          triggerWinAnimation();
+          try {
+            const requestData = { ticketId, prize: finalPrize };
+            const response = await fetch('/api/users/scratch-tickets/claim-prize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestData),
+            });
+            if (!response.ok) {
+              console.error('Error claiming prize:', await response.text());
+              throw new Error('Failed to update tokens');
+            }
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('token-refresh', Date.now().toString());
+              window.dispatchEvent(new StorageEvent('storage', {
+                key: 'token-refresh',
+                newValue: Date.now().toString(),
+              }));
+            }
+          } catch (error) {
+            console.error('Error updating tokens:', error);
+            toast({
+              title: "Error",
+              description: "Your prize has been calculated but there was an error updating your balance. Please contact support.",
+            });
           }
-        } catch (error) {
-          console.error('Error updating tokens:', error);
-          toast({
-            title: "Error",
-            description: "Your prize has been calculated but there was an error updating your balance. Please contact support.",
-          });
-        }
-      } else {
-        // Only show the "Better luck next time!" toast once
-        // Use localStorage to track if we've already shown this toast for this ticket
-        const toastShownKey = `no-win-toast-${ticketId}`;
-        const toastAlreadyShown = localStorage.getItem(toastShownKey);
-        
-        if (!toastAlreadyShown) {
-          toast({
-            title: "Better luck next time!",
-            description: "No winning combinations found. Try again with another ticket!",
-            duration: 3000,
-          });
-          
-          // Mark that we've shown this toast
-          localStorage.setItem(toastShownKey, "true");
+        } else {
+          const toastShownKey = `no-win-toast-${ticketId}`;
+          if (!localStorage.getItem(toastShownKey)) {
+            toast({
+              title: "Better luck next time!",
+              description: "No winning combinations found. Try again with another ticket!",
+              duration: 3000,
+            });
+            localStorage.setItem(toastShownKey, "true");
+          }
         }
       }
 

@@ -8,7 +8,9 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { withDebugHeaders, checkModelExists, safeTransaction } from "@/app/api/debug-handler";
 import { safeApiHandler, handleCors, emptyOkResponse } from "../../api-utils";
-import { TicketType } from "@/app/components/ScratchTicketTile";
+
+// Define ScratchTicketType type to match client components
+type ScratchTicketType = 'tokens' | 'money' | 'stocks' | 'random' | 'diamond';
 
 // Define types for history data
 interface TokenMarketHistoryRecord {
@@ -147,19 +149,29 @@ export async function GET(request: NextRequest) {
       const includeScratched = searchParams.get('includeScratched') === 'true';
       console.log('[SCRATCH_TICKETS GET] Include scratched tickets:', includeScratched);
 
+      // Check if we're looking for tickets from a specific day
+      const dayKey = searchParams.get('dayKey');
+      console.log('[SCRATCH_TICKETS GET] Filtering by dayKey:', dayKey);
+
       // Build the query filter
       const filter: any = {
         userId: session.user.id,
       };
+
+      // Add dayKey filter if provided
+      if (dayKey) {
+        filter.dayKey = dayKey;
+      }
 
       // Only filter out scratched tickets if not explicitly including them
       if (!includeScratched) {
         filter.scratched = false;
       }
 
+      console.log('[SCRATCH_TICKETS GET] Querying database with filter:', filter);
+      
       try {
         // Query the database for the user's scratch tickets using a safer approach
-        console.log('[SCRATCH_TICKETS GET] Querying database with filter:', filter);
         
         // Use select ONLY, include related fields within select
         const userScratchTickets = await (prisma as any).userScratchTicket.findMany({
@@ -175,6 +187,8 @@ export async function GET(request: NextRequest) {
             scratched: true,
             createdAt: true,
             isBonus: true,
+            dayKey: true,
+            shopTicketId: true,
             ticket: { // Select the related ticket data
               select: {
                 id: true,
@@ -199,19 +213,20 @@ export async function GET(request: NextRequest) {
         const formattedTickets = userScratchTickets.map((dbTicket: any) => ({
           id: dbTicket.id,
           ticketId: dbTicket.ticketId,
-          shopTicketId: undefined,
+          shopTicketId: dbTicket.shopTicketId || dbTicket.ticketId, // Use shopTicketId if available, fallback to ticketId
           userId: dbTicket.userId,
           purchased: dbTicket.purchased || true,
           scratched: dbTicket.scratched || false,
           createdAt: dbTicket.createdAt.toISOString(),
           isBonus: dbTicket.isBonus || false,
+          dayKey: dbTicket.dayKey, // Include dayKey in response
           ticket: dbTicket.ticket ? {
             id: dbTicket.ticket.id,
             name: dbTicket.ticket.name,
-            type: dbTicket.ticket.type as TicketType,
+            type: dbTicket.ticket.type as ScratchTicketType,
             price: dbTicket.ticket.price,
           } : {
-             id: dbTicket.ticketId, name: 'Unknown Ticket', type: 'tokens', price: 0 
+             id: dbTicket.ticketId, name: 'Unknown Ticket', type: 'tokens' as ScratchTicketType, price: 0 
           }
         }));
 
@@ -322,6 +337,46 @@ export async function POST(request: NextRequest) {
           );
         }
         
+        // Get today's date string in YYYY-MM-DD format for the dayKey
+        const today = new Date().toISOString().split('T')[0];
+        console.log('[SCRATCH_TICKETS POST] Today\'s dayKey:', today);
+        
+        // Check if the user has already purchased this ticket type for today
+        const existingTicket = await (prisma as any).userScratchTicket.findFirst({
+          where: {
+            userId: session.user.id,
+            dayKey: today,
+            ticketId: ticketId
+          }
+        });
+        
+        if (existingTicket) {
+          console.log('[SCRATCH_TICKETS POST] User has already purchased this ticket today:', existingTicket.id);
+          return NextResponse.json(
+            { 
+              error: "You have already purchased this ticket today",
+              ticket: {
+                id: existingTicket.id,
+                ticketId: existingTicket.ticketId,
+                shopTicketId: shopTicketId || existingTicket.shopTicketId,
+                userId: existingTicket.userId,
+                purchased: true,
+                scratched: existingTicket.scratched || false,
+                createdAt: existingTicket.createdAt.toISOString(),
+                isBonus: existingTicket.isBonus || false,
+                dayKey: existingTicket.dayKey,
+                ticket: {
+                  id: ticketId,
+                  name: name,
+                  type: type,
+                  price: price
+                }
+              }
+            },
+            { status: 409 } // Conflict status code
+          );
+        }
+        
         // Try to create or update ticket in the database - wrapped in try/catch to handle db schema issues
         let scratchTicket = null;
         try {
@@ -368,7 +423,8 @@ export async function POST(request: NextRequest) {
               isBonus,
               purchased: true,
               scratched: false,
-              dayKey: new Date().toISOString().split('T')[0] // Add today's date as dayKey
+              dayKey: today,  // Use the consistent dayKey
+              shopTicketId: shopTicketId || ticketId // Store the shop ticket ID for reference
             }
           });
           console.log('[SCRATCH_TICKETS POST] User ticket created successfully');
@@ -381,12 +437,13 @@ export async function POST(request: NextRequest) {
         const ticketToReturn = {
           id: userTicket?.id || randomUUID(),
           ticketId: ticketId,
-          shopTicketId: shopTicketId,
+          shopTicketId: shopTicketId || ticketId,
           userId: session.user.id,
           purchased: true,
           scratched: false,
           createdAt: userTicket?.createdAt?.toISOString() || new Date().toISOString(),
           isBonus: isBonus,
+          dayKey: today, // Return the dayKey to the client
           ticket: {
             id: ticketId,
             name: name,

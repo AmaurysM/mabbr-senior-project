@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
         console.log(`[PRIZE_CLAIM] Marked ticket ${ticketIdToUpdate} as scratched`);
         
         try {
-          // Add activity feed entry for this scratch ticket win
+          // Create activity feed entry for this scratch ticket win
           // Get ticket details for the activity feed
           const ticketDetails = await (tx as any).scratchTicket.findUnique({
             where: { id: updatedTicket.ticketId },
@@ -264,10 +264,94 @@ export async function POST(request: NextRequest) {
             data: {
               userId: session.user.id,
               type: "SCRATCH_WIN",
-              data: prizeData
+              data: {
+                set: prizeData
+              }
             }
           });
           console.log(`[PRIZE_CLAIM] Created activity feed entry for win`);
+          
+          // Create consolidated transaction records for stock shares won
+          if (prize.stockShares && Object.keys(prize.stockShares).length > 0) {
+            console.log(`[PRIZE_CLAIM] Creating consolidated transaction records for won stocks`);
+            
+            // Group all stock shares by symbol to consolidate multiple wins of the same stock
+            const consolidatedStocks: Record<string, { shares: number, value: number }> = {};
+            
+            for (const [stockSymbol, info] of Object.entries(prize.stockShares)) {
+              const stockInfo = info as { shares: number, value: number };
+              
+              if (!consolidatedStocks[stockSymbol]) {
+                consolidatedStocks[stockSymbol] = { shares: 0, value: stockInfo.value };
+              }
+              
+              consolidatedStocks[stockSymbol].shares += stockInfo.shares;
+            }
+            
+            // Create one transaction record per stock symbol (not per win direction)
+            for (const [stockSymbol, info] of Object.entries(consolidatedStocks)) {
+              const { shares, value } = info;
+              
+              if (shares > 0) {
+                // Calculate quantity (we need to convert from fractional shares to whole shares)
+                const totalShares = Math.round(shares * 100) / 100;
+                const totalValue = totalShares * value;
+                
+                // Create a consolidated SCRATCH_WIN transaction record 
+                await tx.transaction.create({
+                  data: {
+                    userId: session.user.id,
+                    stockSymbol: ticketDetails?.name || "Stock Surge",
+                    type: "WIN",
+                    quantity: 1,
+                    price: totalValue,
+                    totalCost: totalValue,
+                    status: "SCRATCH_WIN",
+                    publicNote: `Won ${totalShares} shares of ${stockSymbol}`,
+                    privateNote: null
+                  }
+                });
+                
+                console.log(`[PRIZE_CLAIM] Created consolidated transaction record for ${totalShares} shares of ${stockSymbol}`);
+              }
+            }
+          }
+          
+          // Create a transaction record for token winnings if any
+          if (prize.tokens && prize.tokens > 0) {
+            await tx.transaction.create({
+              data: {
+                userId: session.user.id,
+                stockSymbol: ticketDetails?.name || "Scratch Ticket",
+                type: "WIN",
+                quantity: 1,
+                price: prize.tokens,
+                totalCost: prize.tokens,
+                status: "SCRATCH_WIN",
+                publicNote: `Won ${prize.tokens} tokens`,
+                privateNote: null
+              }
+            });
+            console.log(`[PRIZE_CLAIM] Created transaction record for ${prize.tokens} tokens`);
+          }
+          
+          // Create a transaction record for cash winnings if any
+          if (prize.cash && prize.cash > 0) {
+            await tx.transaction.create({
+              data: {
+                userId: session.user.id,
+                stockSymbol: ticketDetails?.name || "Scratch Ticket",
+                type: "WIN",
+                quantity: 1,
+                price: prize.cash,
+                totalCost: prize.cash,
+                status: "SCRATCH_WIN",
+                publicNote: `Won $${prize.cash}`,
+                privateNote: null
+              }
+            });
+            console.log(`[PRIZE_CLAIM] Created transaction record for $${prize.cash}`);
+          }
         } catch (activityError) {
           // Don't fail the whole transaction if the activity feed entry fails
           console.error(`[PRIZE_CLAIM] Error creating activity feed entry: ${activityError}`);

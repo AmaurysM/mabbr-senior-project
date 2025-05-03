@@ -72,7 +72,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   const getPriceDisplay = () => {
     if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
     if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
-    if (isScratchWin) return `Value: $${price.toFixed(2)}`;
+    if (isScratchWin) return ``;
     if (isDailyDrawWin) return `${price.toLocaleString()} tokens`;
     return `${quantity} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
   };
@@ -117,12 +117,12 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
           </div>
         </div>
         <div className={`text-right ${getCostColor()}`}>
-          {isLootboxRedeem ? (
-            <div className="font-bold">REDEEMED LOOTBOX</div>
-          ) : isScratchWin ? (
-            <div className="font-bold">SCRATCH WIN</div>
+          {isScratchWin ? (
+            <div className="font-bold">{totalCost.toLocaleString()} tokens</div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>
+          ) : isLootboxRedeem ? (
+            <div className="font-bold">REDEEMED LOOTBOX</div>
           ) : (
             <div className="font-bold">${totalCost.toFixed(2)}</div>
           )}

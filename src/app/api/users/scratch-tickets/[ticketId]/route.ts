@@ -12,8 +12,8 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // GET /api/users/scratch-tickets/[ticketId]
 // Get a scratch ticket by ID
 export async function GET(
-  request: NextRequest,
-  context: { params: { ticketId: string } }
+  request: Request,
+  { params }: { params: { ticketId: string } }
 ) {
   // Try multiple times in case of connection errors
   let retryCount = 0;
@@ -21,7 +21,9 @@ export async function GET(
   
   while (retryCount < MAX_RETRIES) {
     try {
-      console.log("[TICKET_GET] Request received, attempt #" + (retryCount + 1));
+      // Extract ticketId from parameters
+      const { ticketId } = params;
+      console.log("[TICKET_GET] Request received, attempt #" + (retryCount + 1), "for ticketId:", ticketId);
       
       // Get session using the auth API
       const session = await auth.api.getSession({
@@ -36,8 +38,6 @@ export async function GET(
         );
       }
 
-      // Extract the ticket ID from the path
-      const { ticketId } = context.params;
       console.log(`[TICKET_GET] Looking for ticket ID: ${ticketId}, user: ${session.user.id}`);
       
       if (!ticketId) {
@@ -216,8 +216,7 @@ export async function GET(
       
       console.log(`[TICKET_GET] Found ticket: ${userTicket.id}, type: ${userTicket.ticket.type}`);
       
-      // Format the ticket for the client
-      // Use a safe method to process dates and circular references
+      // Format the ticket for the client using safe serialization
       const safeTicket = {
         id: userTicket.id,
         ticketId: userTicket.ticketId,
