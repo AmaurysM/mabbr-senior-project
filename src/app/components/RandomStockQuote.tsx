@@ -65,7 +65,6 @@ const RandomStockQuote: React.FC = () => {
             <div className="mt-8 text-center text-gray-700">
                 <p className="italic">"{quote.text}"</p>
                 <p className="mt-2 font-semibold">- {quote.author}</p>
-                <p className="text-sm text-red-500 mt-2">Unable to fetch new quote, showing a default one.</p>
             </div>
         );
     }
