@@ -26,7 +26,9 @@ const fallbackQuotes = [
 ];
 
 const RandomStockQuote: React.FC = () => {
-    const [quote, setQuote] = useState({ text: '', author: '' });
+    const [quote, setQuote] = useState<{ text: string; author: string }>(
+        { text: '', author: '' }
+    );
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -37,7 +39,7 @@ const RandomStockQuote: React.FC = () => {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                if (data && data.length > 0) {
+                if (Array.isArray(data) && data.length > 0) {
                     setQuote({ text: data[0].content, author: data[0].author });
                 } else {
                     throw new Error('No quotes received');
