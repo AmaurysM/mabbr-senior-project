@@ -1428,11 +1428,8 @@ const ScratchOffPlayContent = () => {
                   key={cell.id}
                   className={`
                     w-full aspect-square rounded flex items-center justify-center
-                    ${cell.scratched ? 'bg-gray-800/80' : 'opacity-0'} 
-                    ${winningCells.includes(index) ? 
-                      'bg-gray-800/90 shadow-lg relative' : 
-                      'bg-gray-800/60'
-                    }
+                    ${cell.scratched ? 'bg-gray-800/80' : 'bg-gray-800/60'}
+                    ${winningCells.includes(index) ? 'bg-gray-800/90 shadow-lg relative' : ''}
                     transition-opacity duration-300
                   `}
                 >
@@ -1463,9 +1460,6 @@ const ScratchOffPlayContent = () => {
                 </div>
               ))}
             </div>
-            
-            {/* Pattern overlay */}
-            <div className="absolute inset-0 opacity-25 bg-pattern-dots pointer-events-none"></div>
             
             {/* Scratch-off layer - ensure it has higher z-index */}
             <canvas 
