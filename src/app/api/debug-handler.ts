@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Adds debugging headers to responses to help diagnose issues in production
-export async function withDebugHeaders(handler: (req: NextRequest) => Promise<NextResponse>) {
+export function withDebugHeaders(handler: (req: NextRequest) => Promise<NextResponse>) {
   return async (request: NextRequest) => {
     try {
       // Call the original handler
