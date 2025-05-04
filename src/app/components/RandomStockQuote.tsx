@@ -28,7 +28,6 @@ const fallbackQuotes = [
 const RandomStockQuote: React.FC = () => {
     const [quote, setQuote] = useState({ text: '', author: '' });
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
 
     useEffect(() => {
         const fetchQuote = async () => {
@@ -43,10 +42,8 @@ const RandomStockQuote: React.FC = () => {
                 } else {
                     throw new Error('No quotes received');
                 }
-            } catch (error) {
-                console.error('Error fetching quote:', error);
-                setError(true);
-                // Select a random fallback quote
+            } catch {
+                // Silently fall back without surfacing errors
                 const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
                 setQuote(fallbackQuotes[randomIndex]);
             } finally {
@@ -58,16 +55,6 @@ const RandomStockQuote: React.FC = () => {
 
     if (loading) {
         return <p className="mt-8 text-center text-gray-700">Loading quote...</p>;
-    }
-
-    if (error) {
-        return (
-            <div className="mt-8 text-center text-gray-700">
-                <p className="italic">"{quote.text}"</p>
-                <p className="mt-2 font-semibold">- {quote.author}</p>
-                <p className="text-sm text-red-500 mt-2">Unable to fetch new quote, showing a default one.</p>
-            </div>
-        );
     }
 
     return (

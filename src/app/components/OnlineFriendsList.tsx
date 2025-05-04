@@ -102,7 +102,7 @@ export default function OnlineFriendsList() {
             <button
               onClick={() => openProfile(f.id)}
               onContextMenu={(e) => onRightClick(e, f)}
-              className="flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 p-1 rounded"
+              className={`w-full flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left`}
             >
               {f.image ? (
                 <Image
@@ -110,7 +110,7 @@ export default function OnlineFriendsList() {
                   alt={f.name || f.id}
                   width={28}
                   height={28}
-                  className="rounded-full"
+                  className="w-7 h-7 rounded-full object-cover"
                 />
               ) : (
                 <div className="w-7 h-7 bg-gray-700 rounded-full flex items-center justify-center">
@@ -118,11 +118,8 @@ export default function OnlineFriendsList() {
                 </div>
               )}
               <FaCircle className="text-green-500 text-xs" />
-              <div className="max-w-[100px] truncate">
-                <span>{f.name || f.id}</span>
-              </div>
+              <span className="text-sm truncate max-w-[100px]">{f.name || f.id}</span>
             </button>
-
 
             {contextMenu.visible && contextMenu.friend?.id === f.id && (
               <div
@@ -166,7 +163,7 @@ export default function OnlineFriendsList() {
                 <button
                   onClick={() => openProfile(f.id)}
                   onContextMenu={(e) => onRightClick(e, f)}
-                  className="flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 p-1 rounded"
+                  className={`w-full flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left`}
                 >
                   {f.image ? (
                     <Image
@@ -174,14 +171,14 @@ export default function OnlineFriendsList() {
                       alt={f.name || f.id}
                       width={28}
                       height={28}
-                      className="rounded-full grayscale"
+                      className="w-7 h-7 rounded-full object-cover grayscale"
                     />
                   ) : (
                     <div className="w-7 h-7 bg-gray-700 rounded-full flex items-center justify-center">
                       {f.name?.[0] || f.id[0]}
                     </div>
                   )}
-                  <span className="truncate">{f.name || f.id}</span>
+                  <span className="text-sm truncate max-w-[100px]">{f.name || f.id}</span>
                 </button>
 
                 {contextMenu.visible && contextMenu.friend?.id === f.id && (

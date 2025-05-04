@@ -125,16 +125,6 @@ const DailyInterestPanel: React.FC<DailyInterestPanelProps> = ({
           </div>
           
           <div className="bg-gray-700 p-3 rounded-lg">
-            <div className="text-gray-400 text-sm mb-1">Current Weekly Earnings</div>
-            <div className="flex justify-between">
-              <div className="text-xl font-semibold text-white">
-                {weeklyInterestAmount.toFixed(1)} <span className="text-sm text-gray-400">tokens</span>
-              </div>
-              <div className="text-green-400">${weeklyInterestValue.toFixed(2)}</div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-700 p-3 rounded-lg">
             <div className="text-gray-400 text-sm mb-1">Current Monthly Earnings</div>
             <div className="flex justify-between">
               <div className="text-xl font-semibold text-white">
@@ -152,10 +142,6 @@ const DailyInterestPanel: React.FC<DailyInterestPanelProps> = ({
               <div className="text-green-400">${yearlyInterestValue.toFixed(2)}</div>
             </div>
           </div>
-        </div>
-        
-        <div className="text-xs text-gray-400 mt-2">
-          Interest is calculated daily and added to your balance automatically at 00:00 UTC.
         </div>
       </div>
     </div>

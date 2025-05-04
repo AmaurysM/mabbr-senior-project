@@ -144,7 +144,8 @@ const TokenLeaderboard: React.FC = () => {
               <div className="w-5 flex justify-center text-xs font-semibold text-gray-400">
                 {index + 1}
               </div>
-              <div className="relative">
+              <div className="w-7 h-7 rounded-full">
+                {/* Avatar: match community styling */}
                 {user.image ? (
                   <Image
                     src={user.image}
