@@ -157,56 +157,60 @@ const createRealDataPoint = async (days: number = 30): Promise<any[]> => {
 };
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '30');
-
-    let history;
-    
-    try {
-      // First try to get existing data from the database
-      let dbHistory;
-      
-      if (typeof (prisma as any).TokenMarketDataPoint !== 'undefined') {
-        dbHistory = await (prisma as any).TokenMarketDataPoint.findMany({
-          orderBy: { timestamp: 'desc' },
-          take: limit
-        });
-      } else if (typeof (prisma as any).tokenMarketDataPoint !== 'undefined') {
-        dbHistory = await (prisma as any).tokenMarketDataPoint.findMany({
-          orderBy: { timestamp: 'desc' },
-          take: limit
-        });
-      }
-      
-      // If we have sufficient database history, use it
-      if (dbHistory && dbHistory.length >= Math.min(5, limit)) {
-        history = dbHistory.sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
-        console.log(`Using ${history.length} history points from database`);
-      } else {
-        // Otherwise generate data points based on real users
-        console.log('Insufficient database history, generating new data points');
-        history = await createRealDataPoint(limit);
-        
-        // Try to save this data to the database (for future use)
-        try {
-          // For the most recent data point, save it to DB
-          const latestPoint = history[history.length - 1];
-          await saveDataPoint(latestPoint);
-        } catch (saveError) {
-          console.error('Unable to save data point to database:', saveError);
-        }
-      }
-    } catch (dbError) {
-      console.error('Error retrieving token market data:', dbError);
-      history = generateMockData(limit);
-    }
-    
-    return NextResponse.json({ history });
-  } catch (error) {
-    console.error('Error fetching token market history:', error);
-    return NextResponse.json({ history: generateMockData() });
+  const { searchParams } = new URL(request.url);
+  const limit = parseInt(searchParams.get('limit') || '30');
+  // Define rolling window range
+  const endDate = new Date();
+  endDate.setHours(23, 59, 59, 999);
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - (limit - 1));
+  startDate.setHours(0, 0, 0, 0);
+  // Fetch raw data points in window
+  let rawHistory: any[] = [];
+  if ((prisma as any).TokenMarketDataPoint) {
+    rawHistory = await (prisma as any).TokenMarketDataPoint.findMany({
+      where: { timestamp: { gte: startDate } },
+      orderBy: { timestamp: 'asc' }
+    });
+  } else if ((prisma as any).tokenMarketDataPoint) {
+    rawHistory = await (prisma as any).tokenMarketDataPoint.findMany({
+      where: { timestamp: { gte: startDate } },
+      orderBy: { timestamp: 'asc' }
+    });
   }
+  // Group by day, picking latest record per date
+  const dailyMap: Record<string, any> = {};
+  rawHistory.forEach((item: any) => {
+    const dayKey = item.timestamp.toISOString().split('T')[0];
+    if (!dailyMap[dayKey] || item.timestamp.getTime() > dailyMap[dayKey].timestamp.getTime()) {
+      dailyMap[dayKey] = item;
+    }
+  });
+  // Prepare filling: find earliest available data to seed missing days
+  const sortedDays = Object.keys(dailyMap).sort();
+  let lastEntry: any = { id: '', tokenValue: 0, tokensInCirculation: 0, totalTransactionValue: 0 };
+  if (sortedDays.length > 0) {
+    lastEntry = dailyMap[sortedDays[0]];
+  }
+  // Fill rolling window with last known values
+  const history: any[] = [];
+  for (let i = 0; i < limit; i++) {
+    const current = new Date(startDate);
+    current.setDate(startDate.getDate() + i);
+    const key = current.toISOString().split('T')[0];
+    if (dailyMap[key]) {
+      lastEntry = dailyMap[key];
+    }
+    history.push({
+      // keep id if available
+      id: lastEntry.id || '',
+      timestamp: new Date(current.getFullYear(), current.getMonth(), current.getDate(), 23, 59, 59),
+      tokenValue: lastEntry.tokenValue,
+      tokensInCirculation: lastEntry.tokensInCirculation,
+      totalTransactionValue: lastEntry.totalTransactionValue
+    });
+  }
+  return NextResponse.json({ history });
 }
 
 export async function POST() {
