@@ -12,6 +12,7 @@ interface TokensHoldingPanelProps {
 const TokensHoldingPanel: React.FC<TokensHoldingPanelProps> = ({
   tokenCount: initialTokenCount,
   tokenValue,
+  // interestRate prop ignored, lock daily interest at 3%
   interestRate
 }) => {
   // Local state to track token count for real-time updates
@@ -67,7 +68,9 @@ const TokensHoldingPanel: React.FC<TokensHoldingPanelProps> = ({
   }, []);
   
   const totalValue = tokenCount * tokenValue;
-  const dailyInterest = tokenCount * interestRate;
+  // Lock daily interest rate at 3%
+  const lockedRate = 0.03;
+  const dailyInterest = tokenCount * lockedRate;
   const dailyInterestValue = dailyInterest * tokenValue;
 
   return (

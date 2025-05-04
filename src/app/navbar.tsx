@@ -135,16 +135,16 @@ const Navbar = () => {
 
                   {profileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
-                      <Link href="/profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700">Your Profile</Link>
-                      <Link href="/achievements" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700">Achievements</Link>
+                      <Link href="/profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700 rounded-lg">Your Profile</Link>
+                      <Link href="/achievements" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700 rounded-lg">Achievements</Link>
                       {user.role === 'admin' && (
                         <>
-                          <Link href="/admin/lootbox-manager" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700">Manage Lootboxes</Link>
-                          <Link href="/admin/user-manager" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700">Manage Users</Link>
+                          <Link href="/admin/lootbox-manager" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700 rounded-lg">Manage Lootboxes</Link>
+                          <Link href="/admin/user-manager" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700 rounded-lg">Manage Users</Link>
                         </>
                       )}
                       <hr className="my-1 border-gray-200" />
-                      <button onClick={handleSignOut} className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">Sign Out</button>
+                      <button onClick={handleSignOut} className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg">Sign Out</button>
                     </div>
                   )}
                 </div>

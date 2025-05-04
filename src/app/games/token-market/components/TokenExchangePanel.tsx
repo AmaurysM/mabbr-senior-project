@@ -102,10 +102,6 @@ const TokenExchangePanel: React.FC<TokenExchangePanelProps> = ({
             {isProcessing ? 'Processing...' : `Exchange ${amount || 0} Tokens`}
           </button>
         </div>
-        
-        <div className="text-xs text-gray-400 mt-2">
-          Note: Exchanging tokens may affect the market value. Large exchanges may result in a lower rate.
-        </div>
       </div>
     </div>
   );
