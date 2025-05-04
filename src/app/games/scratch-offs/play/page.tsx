@@ -166,8 +166,8 @@ const SYMBOLS = {
 } as unknown as Record<SymbolType, Symbol>;
 
 // Function to generate a random symbol based on probabilities and ticket type
-const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol => {
-  const rng = Math.random() * 100;
+const getRandomSymbol = (ticketType: string, isBonus: boolean = false, rngFn: () => number = Math.random): Symbol => {
+  const rng = rngFn() * 100;
   
   // For token tickets, select from token amounts
   if (ticketType === 'tokens') {
@@ -309,42 +309,36 @@ const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol =
   
   // For random tickets (Mystic Chance), use a mix of all symbol types but make them rare
   if (ticketType === 'random') {
-    // Combine all symbol types with very low probabilities (high difficulty)
+    // Scale up the non-empty probabilities to sum to 97
+    // Old total (excluding empty): 22
+    // Scale factor: 97 / 22 = 4.409
     let randomProbs: Record<string, number> = {
-      // Token symbols (rare)
-      'token_10': 2,
-      'token_50': 2,
-      'token_100': 2,
-      'token_500': 1,
-      'token_1000': 1,
-      // Cash symbols (rare)
-      'cash_50': 2,
-      'cash_500': 2,
-      'cash_1000': 1,
-      'cash_5000': 0.5,
-      'cash_10000': 0.5,
-      // Stock symbols (rare) - pick some random ones
-      'stock_AAPL': 1,
-      'stock_MSFT': 1,
-      'stock_AMZN': 1,
-      'stock_TSLA': 1,
-      // Multipliers (still relatively rare)
-      'multiplier2x': 3,
-      'multiplier10x': 1,
-      // Mostly empty spaces
-      'empty': 78
+      'token_10': 2 * 4.409,
+      'token_50': 2 * 4.409,
+      'token_100': 2 * 4.409,
+      'token_500': 1 * 4.409,
+      'token_1000': 1 * 4.409,
+      'cash_50': 2 * 4.409,
+      'cash_500': 2 * 4.409,
+      'cash_1000': 1 * 4.409,
+      'cash_5000': 0.5 * 4.409,
+      'cash_10000': 0.5 * 4.409,
+      'stock_AAPL': 1 * 4.409,
+      'stock_MSFT': 1 * 4.409,
+      'stock_AMZN': 1 * 4.409,
+      'stock_TSLA': 1 * 4.409,
+      'multiplier2x': 3 * 4.409,
+      'multiplier10x': 1 * 4.409,
+      'empty': 3
     };
-    
-    // Increase chances slightly in bonus tickets
-    if (isBonus) {
-      Object.keys(randomProbs).forEach(key => {
-        if (key !== 'empty') {
-          randomProbs[key] += 0.5;
-        }
-      });
-      randomProbs['empty'] -= 10;
-    }
-    
+    // Convert to integers and adjust for rounding
+    let total = 0;
+    Object.keys(randomProbs).forEach(key => {
+      if (key !== 'empty') randomProbs[key] = Math.round(randomProbs[key]);
+      total += randomProbs[key];
+    });
+    // Adjust 'empty' to make total exactly 100
+    randomProbs['empty'] = 100 - (total - randomProbs['empty']);
     // Select based on cumulative probability
     let cumulative = 0;
     for (const [key, prob] of Object.entries(randomProbs)) {
@@ -353,48 +347,40 @@ const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol =
         return SYMBOLS[key as SymbolType];
       }
     }
-    
     return SYMBOLS.empty;
   }
   
   // For diamond tickets, similar to random but with slightly better odds
   if (ticketType === 'diamond') {
-    // Combine all symbol types with low probabilities (but better than Mystic Chance)
+    // Old total (excluding empty): 35
+    // Scale factor: 97 / 35 = 2.771
     let diamondProbs: Record<string, number> = {
-      // Token symbols (better chances than random)
-      'token_10': 3,
-      'token_50': 3,
-      'token_100': 3,
-      'token_500': 2,
-      'token_1000': 2,
-      // Cash symbols (better chances than random)
-      'cash_50': 3,
-      'cash_500': 3,
-      'cash_1000': 2,
-      'cash_5000': 1,
-      'cash_10000': 1,
-      // Stock symbols (better chances than random)
-      'stock_AAPL': 2,
-      'stock_MSFT': 2,
-      'stock_AMZN': 2,
-      'stock_TSLA': 2,
-      // Multipliers (more common)
-      'multiplier2x': 5,
-      'multiplier10x': 2,
-      // Still mostly empty, but less than Mystic Chance
-      'empty': 62
+      'token_10': 3 * 2.771,
+      'token_50': 3 * 2.771,
+      'token_100': 3 * 2.771,
+      'token_500': 2 * 2.771,
+      'token_1000': 2 * 2.771,
+      'cash_50': 3 * 2.771,
+      'cash_500': 3 * 2.771,
+      'cash_1000': 2 * 2.771,
+      'cash_5000': 1 * 2.771,
+      'cash_10000': 1 * 2.771,
+      'stock_AAPL': 2 * 2.771,
+      'stock_MSFT': 2 * 2.771,
+      'stock_AMZN': 2 * 2.771,
+      'stock_TSLA': 2 * 2.771,
+      'multiplier2x': 5 * 2.771,
+      'multiplier10x': 2 * 2.771,
+      'empty': 3
     };
-    
-    // Increase chances further in bonus tickets
-    if (isBonus) {
-      Object.keys(diamondProbs).forEach(key => {
-        if (key !== 'empty') {
-          diamondProbs[key] += 1;
-        }
-      });
-      diamondProbs['empty'] -= 15;
-    }
-    
+    // Convert to integers and adjust for rounding
+    let total = 0;
+    Object.keys(diamondProbs).forEach(key => {
+      if (key !== 'empty') diamondProbs[key] = Math.round(diamondProbs[key]);
+      total += diamondProbs[key];
+    });
+    // Adjust 'empty' to make total exactly 100
+    diamondProbs['empty'] = 100 - (total - diamondProbs['empty']);
     // Select based on cumulative probability
     let cumulative = 0;
     for (const [key, prob] of Object.entries(diamondProbs)) {
@@ -403,7 +389,6 @@ const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol =
         return SYMBOLS[key as SymbolType];
       }
     }
-    
     return SYMBOLS.empty;
   }
   
@@ -412,13 +397,13 @@ const getRandomSymbol = (ticketType: string, isBonus: boolean = false): Symbol =
 };
 
 // Generate a random 5x5 grid
-const generateGrid = (ticketType: string, isBonus: boolean = false): ScratchCell[] => {
+const generateGrid = (ticketType: string, isBonus: boolean = false, rngFn: () => number = Math.random): ScratchCell[] => {
   const grid: ScratchCell[] = [];
   
   for (let i = 0; i < 25; i++) {
     grid.push({
       id: i,
-      symbol: getRandomSymbol(ticketType, isBonus),
+      symbol: getRandomSymbol(ticketType, isBonus, rngFn),
       scratched: false,
     });
   }
@@ -426,133 +411,81 @@ const generateGrid = (ticketType: string, isBonus: boolean = false): ScratchCell
   return grid;
 };
 
-// Check for winning patterns in all directions from each cell
+// Check for winning patterns in all directions: contiguous runs of 3+ base symbols, then optional trailing multipliers
 const checkWinningPatterns = (grid: ScratchCell[]): {
-  wins: { symbolType: SymbolType, count: number, multiplier: number, cellValues?: number[] }[];
+  wins: { symbolType: SymbolType; count: number; multiplier: number; cellValues?: number[] }[];
   winningCells: number[];
 } => {
-  const wins: { symbolType: SymbolType, count: number, multiplier: number, cellValues?: number[] }[] = [];
-  const winningCells: Set<number> = new Set(); // Use a Set to avoid duplicates
-  const GRID_SIZE = 5;
-  
-  // Convert linear grid to 2D representation for easier directional traversal
-  const grid2D: ScratchCell[][] = [];
-  for (let r = 0; r < GRID_SIZE; r++) {
-    grid2D[r] = [];
-    for (let c = 0; c < GRID_SIZE; c++) {
-      grid2D[r][c] = grid[r * GRID_SIZE + c];
-    }
-  }
-  
-  // Direction vectors: right, down-right, down, down-left
-  // (We don't need to check all 8 directions, just these 4 are enough,
-  // since the others would be checking the same lines in reverse)
-  const directions = [
-    [0, 1],  // right
-    [1, 1],  // down-right
-    [1, 0],  // down
-    [1, -1]  // down-left
-  ];
-  
-  // Check if a position is valid on the grid
-  const isValid = (row: number, col: number): boolean => {
-    return row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE;
-  };
-  
-  // Find all winning combinations starting from each cell
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
-      const cellIndex = row * GRID_SIZE + col;
-      const cell = grid2D[row][col];
-      
-      // Skip unscratched or empty cells as starting points
-      if (!cell.scratched || cell.symbol.type === 'empty') {
-        continue;
-      }
-      
-      // Skip multiplier cells as starting points
-      if (cell.symbol.type === 'multiplier2x' || cell.symbol.type === 'multiplier10x') {
-        continue;
-      }
-      
-      // Check each direction
-      for (const [dr, dc] of directions) {
-        let count = 1;  // Start with 1 for the current cell
-        let multiplier = 1;
-        let symbolIndices: number[] = [cellIndex];
-        let multiplierIndices: number[] = [];
-        let cellValues: number[] = [cell.symbol.value]; // Store the value of each matching cell
-        
-        // Check consecutive cells in this direction
-        for (let step = 1; step < GRID_SIZE; step++) {
-          const newRow = row + dr * step;
-          const newCol = col + dc * step;
-          
-          if (!isValid(newRow, newCol)) {
-            break;
-          }
-          
-          const nextCell = grid2D[newRow][newCol];
-          const nextCellIndex = newRow * GRID_SIZE + newCol;
-          
-          // Skip unscratched cells
-          if (!nextCell.scratched) {
-            break;
-          }
-          
-          // Handle multipliers
-          if (nextCell.symbol.type === 'multiplier2x' || nextCell.symbol.type === 'multiplier10x') {
-            if (nextCell.symbol.type === 'multiplier2x') {
-              multiplier *= 2;
-            } else {
-              multiplier *= 10;
+  const SIZE = 5;
+  const wins: { symbolType: SymbolType; count: number; multiplier: number; cellValues?: number[] }[] = [];
+  const winningCells = new Set<number>();
+  const directions: [number, number][] = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+  // Scan each direction, only counting runs that start after an empty cell
+  directions.forEach(([dr, dc]) => {
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const idx0 = r * SIZE + c;
+        const t0 = grid[idx0].symbol.type;
+        if (t0 === 'empty' || t0.startsWith('multiplier')) continue;
+        // ensure head-of-segment
+        const pr = r - dr, pc = c - dc;
+        if (pr >= 0 && pr < SIZE && pc >= 0 && pc < SIZE) {
+          if (grid[pr * SIZE + pc].symbol.type !== 'empty') continue;
+        }
+        // build this segment
+        const segment: number[] = [];
+        for (let k = 0;; k++) {
+          const nr = r + dr * k;
+          const nc = c + dc * k;
+          if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
+          const idx = nr * SIZE + nc;
+          if (grid[idx].symbol.type === 'empty') break;
+          segment.push(idx);
+        }
+        // scan the segment for base runs
+        let i = 0;
+        while (i < segment.length) {
+          const idxB = segment[i];
+          const typeB = grid[idxB].symbol.type;
+          if (typeB.startsWith('multiplier')) { i++; continue; }
+          // count contiguous same-base
+          let j = i;
+          while (j < segment.length && grid[segment[j]].symbol.type === typeB) j++;
+          const count = j - i;
+          if (count >= 3) {
+            // include up to two trailing multipliers
+            let mult = 1;
+            let end = j;
+            for (let m = 0; m < 2 && end < segment.length; m++, end++) {
+              const sym = grid[segment[end]].symbol;
+              if (sym.type.startsWith('multiplier')) {
+                mult *= sym.value;
+              } else {
+                break;
+              }
             }
-            multiplierIndices.push(nextCellIndex);
-            continue; // Multipliers don't count toward symbol count
-          }
-          
-          // Skip empty cells
-          if (nextCell.symbol.type === 'empty') {
-            break;
-          }
-          
-          // If the symbol matches the starting cell, increment count
-          if (nextCell.symbol.type === cell.symbol.type) {
-            count++;
-            symbolIndices.push(nextCellIndex);
-            cellValues.push(nextCell.symbol.value); // Store the value
+            // record win cells
+            const runIdxs = segment.slice(i, end);
+            const values = segment.slice(i, j).map(x => grid[x].symbol.value);
+            wins.push({ symbolType: typeB, count, multiplier: mult, cellValues: values });
+            runIdxs.forEach(x => winningCells.add(x));
+            i = end;
           } else {
-            break; // Different symbol breaks the sequence
+            i = j;
           }
-        }
-        
-        // If we found 3 or more in a row, register a win
-        if (count >= 3) {
-          // Add the winning combination
-          const symbolType = cell.symbol.type;
-          
-          // Only include cellValues for token and cash symbols (they have different values)
-          const includesCellValues = symbolType.startsWith('token_') || symbolType.startsWith('cash_');
-          
-          wins.push({
-            symbolType: symbolType,
-            count: count,
-            multiplier: multiplier,
-            cellValues: includesCellValues ? cellValues : undefined
-          });
-          
-          // Add all involved cells to the winning cells set
-          symbolIndices.forEach(idx => winningCells.add(idx));
-          multiplierIndices.forEach(idx => winningCells.add(idx));
         }
       }
     }
-  }
-  
-  return {
-    wins,
-    winningCells: Array.from(winningCells)
-  };
+  });
+
+  return { wins, winningCells: Array.from(winningCells) };
+};
+
+// Move this helper above checkWinningPatterns
+const getBaseStockSymbol = (type: SymbolType) => {
+  if (type.startsWith('stock_')) return type;
+  return null;
 };
 
 // Create a separate component that uses useSearchParams
@@ -608,165 +541,6 @@ const ScratchOffPlayContent = () => {
 
     const fetchTicket = async (retryCount = 0, maxRetries = 3) => {
       try {
-        // Check if we have saved results for this ticket
-        if (typeof window !== 'undefined') {
-          const savedResults = localStorage.getItem(`ticket-result-${ticketId}`);
-          
-          if (savedResults) {
-            try {
-              const results = JSON.parse(savedResults);
-              
-              // Ticket has been revealed before, load the previous results
-              console.log('Loading saved ticket results. Fetching from API:', ticketId);
-              
-              try {
-                const response = await fetch(`/api/users/scratch-tickets/${ticketId}`);
-                
-                if (!response.ok) {
-                  console.error('API error status:', response.status, 'for ticketId:', ticketId);
-                  console.error('API error details:', await response.text().catch(() => 'Unable to get error details'));
-                  
-                  // If not found, check local storage for ticket details first before informing user
-                  const userTicketsStr = localStorage.getItem('userScratchTickets');
-                  const localTicket = userTicketsStr ? 
-                    JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
-                  
-                  if (localTicket) {
-                    // Use the local ticket data instead
-                    console.log('API failed but using local ticket data for:', ticketId);
-                    setTicket(localTicket);
-                    
-                    // Set the saved state
-                    setGrid(results.grid);
-                    setWins(results.wins);
-                    setWinningCells(results.winningCells);
-                    setPrize(results.prize);
-                    setIsRevealed(true);
-                    
-                    setLoading(false);
-                    
-                    // Production fix: Try to sync this ticket to the database
-                    if (session?.user?.id) {
-                      fetch('/api/users/scratch-tickets/sync', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                          tickets: [localTicket]
-                        })
-                      }).catch(syncError => console.error('Error syncing local ticket to database:', syncError));
-                    }
-                    
-                    return;
-                  }
-                  
-                  // If nothing found locally either, inform the user
-                  if (response.status === 404) {
-                    // In production, retry a few times with delay
-                    // This helps when there might be replication lag in the database
-                    const isProd = process.env.NODE_ENV === 'production';
-                    if (isProd && retryCount < maxRetries) {
-                      console.log(`Retry attempt ${retryCount + 1}/${maxRetries} for ticket: ${ticketId}`);
-                      // Exponential backoff
-                      const delay = Math.pow(2, retryCount) * 1000;
-                      await new Promise(resolve => setTimeout(resolve, delay));
-                      return fetchTicket(retryCount + 1, maxRetries);
-                    }
-                    
-                    toast({
-                      title: "Ticket Not Found",
-                      description: "This ticket couldn't be found in the database. Redirecting back to the shop."
-                    });
-                    
-                    // Clean up localStorage for this invalid ticket
-                    if (ticketId) {
-                      removeTicketFromLocalStorage(ticketId);
-                    }
-                    
-                    setTimeout(() => router.push('/games/scratch-offs'), 2000);
-                  }
-                  throw new Error(`Error: ${response.status} ${response.statusText}`);
-                }
-                
-                const responseData = await response.json();
-                console.log('API data received:', responseData);
-                setTicket(responseData);
-                
-                // Set the saved state
-                setGrid(results.grid);
-                setWins(results.wins);
-                setWinningCells(results.winningCells);
-                setPrize(results.prize);
-                setIsRevealed(true);
-                
-                // Store the ticket in localStorage for future reference
-                if (typeof window !== 'undefined') {
-                  try {
-                    // Get existing tickets from localStorage or initialize empty array
-                    const storedTicketsStr = localStorage.getItem('userScratchTickets');
-                    const storedTickets = storedTicketsStr ? JSON.parse(storedTicketsStr) : [];
-                    
-                    // Check if this ticket already exists in localStorage
-                    const existingIndex = storedTickets.findIndex((t: any) => t.id === responseData.id);
-                    
-                    if (existingIndex >= 0) {
-                      // Update the existing ticket
-                      storedTickets[existingIndex] = responseData;
-                    } else {
-                      // Add the new ticket
-                      storedTickets.push(responseData);
-                    }
-                    
-                    // Save back to localStorage
-                    localStorage.setItem('userScratchTickets', JSON.stringify(storedTickets));
-                    console.log('Saved ticket to localStorage:', responseData.id);
-                  } catch (storageError) {
-                    console.error('Error saving ticket to localStorage:', storageError);
-                    // Continue with the game even if storage fails
-                  }
-                }
-              } catch (apiError) {
-                console.error('API request failed completely, using saved results only:', apiError);
-                
-                // If API completely fails, try to use just the local data
-                const userTicketsStr = localStorage.getItem('userScratchTickets');
-                const localTicket = userTicketsStr ? 
-                  JSON.parse(userTicketsStr).find((t: any) => t.id === ticketId) : null;
-                
-                if (localTicket) {
-                  console.log('Using cached ticket from localStorage for:', ticketId);
-                  setTicket(localTicket);
-                  
-                  // Set the saved state
-                  setGrid(results.grid);
-                  setWins(results.wins);
-                  setWinningCells(results.winningCells);
-                  setPrize(results.prize);
-                  setIsRevealed(true);
-                  
-                  setLoading(false);
-                  return;
-                } else {
-                  // No local ticket data at all
-                  setError("Unable to load ticket data. Please try again later.");
-                  setLoading(false);
-                  return;
-                }
-              }
-              
-              // Generate grid based on ticket type 
-              setGrid(generateGrid(responseData.ticket.type, responseData.isBonus));
-              
-              setLoading(false);
-              return;
-            } catch (error) {
-              console.error('Error loading saved results:', error);
-              // Continue to normal fetch if there's an error
-            }
-          }
-        }
-        
         // Normal fetch if no saved results
         console.log('First time playing ticket. Fetching from API:', ticketId);
         
@@ -790,7 +564,8 @@ const ScratchOffPlayContent = () => {
                 setTicket(localTicket);
                 
                 // Generate grid based on ticket type
-                setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus));
+                const rngFn = createSeededRandom(ticketId || 'default');
+                setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus, rngFn));
                 
                 setLoading(false);
                 
@@ -880,7 +655,8 @@ const ScratchOffPlayContent = () => {
           }
           
           // Generate grid based on ticket type
-          setGrid(generateGrid(data.ticket.type, data.isBonus));
+          const rngFn = createSeededRandom(ticketId || 'default');
+          setGrid(generateGrid(data.ticket.type, data.isBonus, rngFn));
           
           setLoading(false);
         } catch (fetchError) {
@@ -896,7 +672,8 @@ const ScratchOffPlayContent = () => {
               if (localTicket) {
                 console.log('Final fallback: Using local storage data after all API attempts failed');
                 setTicket(localTicket);
-                setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus));
+                const rngFn = createSeededRandom(ticketId || 'default');
+                setGrid(generateGrid(localTicket.ticket.type, localTicket.isBonus, rngFn));
                 setLoading(false);
                 return;
               }
@@ -1387,15 +1164,18 @@ const ScratchOffPlayContent = () => {
         else if (symbolType.startsWith('stock_')) {
           const stockSymbol = symbolType.replace('stock_', '');
           // Increased to 0.2 shares per match
-          const baseValue = win.count * 0.2; 
+          let baseValue = win.count * 0.2;
+          if (ticket && ticket.ticket && ticket.ticket.type === 'stocks') {
+            baseValue = win.count * 0.4; // Double shares for stock scratch-offs
+          }
           
           // Apply special multipliers for Mystic Chance (100x) and Diamond Scratch (300x)
           let ticketTypeMultiplier = 1;
           if (ticket && ticket.ticket) {
             if (ticket.ticket.type === 'random') {
-              ticketTypeMultiplier = 100; // Mystic Chance: 100x multiplier
+              ticketTypeMultiplier = 10; // Mystic Chance: 10x multiplier
             } else if (ticket.ticket.type === 'diamond') {
-              ticketTypeMultiplier = 300; // Diamond Scratch: 300x multiplier
+              ticketTypeMultiplier = 50; // Diamond Scratch: 50x multiplier
             }
           }
           
@@ -1438,7 +1218,7 @@ const ScratchOffPlayContent = () => {
             if (ticket.ticket.type === 'random') {
               ticketTypeMultiplier = 100; // Mystic Chance: 100x multiplier
             } else if (ticket.ticket.type === 'diamond') {
-              ticketTypeMultiplier = 300; // Diamond Scratch: 300x multiplier
+              ticketTypeMultiplier = 50; // Diamond Scratch: 50x multiplier
             }
           }
           
@@ -1947,3 +1727,18 @@ const ScratchOffPlay: FunctionComponent = () => {
 };
 
 export default ScratchOffPlay; 
+
+// Utility: Seeded RNG (deterministic per ticket)
+function createSeededRandom(seed: string | number) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < String(seed).length; i++) {
+    h ^= String(seed).charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return function() {
+    h += h << 13; h ^= h >>> 7;
+    h += h << 3; h ^= h >>> 17;
+    h += h << 5;
+    return ((h >>> 0) / 4294967295);
+  };
+} 
