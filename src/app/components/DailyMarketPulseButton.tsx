@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
 import DailyMarketVotePanel from './DailyMarketVotePanel';
+import { useToast } from '@/app/hooks/use-toast';
 
 const DailyMarketPulseButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ const DailyMarketPulseButton: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -26,6 +28,11 @@ const DailyMarketPulseButton: React.FC = () => {
   const handleVoteSubmit = () => {
     setHasVoted(true);
     setIsOpen(false); // Auto close panel on submission
+    // Show confirmation toast
+    toast({
+      title: 'Daily Market Pulse',
+      description: 'You claimed your 50 tokens',
+    });
   };
 
   // Close overlay when clicking outside
