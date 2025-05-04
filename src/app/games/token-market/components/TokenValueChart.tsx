@@ -74,26 +74,35 @@ const TokenValueChart = () => {
         const data = await response.json();
         
         if (data?.history?.length > 0) {
-          // Format the data and ensure proper dates for display
-          const formattedData = data.history.map((item: any) => {
-            const date = new Date(item.timestamp);
+          // Map raw history to event-level points and sort chronologically
+          const formattedData = data.history
+            .map((item: any) => {
+              const dateObj = new Date(item.timestamp);
+              return {
+                // numeric timestamp for time-scale axis
+                timestamp: dateObj.getTime(),
+                // human-readable label
+                dateLabel: dateObj.toLocaleDateString(),
+                value: parseFloat(item.tokenValue),
+                circulation: item.tokensInCirculation || 0
+              };
+            })
+            .sort((a: any, b: any) => a.timestamp - b.timestamp);
+          setChartData(formattedData);
+        } else {
+          // Fallback if no history available
+          // Map default mock data to numeric timestamps
+          const now = new Date();
+          const defaultData = generateDefaultData().map((d) => {
+            const dt = new Date(d.date);
             return {
-              date: date.toLocaleDateString(),
-              fullDate: date, // Store full date for sorting
-              value: parseFloat(item.tokenValue).toFixed(4),
-              circulation: item.tokensInCirculation || 0
+              timestamp: dt.getTime(),
+              dateLabel: d.date,
+              value: parseFloat(d.value),
+              circulation: d.circulation
             };
           });
-          
-          // Sort by date to ensure chronological order
-          formattedData.sort((a: any, b: any) => a.fullDate.getTime() - b.fullDate.getTime());
-          
-          // Clean up the data before setting state (remove fullDate which is used only for sorting)
-          const cleanData = formattedData.map(({fullDate, ...rest}: any) => rest);
-          setChartData(cleanData);
-        } else {
-          // No data available, use default
-          setChartData(generateDefaultData());
+          setChartData(defaultData);
         }
       } catch (error) {
         console.error('Error fetching chart data:', error);
@@ -165,7 +174,7 @@ const TokenValueChart = () => {
       
       return (
         <div className="bg-gray-900 p-4 border border-gray-700 rounded shadow">
-          <p className="text-gray-300">{`Date: ${label}`}</p>
+          <p className="text-gray-300">{`Date: ${new Date(label).toLocaleDateString()}`}</p>
           <p className="text-cyan-500">{`Value: ${formattedValue}`}</p>
           <p className="text-amber-500">{`Tokens in Circulation: ${Number(payload[1].value).toLocaleString()}`}</p>
         </div>
@@ -200,8 +209,11 @@ const TokenValueChart = () => {
           margin={{ top: 10, right: 90, left: 70, bottom: 10 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-          <XAxis 
-            dataKey="date" 
+          <XAxis
+            dataKey="timestamp"
+            type="number"
+            scale="time"
+            domain={[ 'dataMin', 'dataMax' ]}
             stroke="#9CA3AF"
             tick={{ fill: '#9CA3AF' }}
             tickLine={{ stroke: '#4B5563' }}
@@ -209,6 +221,7 @@ const TokenValueChart = () => {
             tickMargin={10}
             minTickGap={20}
             padding={{ left: 5, right: 5 }}
+            tickFormatter={(unixTime) => new Date(unixTime).toLocaleDateString()}
           />
           <YAxis 
             yAxisId="left"

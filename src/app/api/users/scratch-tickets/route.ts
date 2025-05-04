@@ -469,6 +469,17 @@ export async function POST(request: NextRequest) {
         });
           
         console.log('[SCRATCH_TICKETS POST] Purchase successful, new token balance:', updatedUser.tokenCount);
+        // Record token market history after token spend
+        try {
+          const tokenSum = await prisma.user.aggregate({
+            _sum: { tokenCount: true }
+          });
+          const totalTokens = tokenSum._sum.tokenCount || 0;
+          await updateTokenMarketHistory(totalTokens);
+          console.log('[SCRATCH_TICKETS POST] Token market history updated');
+        } catch (historyError) {
+          console.error('[SCRATCH_TICKETS POST] Failed to update token market history:', historyError);
+        }
         return NextResponse.json({ 
           success: true,
           ticket: ticketToReturn,
