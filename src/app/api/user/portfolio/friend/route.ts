@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       userStocks.map(async (us) => {
         const avgPrice = await computeAveragePrice(userId, us.stock.name);
         positions[us.stock.name] = {
-          shares: us.quantity,
+          shares: us.quantity / 100,
           averagePrice: avgPrice
         };
       })
