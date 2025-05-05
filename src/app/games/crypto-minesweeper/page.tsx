@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
@@ -9,23 +8,24 @@ interface Cell {
   isFlagged: boolean;
   adjacentBombs: number;
   isBonus?: boolean;
-  bonusMultiplier?: number; 
+  bonusMultiplier?: number;
 }
 
 type Grid = Cell[][];
 
 const rows = 10;
 const cols = 10;
-const GAME_COST = 25; 
-const MIN_BOMB_PROBABILITY = 0.15; 
-const MAX_BOMB_PROBABILITY = 0.90; 
-const MIN_BONUS_CHANCE = 0.01; 
-const MAX_BONUS_CHANCE = 0.06; 
+const GAME_COST = 25;
+const MIN_BOMB_PROBABILITY = 0.15;
+const MAX_BOMB_PROBABILITY = 0.90;
+const MIN_BONUS_CHANCE = 0.01;
+const MAX_BONUS_CHANCE = 0.06;
 
-const BONUS_MULTIPLIERS = [2, 3, 5]; 
-const SPECIAL_EVENT_CHANCE = 0.05; 
+const BONUS_MULTIPLIERS = [2, 3, 5];
+const SPECIAL_EVENT_CHANCE = 0.05;
 
 const CryptoSweeper = () => {
+  //const  [bonusTiles, setBonusTiles] = useState(0);
   const [grid, setGrid] = useState<Grid>([]);
   const [gameOver, setGameOver] = useState(false);
   const [win, setWin] = useState(false);
@@ -40,6 +40,7 @@ const CryptoSweeper = () => {
   const [specialEvent, setSpecialEvent] = useState<string | null>(null);
   const [bombProbability, setBombProbability] = useState(0.25);
   const [bonusTileChance, setBonusTileChance] = useState(0.03);
+  const [potentialCashout, setPotentialCashout] = useState(0);
   const hasWonRef = useRef(false);
   const isFirstClickRef = useRef(true);
   const gamesPlayedRef = useRef(0);
@@ -67,6 +68,19 @@ const CryptoSweeper = () => {
       window.removeEventListener('token-balance-updated', handleTokenUpdate);
     };
   }, []);
+
+  // Calculate potential cashout value whenever gameTokens changes
+  useEffect(() => {
+    // Calculate win bonus based on difficulty (bomb probability)
+    if (isGameStarted) {
+      // Calculate potential difficulty bonus that would be applied if player wins
+      const difficultyBonus = Math.floor(bombProbability * 100);
+      // But don't apply it yet since they haven't won
+      setPotentialCashout(gameTokens);
+    } else {
+      setPotentialCashout(0);
+    }
+  }, [gameTokens, bombProbability, isGameStarted]);
 
   const fetchUserTokens = async () => {
     try {
@@ -181,6 +195,7 @@ const CryptoSweeper = () => {
 
       // Reset game state
       setGameTokens(0);
+      setPotentialCashout(0);
       initializeEmptyGrid();
       setIsGameStarted(true);
       setGameOver(false);
@@ -227,6 +242,7 @@ const CryptoSweeper = () => {
       // Reset game state
       setIsGameStarted(false);
       setGameTokens(0);
+      setPotentialCashout(0);
       setStreakCount(0);
 
       // Initialize an empty grid
@@ -315,8 +331,7 @@ const CryptoSweeper = () => {
               newGrid[i][j].bonusMultiplier = 10;
               hasJackpot = true;
             } else {
-              // Random multiplier from the array
-              newGrid[i][j].bonusMultiplier = BONUS_MULTIPLIERS[Math.floor(Math.random() * BONUS_MULTIPLIERS.length)];
+              newGrid[i][j].bonusMultiplier = BONUS_MULTIPLIERS[0];
             }
           }
         }
@@ -371,44 +386,40 @@ const CryptoSweeper = () => {
     if (gameOver || win || !isGameStarted) return;
     if (grid[row][col].isRevealed || grid[row][col].isFlagged) return;
 
-    // If this is the first click, initialize the grid with bombs
-    // ensuring the first clicked cell and its surrounding cells are safe
     if (isFirstClickRef.current) {
       const newGrid = initializeGridWithBombs(row, col);
       isFirstClickRef.current = false;
 
-      // Reveal only this specific cell for the first click
       newGrid[row][col].isRevealed = true;
       setGrid([...newGrid]);
 
-      // Process the first click properly
-      // Add 1 token for this cell reveal
-      let newTokens = 1;
+      let newTokens = 1; 
+      const bonusTiles = [];
 
-      // If it's a bonus tile, apply the bonus
       if (newGrid[row][col].isBonus) {
         const multiplier = newGrid[row][col].bonusMultiplier || 2;
-        newTokens = multiplier; // Apply multiplier to base token
+        bonusTiles.push({ row, col, multiplier });
         toast.success(`🎯 Bonus tile! ${multiplier}x multiplier!`);
-        setGameTokens(newTokens);
-      } else {
-        setGameTokens(newTokens);
       }
+
+      if (newGrid[row][col].adjacentBombs === 0) {
+        const cascadeResult = await cascadeReveal(newGrid, row, col, newTokens, bonusTiles);
+        newTokens = cascadeResult.tokens;
+      }
+
+      if (bonusTiles.length > 0) {
+        let totalMultiplier = 1;
+        bonusTiles.forEach(tile => {
+          totalMultiplier *= tile.multiplier;
+        });
+        newTokens = Math.floor(newTokens * totalMultiplier);
+      }
+
+      setGameTokens(newTokens);
+      await updateTokensWithAPI(newTokens);
 
       // Update streak count
-      setStreakCount(streakCount + 1);
-
-      // If it's an empty cell (0 adjacent bombs), cascade reveal
-      if (newGrid[row][col].adjacentBombs === 0) {
-        const bonusTiles = newGrid[row][col].isBonus ?
-          [{ row, col, multiplier: newGrid[row][col].bonusMultiplier || 2 }] : [];
-
-        const cascadeResult = await cascadeReveal(newGrid, row, col, newTokens, bonusTiles);
-        setGameTokens(cascadeResult.tokens);
-        await updateTokensWithAPI(cascadeResult.tokens);
-      } else {
-        await updateTokensWithAPI(newTokens);
-      }
+      setStreakCount(prev => prev + 1);
 
       checkWin();
       return;
@@ -433,6 +444,7 @@ const CryptoSweeper = () => {
       toast.error(`💣 BOOM! Game Over! You lost ${gameTokens} tokens.`);
       setIsGameStarted(false);
       setGameTokens(0);
+      setPotentialCashout(0);
     } else {
       try {
         // We'll track bonus tiles separately
@@ -466,6 +478,7 @@ const CryptoSweeper = () => {
           const cascadeResult = await cascadeReveal(newGrid, row, col, newTokens, bonusTiles);
           newTokens = cascadeResult.tokens;
         }
+        console.log("------------" + bonusTiles[0])
 
         // Apply bonus tile effects
         if (bonusTiles.length > 0) {
@@ -553,6 +566,7 @@ const CryptoSweeper = () => {
             const result = await cascadeReveal(grid, ni, nj, localTokens, bonusTiles);
             localTokens = result.tokens;
             cellsRevealed += result.revealed;
+            //setBonusTiles(result.b)
           }
         }
       }
@@ -599,6 +613,7 @@ const CryptoSweeper = () => {
       // Calculate win bonus based on difficulty (bomb probability)
       const difficultyBonus = Math.floor(bombProbability * 100);
       const winBonus = difficultyBonus;
+
       const finalTokens = gameTokens + winBonus;
 
       try {
@@ -621,30 +636,30 @@ const CryptoSweeper = () => {
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-extrabold">🎰 Stock Sweeper 🎰</h1>
-  
+
         {specialEvent && (
           <div className="bg-yellow-500 text-black px-4 py-1 rounded-full text-sm inline-block animate-pulse">
             🌟 Special Event: {specialEvent} 🌟
           </div>
         )}
-  
+
         <p className="text-gray-400 text-sm">Cost: {GAME_COST} tokens to play</p>
       </div>
-  
+
       {/* Game Stats */}
       <div className="flex flex-wrap justify-between gap-3">
         <div className="bg-gray-800 px-4 py-2 rounded-lg flex-1 text-center">
           <p className="text-yellow-400 font-medium">💰 Tokens</p>
           <p className="font-bold text-lg">{isGameStarted ? gameTokens : userTokens || 0}</p>
         </div>
-  
+
         {isGameStarted && (
           <>
             <div className="bg-gray-800 px-4 py-2 rounded-lg flex-1 text-center">
               <p className="text-red-400 font-medium">💣 Risk</p>
               <p className="font-bold text-lg">{Math.round(bombProbability * 100)}%</p>
             </div>
-  
+
             <div className="bg-gray-800 px-4 py-2 rounded-lg flex-1 text-center">
               <p className="text-green-400 font-medium">🔥 Streak</p>
               <p className="font-bold text-lg">{streakCount}</p>
@@ -652,32 +667,30 @@ const CryptoSweeper = () => {
           </>
         )}
       </div>
-  
+
       {/* Game Buttons */}
       <div className="space-y-4">
         <button
           onClick={startNewGame}
           disabled={isCashing || (userTokens !== null && userTokens < GAME_COST && !isGameStarted)}
-          className={`w-full ${
-            isGameStarted ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-indigo-600 hover:bg-indigo-700'
-          } text-white py-3 rounded-lg text-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`w-full ${isGameStarted ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-indigo-600 hover:bg-indigo-700'
+            } text-white py-3 rounded-lg text-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          {isGameStarted ? `💰 Cash Out (${gameTokens})` : '🎮 New Game'}
+          {isGameStarted ? `💰 Cash Out (${potentialCashout} tokens)` : '🎮 New Game'}
         </button>
-  
+
         {isMobile && isGameStarted && (
           <button
             onClick={() => setIsFlagMode(!isFlagMode)}
             disabled={gameOver || win}
-            className={`w-full ${
-              isFlagMode ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-            } text-white py-3 rounded-lg text-base font-medium transition disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`w-full ${isFlagMode ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+              } text-white py-3 rounded-lg text-base font-medium transition disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isFlagMode ? '🚩 Exit Flag Mode' : '🚩 Enter Flag Mode'}
           </button>
         )}
       </div>
-  
+
       {/* Game State Messages */}
       {gameOver && (
         <p className="text-center text-red-500 font-semibold text-lg">💣 BOOM! Game Over!</p>
@@ -685,7 +698,7 @@ const CryptoSweeper = () => {
       {win && (
         <p className="text-center text-green-500 font-semibold text-lg">🎉 JACKPOT! You Win!</p>
       )}
-  
+
       {/* Main Game Area */}
       <div className="flex flex-col md:flex-row gap-6">
         <div className="grid grid-cols-10 gap-1">
@@ -702,7 +715,7 @@ const CryptoSweeper = () => {
             ))
           )}
         </div>
-  
+
         {/* How to Play */}
         <div className="text-sm text-gray-300 max-w-sm space-y-2">
           <h2 className="font-semibold text-yellow-400">💎 How to Play:</h2>
@@ -723,9 +736,8 @@ const CryptoSweeper = () => {
       </div>
     </div>
   );
-  
-};
 
+};
 const Cell = ({
   cell,
   onClick,
@@ -773,13 +785,19 @@ const Cell = ({
 
       content = '💣';
     } else if (cell.isBonus) {
-      bgClass = 'bg-orange-500'; 
+      bgClass = 'bg-orange-500';
       if (cell.adjacentBombs > 0) {
         content = cell.adjacentBombs.toString();
         textClass = 'text-white font-bold'; // Make text more visible on orange
       }
     } else {
-      bgClass = 'bg-gray-800';
+      if (cell.isBonus) {
+        bgClass = multiplierColors[cell.adjacentBombs];
+      } else {
+        bgClass = 'bg-gray-800';
+
+      }
+
       if (cell.adjacentBombs > 0) {
         content = cell.adjacentBombs.toString();
         textClass = {
