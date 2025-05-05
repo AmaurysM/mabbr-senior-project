@@ -132,18 +132,23 @@ const Risk: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-      <div className="text-gray-300 mb-4">
-        <span className="font-semibold">{riskLevel} Risk</span>
-      </div>
-      <div className="w-full bg-gray-700 rounded-full h-6">
+    <div className="flex items-center space-x-3">
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        cumulativeRiskScore < 40 ? "bg-green-500/20 text-green-400" : 
+        cumulativeRiskScore < 70 ? "bg-yellow-500/20 text-yellow-400" : 
+        "bg-red-500/20 text-red-400"
+      }`}>
+        Risk: {cumulativeRiskScore.toFixed(2)}/100
+      </span>
+      <div className="flex-1 bg-gray-700 rounded-full h-2">
         <div
-          className={`h-6 rounded-full ${cumulativeRiskScore < 40 ? "bg-green-500" : cumulativeRiskScore < 70 ? "bg-yellow-500" : "bg-red-500"}`}
+          className={`h-2 rounded-full transition-all duration-300 ${
+            cumulativeRiskScore < 40 ? "bg-green-500" : 
+            cumulativeRiskScore < 70 ? "bg-yellow-500" : 
+            "bg-red-500"
+          }`}
           style={{ width: `${cumulativeRiskScore}%` }}
         ></div>
-      </div>
-      <div className="text-gray-300 mt-2">
-        Score: {cumulativeRiskScore.toFixed(2)}/100
       </div>
     </div>
   );
