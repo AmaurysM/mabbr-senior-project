@@ -200,9 +200,13 @@ export default function ScratchOffs() {
   // Helper: fetch purchased tickets from API
   const fetchUserTickets = async (): Promise<UserScratchTicket[]> => {
     if (!session?.user) return [];
-    const dayKey = getDayKey();
     try {
-      const res = await fetch(`/api/users/scratch-tickets?dayKey=${dayKey}&includeScratched=true`, { credentials: 'include' });
+      // Fetch all of the user's tickets (scratched and unscratched) without
+      // restricting by dayKey.  We will work out which tickets belong to the
+      // current shop locally.  This avoids problems caused by client ↔ server
+      // timezone differences that resulted in the purchased overlay not
+      // appearing even though the backend correctly recorded the purchase.
+      const res = await fetch(`/api/users/scratch-tickets?includeScratched=true`, { credentials: 'include' });
       if (!res.ok) throw new Error(`Error fetching tickets: ${res.status}`);
       const data = await res.json();
       return Array.isArray(data.tickets) ? data.tickets as UserScratchTicket[] : [];
