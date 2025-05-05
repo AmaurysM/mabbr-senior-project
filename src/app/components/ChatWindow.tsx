@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { authClient } from '@/lib/auth-client';
+import { FaArrowRight } from 'react-icons/fa';
 
 export interface Friend {
   id: string;
@@ -39,10 +40,13 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
     setDragging(true);
     setOff({ x: e.clientX - pos.x, y: e.clientY - pos.y });
   };
+
   // Drag move/end
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (dragging) setPos({ x: e.clientX - off.x, y: e.clientY - off.y });
+      if (dragging) {
+        setPos({ x: e.clientX - off.x, y: e.clientY - off.y });
+      }
     };
     const onUp = () => setDragging(false);
     window.addEventListener('mousemove', onMove);
@@ -164,14 +168,7 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
             onClick={send}
             className="ml-3 p-2 bg-blue-600 hover:bg-blue-500 rounded-full"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-white"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path d="M2.94 2c.398-.03.773.247.822.651l.39 4.68c.044.523-.498.845-.937.558L2 7.692v4.616l.215.107 3.4 1.698c.438.219.436.86-.002 1.077l-3.4 1.698-.215.107v1.923c0 .543-.602.83-1.048.503L.08 16.503C-.33 16.17-.33 15.63.08 15.297l7.207-7.805-7.207-7.805C-.33 1.63-.33 1.09.08.757L1.892-1.043C2.338-.37 2.542.23 2.94 2z" />
-            </svg>
+            <FaArrowRight className="h-5 w-5 text-white" />
           </button>
         </div>
       </div>
