@@ -3,12 +3,30 @@ import prisma from '@/lib/prisma';
 
 export async function POST() {
   try {
-    // Get today's entries
+    // Determine drawDate key for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const drawDateKey = today.toISOString().split('T')[0];
+    // If a winner has already been selected today, return it (idempotent)
+    const existingWinner = await prisma.dailyDrawWinner.findUnique({
+      where: { drawDate: drawDateKey }
+    });
+    if (existingWinner) {
+      return NextResponse.json({
+        success: true,
+        alreadySelected: true,
+        winner: {
+          userId: existingWinner.userId,
+          tokens: existingWinner.tokens,
+          drawDate: existingWinner.drawDate
+        }
+      });
+    }
+    // Get tomorrow for entry range
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Get all entries for today's draw
     const entries = await prisma.dailyDrawEntry.findMany({
       where: {
         createdAt: {
