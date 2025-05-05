@@ -57,6 +57,7 @@ export const getRarityStyles = (price: number) => {
 
 const LootboxTile = ({ lootbox }: { lootbox: LootboxWithStocks }) => {
   const rarity = getRarityStyles(lootbox.price);
+  const tokenCost = Math.ceil(lootbox.price / 2);
 
   return (
     <div
@@ -94,7 +95,7 @@ const LootboxTile = ({ lootbox }: { lootbox: LootboxWithStocks }) => {
         </div>
         <div className="bg-black/50 rounded px-2 py-1">
           <span className={clsx("text-sm font-bold", rarity.text)}>
-            ${lootbox.price}
+            {tokenCost} tokens
           </span>
         </div>
       </div>
@@ -108,7 +109,7 @@ const LootboxTile = ({ lootbox }: { lootbox: LootboxWithStocks }) => {
             rarity.button
           )}
         >
-          Buy Now
+          Buy Now ({tokenCost} tokens)
         </button>
       </div>
     </div>

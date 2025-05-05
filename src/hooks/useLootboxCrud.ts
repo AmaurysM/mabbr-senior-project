@@ -20,9 +20,24 @@ export function useLootboxCrud() {
   const [error, setError] = useState<string | null>(null);
   
   // Get all lootboxes with SWR
-  const { data: lootboxes } = useSWR<LootboxWithStocks[]>('/api/lootboxes', fetcher, {
+  const { data } = useSWR<any[]>('/api/lootboxes', fetcher, {
     refreshInterval: 3000
   });
+  
+  // Transform raw data to include stocks array
+  const lootboxes: LootboxWithStocks[] = (data ?? []).map(lb => ({
+    // Spread all lootBox fields
+    id: lb.id,
+    name: lb.name,
+    description: lb.description,
+    price: lb.price,
+    createdAt: lb.createdAt,
+    updatedAt: lb.updatedAt,
+    // Map lootBoxStocks relations to actual stocks
+    stocks: Array.isArray(lb.lootBoxStocks)
+      ? lb.lootBoxStocks.map((rel: any) => rel.stock)
+      : []
+  }));
   
   // Create a new lootbox
   const createLootbox = async (data: LootboxInput) => {
