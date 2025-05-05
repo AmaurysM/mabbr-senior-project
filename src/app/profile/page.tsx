@@ -45,6 +45,7 @@ const CombinedProfilePage = () => {
     const [email, setEmail] = useState<string>('');
     const [bio, setBio] = useState('No bio yet.');
     const [balance, setBalance] = useState<number>(0);
+    const [tokenCount, setTokenCount] = useState<number>(0);
     const [newBio, setNewBio] = useState(bio);
     const [loading, setLoading] = useState(true);
     const [userId, setUserId] = useState<string | null>(null);
@@ -247,7 +248,22 @@ const CombinedProfilePage = () => {
         }
     };
 
-
+    // Fetch user info including balance and tokens on login
+    useEffect(() => {
+      if (!user) return;
+      (async () => {
+        try {
+          const res = await fetch('/api/user/info', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            setBalance(data.balance);
+            setTokenCount(data.tokenCount);
+          }
+        } catch (err) {
+          console.error('Error fetching user info:', err);
+        }
+      })();
+    }, [user]);
 
     const handleImageClick = () => {
         fileInputRef.current?.click();
@@ -446,23 +462,33 @@ const CombinedProfilePage = () => {
                                         <div className="text-gray-400">{email}</div>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="text-center">
-                                        <div className="text-gray-400 text-sm">Balance</div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {/* Cash */}
+                                    <div className="text-center bg-white/10 border border-white/20 rounded-lg p-4">
+                                        <div className="text-gray-400 text-sm">Cash</div>
                                         <div className="text-xl font-bold text-white">
-                                            ${balance.toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
-                                            })}
+                                            ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </div>
                                     </div>
-                                    <div className="text-center">
-                                        <div className="text-gray-400 text-sm">Portfolio Value</div>
+                                    {/* Holdings */}
+                                    <div className="text-center bg-white/10 border border-white/20 rounded-lg p-4">
+                                        <div className="text-gray-400 text-sm">Holdings</div>
                                         <div className="text-xl font-bold text-white">
-                                            ${portfolioValue.toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
-                                            })}
+                                            ${portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                    </div>
+                                    {/* Net Worth */}
+                                    <div className="text-center bg-white/10 border border-white/20 rounded-lg p-4">
+                                        <div className="text-gray-400 text-sm">Net Worth</div>
+                                        <div className="text-xl font-bold text-white">
+                                            ${(balance + portfolioValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                    </div>
+                                    {/* Tokens */}
+                                    <div className="text-center bg-yellow-400/10 border border-yellow-400/20 rounded-lg p-4">
+                                        <div className="text-gray-400 text-sm">Tokens</div>
+                                        <div className="text-xl font-bold text-white">
+                                            {tokenCount.toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
