@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FaCircle } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
@@ -17,6 +17,7 @@ export default function OnlineFriendsList() {
   const { data: session } = authClient.useSession();
   const router = useRouter();
 
+  // Context menu state and position
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     friend: Friend | null;
@@ -26,13 +27,20 @@ export default function OnlineFriendsList() {
 
   const [activeChats, setActiveChats] = useState<Friend[]>([]);
 
-  const [portalContainer] = useState(() => document.createElement('div'));
+  const portalContainerRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    document.body.appendChild(portalContainer);
+    const container = document.createElement('div');
+    portalContainerRef.current = container;
+    document.body.appendChild(container);
+
     return () => {
-      document.body.removeChild(portalContainer);
+      if (portalContainerRef.current) {
+        document.body.removeChild(portalContainerRef.current);
+        portalContainerRef.current = null;
+      }
     };
-  }, [portalContainer]);
+  }, []);
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -172,34 +180,36 @@ export default function OnlineFriendsList() {
       ))}
 
       {/* Context menu via portal */}
-      {contextMenu.visible && contextMenu.friend && createPortal(
-        <div
-          className="custom-context-menu bg-gray-900 border border-gray-700 rounded px-3 py-1 text-white text-sm shadow-lg"
-          style={{
-            position: 'absolute',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            zIndex: 1000,
-          }}
-          onClick={e => e.stopPropagation()}
-        >
-          <button
-            onClick={e => {
-              e.stopPropagation();
-              setActiveChats(prev =>
-                prev.some(x => x.id === contextMenu.friend!.id)
-                  ? prev
-                  : [...prev, contextMenu.friend!]
-              );
-              setContextMenu({ visible: false, friend: null, x: 0, y: 0 });
+      {contextMenu.visible && contextMenu.friend && portalContainerRef.current &&
+        createPortal(
+          <div
+            className="custom-context-menu bg-gray-900 border border-gray-700 rounded px-3 py-1 text-white text-sm shadow-lg"
+            style={{
+              position: 'absolute',
+              top: contextMenu.y,
+              left: contextMenu.x,
+              zIndex: 1000,
             }}
-            className="hover:text-blue-400"
+            onClick={e => e.stopPropagation()}
           >
-            💬 Message
-          </button>
-        </div>,
-        portalContainer
-      )}
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setActiveChats(prev =>
+                  prev.some(x => x.id === contextMenu.friend!.id)
+                    ? prev
+                    : [...prev, contextMenu.friend!]
+                );
+                setContextMenu({ visible: false, friend: null, x: 0, y: 0 });
+              }}
+              className="hover:text-blue-400"
+            >
+              💬 Message
+            </button>
+          </div>,
+          portalContainerRef.current
+        )
+      }
 
       {loading && <div className="text-gray-400">Loading friends…</div>}
       {!loading && friends.length === 0 && (
