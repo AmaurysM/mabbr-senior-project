@@ -1,8 +1,8 @@
 'use client';
 
-import { get } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { authClient } from '@/lib/auth-client';
 
 export interface Friend {
   id: string;
@@ -23,6 +23,10 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
+  // grab your session on the client
+  const { data: session } = authClient.useSession();
+  const currentUserId = session?.user?.id;
+
   const [msgs, setMsgs] = useState<DirectMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [pos, setPos] = useState({ x: 100, y: 100 });
@@ -125,7 +129,7 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
         {/* Messages */}
         <div className="flex flex-col flex-1 overflow-y-auto p-4 space-y-3 bg-gray-700">
           {msgs.map((m) => {
-            const isMe = m.sender.id === sessionStorage.getItem('userId');
+            const isMe = m.sender.id === currentUserId;
             return (
               <div
                 key={m.id}
