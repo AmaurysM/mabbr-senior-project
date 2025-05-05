@@ -261,7 +261,6 @@ const ArticlePage = ({ params }: { params: Promise<{ all: string[] }> }) => {
                         }}
                       />
                     )}
-                    <span className="font-medium">{c.user.name}</span>
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-sm transition-all duration-200 hover:text-blue-400">{c.user.name || "Unknown User"}</span>
                       <UserVerificationIcon userRole={c.user.role} className="h-3 w-3 text-blue-500" />
