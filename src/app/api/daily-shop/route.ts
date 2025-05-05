@@ -45,8 +45,8 @@ function generateDailyShop(): ScratchTicket[] {
     { type: 'tokens' as ScratchTicketType, price: 25, chance: 40, description: 'Win tokens! Try your luck with this golden ticket.' },
     { type: 'money' as ScratchTicketType, price: 50, chance: 30, description: 'Win cash! This green ticket could turn into real money.' },
     { type: 'stocks' as ScratchTicketType, price: 75, chance: 15, description: 'Win shares! Get a piece of the market with this blue ticket.' },
-    { type: 'random' as ScratchTicketType, price: 100, chance: 10, description: 'Win anything with a 100x multiplier! High risk but incredible rewards if you hit!' },
-    { type: 'diamond' as ScratchTicketType, price: 200, chance: 5, description: 'ULTRA RARE - 1% CHANCE TO APPEAR! Win anything with a 300x multiplier!' }
+    { type: 'random' as ScratchTicketType, price: 100, chance: 10, description: 'Win anything with a 10x multiplier! High risk but incredible rewards if you hit!' },
+    { type: 'diamond' as ScratchTicketType, price: 200, chance: 5, description: 'ULTRA RARE - 1% CHANCE TO APPEAR! Win anything with a 50x multiplier!' }
   ];
   
   // Generate exactly 12 regular tickets
