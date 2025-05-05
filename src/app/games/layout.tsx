@@ -230,7 +230,7 @@ export default function GamesLayout({
       </button>
 
       {/* Content Area */}
-      <div ref={scrollRef} className="flex-grow h-full overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-grow h-full overflow-y-auto p-4 pb-8">
         {children}
       </div>
 

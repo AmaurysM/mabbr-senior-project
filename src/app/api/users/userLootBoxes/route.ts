@@ -62,7 +62,7 @@ export async function POST(
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, balance: true },
+      select: { id: true, tokenCount: true },
     });
 
     if (!user) {
@@ -80,10 +80,11 @@ export async function POST(
       return NextResponse.json({ error: "Lootbox not found" }, { status: 404 });
     }
 
-    if (user.balance < lootBox.price) {
+    const tokenCost = Math.ceil(lootBox.price / 2);
+    if (user.tokenCount < tokenCost) {
       console.log("Insufficient balance");
       return NextResponse.json(
-        { error: "Insufficient balance" },
+        { error: "Insufficient token balance" },
         { status: 400 }
       );
     }
@@ -102,7 +103,7 @@ export async function POST(
     dbOperations.push(
       prisma.user.update({
         where: { id: user.id },
-        data: { balance: { decrement: lootBox.price } },
+        data: { tokenCount: { decrement: tokenCost } },
       })
     );
 
@@ -132,8 +133,8 @@ export async function POST(
           type: 'LOOTBOX',
           stockSymbol: lootBox.name || 'Lootbox',
           quantity: 1,
-          price: lootBox.price,
-          totalCost: lootBox.price,
+          price: tokenCost,
+          totalCost: tokenCost,
           status: 'completed',
           publicNote: 'Purchased a lootbox',
         }
