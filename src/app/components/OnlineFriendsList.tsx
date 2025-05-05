@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FaCircle } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
@@ -19,11 +20,20 @@ export default function OnlineFriendsList() {
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     friend: Friend | null;
-  }>({ visible: false, friend: null });
+    x: number;
+    y: number;
+  }>({ visible: false, friend: null, x: 0, y: 0 });
 
   const [activeChats, setActiveChats] = useState<Friend[]>([]);
 
-  // Load friends + online status
+  const [portalContainer] = useState(() => document.createElement('div'));
+  useEffect(() => {
+    document.body.appendChild(portalContainer);
+    return () => {
+      document.body.removeChild(portalContainer);
+    };
+  }, [portalContainer]);
+
   useEffect(() => {
     const fetchFriends = async () => {
       if (!session?.user?.id) {
@@ -35,9 +45,7 @@ export default function OnlineFriendsList() {
         if (!res.ok) throw new Error(res.statusText);
         const { friends: list } = await res.json();
 
-        const sessionsRes = await fetch('/api/user/active-sessions', {
-          credentials: 'include',
-        });
+        const sessionsRes = await fetch('/api/user/active-sessions', { credentials: 'include' });
         const activeSessions = sessionsRes.ok
           ? (await sessionsRes.json()).activeSessions || {}
           : {};
@@ -45,9 +53,7 @@ export default function OnlineFriendsList() {
         const withStatus = list.map((f: Friend) => {
           const last = activeSessions[f.id];
           const isOnline =
-            last &&
-            (Date.now() - new Date(last).getTime()) / 60000 <
-            ONLINE_THRESHOLD_MINUTES;
+            last && (Date.now() - new Date(last).getTime()) / 60000 < ONLINE_THRESHOLD_MINUTES;
           return { ...f, isOnline };
         });
         setFriends(withStatus);
@@ -68,28 +74,25 @@ export default function OnlineFriendsList() {
     router.push('/friendsProfile');
   };
 
-  const onRightClick = (
-    e: React.MouseEvent<HTMLButtonElement>,
-    f: Friend
-  ) => {
+  const onRightClick = (e: React.MouseEvent<HTMLButtonElement>, f: Friend) => {
     e.preventDefault();
-    setContextMenu({ visible: true, friend: f });
+    setContextMenu({ visible: true, friend: f, x: e.clientX, y: e.clientY });
   };
 
-  // Hide context on outside click
+  // Close context menu on outside click
   useEffect(() => {
     const close = (e: MouseEvent) => {
       const tgt = e.target as HTMLElement;
       if (!tgt.closest('.custom-context-menu')) {
-        setContextMenu({ visible: false, friend: null });
+        setContextMenu({ visible: false, friend: null, x: 0, y: 0 });
       }
     };
     window.addEventListener('click', close);
     return () => window.removeEventListener('click', close);
   }, []);
 
-  const online = friends.filter((f) => f.isOnline);
-  const offline = friends.filter((f) => !f.isOnline);
+  const online = friends.filter(f => f.isOnline);
+  const offline = friends.filter(f => !f.isOnline);
 
   return (
     <div className="space-y-4 px-1 relative overflow-visible">
@@ -97,12 +100,12 @@ export default function OnlineFriendsList() {
         Online — {online.length}
       </h3>
       <ul className="space-y-2 overflow-visible">
-        {online.map((f) => (
-          <li key={f.id} className="relative overflow-visible">
+        {online.map(f => (
+          <li key={f.id} className="relative">
             <button
               onClick={() => openProfile(f.id)}
-              onContextMenu={(e) => onRightClick(e, f)}
-              className={`w-full flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left`}
+              onContextMenu={e => onRightClick(e, f)}
+              className="w-full flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left"
             >
               {f.image ? (
                 <Image
@@ -120,33 +123,6 @@ export default function OnlineFriendsList() {
               <FaCircle className="text-green-500 text-xs" />
               <span className="text-sm truncate max-w-[100px]">{f.name || f.id}</span>
             </button>
-
-            {contextMenu.visible && contextMenu.friend?.id === f.id && (
-              <div
-                className="
-                  custom-context-menu
-                  absolute left-full top-1/2
-                  transform -translate-y-1/2
-                  -ml-4            /* pull the bubble 16px left */
-                  bg-gray-900 border border-gray-700
-                  rounded px-3 py-1 text-white text-sm z-50
-                  overflow-visible
-                "
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveChats((prev) =>
-                      prev.some((x) => x.id === f.id) ? prev : [...prev, f]
-                    );
-                    setContextMenu({ visible: false, friend: null });
-                  }}
-                  className="hover:text-blue-400"
-                >
-                  💬 Message
-                </button>
-              </div>
-            )}
           </li>
         ))}
       </ul>
@@ -158,12 +134,12 @@ export default function OnlineFriendsList() {
             Offline — {offline.length}
           </h3>
           <ul className="space-y-2 overflow-visible">
-            {offline.map((f) => (
-              <li key={f.id} className="relative overflow-visible">
+            {offline.map(f => (
+              <li key={f.id} className="relative">
                 <button
                   onClick={() => openProfile(f.id)}
-                  onContextMenu={(e) => onRightClick(e, f)}
-                  className={`w-full flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left`}
+                  onContextMenu={e => onRightClick(e, f)}
+                  className="w-full flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left"
                 >
                   {f.image ? (
                     <Image
@@ -180,33 +156,6 @@ export default function OnlineFriendsList() {
                   )}
                   <span className="text-sm truncate max-w-[100px]">{f.name || f.id}</span>
                 </button>
-
-                {contextMenu.visible && contextMenu.friend?.id === f.id && (
-                  <div
-                    className="
-                      custom-context-menu
-                      absolute left-full top-1/2
-                      transform -translate-y-1/2
-                      -ml-20
-                      bg-gray-900 border border-gray-700
-                      rounded px-3 py-1 text-white text-sm z-50
-                      overflow-visible
-                    "
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveChats((prev) =>
-                          prev.some((x) => x.id === f.id) ? prev : [...prev, f]
-                        );
-                        setContextMenu({ visible: false, friend: null });
-                      }}
-                      className="hover:text-blue-400"
-                    >
-                      💬 Message
-                    </button>
-                  </div>
-                )}
               </li>
             ))}
           </ul>
@@ -214,13 +163,43 @@ export default function OnlineFriendsList() {
       )}
 
       {/* Chat windows */}
-      {activeChats.map((f) => (
+      {activeChats.map(f => (
         <ChatWindow
           key={f.id}
           friend={f}
-          onClose={(id) => setActiveChats((prev) => prev.filter((x) => x.id !== id))}
+          onClose={id => setActiveChats(prev => prev.filter(x => x.id !== id))}
         />
       ))}
+
+      {/* Context menu via portal */}
+      {contextMenu.visible && contextMenu.friend && createPortal(
+        <div
+          className="custom-context-menu bg-gray-900 border border-gray-700 rounded px-3 py-1 text-white text-sm shadow-lg"
+          style={{
+            position: 'absolute',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 1000,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              setActiveChats(prev =>
+                prev.some(x => x.id === contextMenu.friend!.id)
+                  ? prev
+                  : [...prev, contextMenu.friend!]
+              );
+              setContextMenu({ visible: false, friend: null, x: 0, y: 0 });
+            }}
+            className="hover:text-blue-400"
+          >
+            💬 Message
+          </button>
+        </div>,
+        portalContainer
+      )}
 
       {loading && <div className="text-gray-400">Loading friends…</div>}
       {!loading && friends.length === 0 && (
