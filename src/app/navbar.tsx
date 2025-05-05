@@ -92,7 +92,7 @@ const Navbar = () => {
             {/* Left: Logo */}
             <Link href="/" className="flex items-center space-x-2 group">
               <span className="text-2xl font-extrabold group-hover:scale-105 transition-transform">
-                MABBR APP
+                MABBR
               </span>
             </Link>
 
