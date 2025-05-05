@@ -117,6 +117,10 @@ const CryptoSweeper = () => {
 
       const data = await response.json();
       setUserTokens(data.tokenCount);
+      // Broadcast token balance update
+      window.dispatchEvent(new CustomEvent('token-balance-updated', { detail: { newBalance: data.tokenCount } }));
+      window.localStorage.setItem('token-balance-updated', Date.now().toString());
+      window.dispatchEvent(new StorageEvent('storage', { key: 'token-refresh', newValue: Date.now().toString() }));
       setGameTokens(0);
       
       // Initialize game grid without placing bombs yet - bombs will be placed after first click
@@ -156,6 +160,10 @@ const CryptoSweeper = () => {
 
       const data = await response.json();
       setUserTokens(data.tokenCount);
+      // Update UI and dispatch global token update
+      window.dispatchEvent(new CustomEvent('token-balance-updated', { detail: { newBalance: data.tokenCount } }));
+      window.localStorage.setItem('token-balance-updated', Date.now().toString());
+      window.dispatchEvent(new StorageEvent('storage', { key: 'token-refresh', newValue: Date.now().toString() }));
       
       // Reset game state
       setIsGameStarted(false);

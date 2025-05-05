@@ -116,10 +116,7 @@ const Risk: React.FC = () => {
   
   if (cumulativeRiskScore === null) {
     return (
-      <div className="bg-gray-800 p-6 rounded-xl shadow-lg text-gray-300">
-        <div className="font-semibold mb-2">No Analyst Data</div>
-        <div>We couldn&apos;t retrieve any analyst ratings for your current holdings.</div>
-      </div>
+      <span className="text-gray-400 text-sm italic">No Analyst Data</span>
     );
   }
   let riskLevel: string;
