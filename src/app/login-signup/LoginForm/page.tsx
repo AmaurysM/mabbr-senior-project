@@ -25,43 +25,67 @@ import GoogleLoginButton from "@/app/components/LoginWithGoogle";
 import DiscordLoginButton from "@/app/components/LoginWithDiscord";
 import { Toaster } from "@/app/components/ui/sonner";
 import { MdVisibility, MdVisibilityOff } from "react-icons/md";
-import RandomStockQuote from "@/app/components/RandomStockQuote";
+import RandomStockQuote from '../../components/RandomStockQuote';
 
 const LoginForm: React.FC = () => {
     const [isLogin, setIsLogin] = useState<boolean>(true);
     const router = useRouter();
+
+    const [pending, setPending] = useState(false);
     const { toast } = useToast();
     const [pendingCredentials, setPendingCredentials] = useState(false);
-    const [pending, setPending] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showPasswordSignUp, setShowPasswordSignUp] = useState({ password: false, confirmPassword: false });
 
+    // State for toggling password visibility
+    const [showPassword, setShowPassword] = useState(false);
+    // For sign up, handle both password and confirmPassword fields
+    const [showPasswordSignUp, setShowPasswordSignUp] = useState({
+        password: false,
+        confirmPassword: false,
+    });
+
+    // Check for mobile devices on mount
     useEffect(() => {
-        setIsMobile(/Mobi|Android/i.test(navigator.userAgent));
+        const mobileCheck = /Mobi|Android/i.test(navigator.userAgent);
+        setIsMobile(mobileCheck);
     }, []);
 
     const signInForm = useForm<z.infer<typeof signInSchema>>({
         resolver: zodResolver(signInSchema),
-        defaultValues: { email: "", password: "" },
+        defaultValues: {
+            email: "",
+            password: "",
+        },
     });
 
     const signUpForm = useForm<z.infer<typeof signUpSchema>>({
         resolver: zodResolver(signUpSchema),
-        defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+        defaultValues: {
+            name: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+        },
     });
 
     const handleLogin = async (values: z.infer<typeof signInSchema>) => {
-        setPendingCredentials(true);
         await authClient.signIn.email(
-            { email: values.email, password: values.password },
             {
-                onSuccess: () => {
+                email: values.email,
+                password: values.password,
+            },
+            {
+                onRequest: () => setPendingCredentials(true),
+                onSuccess: async () => {
                     router.push("/profile");
                     router.refresh();
+                    signUpForm.reset();
                 },
                 onError: (ctx: ErrorContext) => {
-                    toast({ title: "Something went wrong", description: ctx.error.message ?? "Network Connection Issue." });
+                    toast({
+                        title: "Something went wrong",
+                        description: ctx.error.message ?? "Network Connection Issue.",
+                    });
                 },
             }
         );
@@ -69,17 +93,27 @@ const LoginForm: React.FC = () => {
     };
 
     const handleSignUp = async (values: z.infer<typeof signUpSchema>) => {
-        setPending(true);
         await authClient.signUp.email(
-            { email: values.email, password: values.password, name: values.name },
             {
+                email: values.email,
+                password: values.password,
+                name: values.name,
+            },
+            {
+                onRequest: () => setPending(true),
                 onSuccess: () => {
                     setIsLogin(true);
                     signInForm.reset();
-                    toast({ title: "Account created", description: "Your account has been created. Check your email for a verification link." });
+                    toast({
+                        title: "Account created",
+                        description: "Your account has been created. Check your email for a verification link.",
+                    });
                 },
                 onError: (ctx) => {
-                    toast({ title: "Something went wrong", description: ctx.error.message ?? "Network Connection Issue." });
+                    toast({
+                        title: "Something went wrong",
+                        description: ctx.error.message ?? "Network Connection Issue.",
+                    });
                 },
             }
         );
@@ -88,46 +122,64 @@ const LoginForm: React.FC = () => {
 
     return (
         <div className="relative w-full min-h-screen flex overflow-hidden">
+            {/* Toaster for notifications */}
             <Toaster />
-
             {/* Login Form */}
             <div
-                className={`absolute z-10 min-h-screen w-full md:w-2/5 lg:w-1/3 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
-                    isLogin
+                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin
                         ? "translate-x-0 opacity-100 duration-700 right-0"
                         : "translate-x-[100vw] opacity-0 duration-200 right-0"
-                }`}
+                    }`}
             >
                 <Card className="w-full">
                     <CardHeader>
-                        <CardTitle className="text-3xl font-bold text-center text-gray-800">Sign In</CardTitle>
+                        <CardTitle className="text-3xl font-bold text-center text-gray-800">
+                            Sign In
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Form {...signInForm}>
                             <form onSubmit={signInForm.handleSubmit(handleLogin)} className="space-y-6">
+                                {/* Email Field */}
                                 <FormField
                                     control={signInForm.control}
                                     name="email"
-                                    render={({ field }) => (
+                                    render={({ field: fieldProps }) => (
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
                                             <FormControl>
-                                                <Input type="email" {...field} placeholder="Enter your email" autoComplete="email" />
+                                                <Input
+                                                    type="email"
+                                                    placeholder="Enter your email"
+                                                    {...fieldProps}
+                                                    autoComplete="email"
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                {/* Password Field with toggle */}
                                 <FormField
                                     control={signInForm.control}
                                     name="password"
-                                    render={({ field }) => (
+                                    render={({ field: fieldProps }) => (
                                         <FormItem className="relative">
                                             <FormLabel>Password</FormLabel>
                                             <FormControl>
-                                                <Input type={showPassword ? "text" : "password"} {...field} placeholder="Enter your password" autoComplete="current-password" />
+                                                <Input
+                                                    type={showPassword ? "text" : "password"}
+                                                    placeholder="Enter your password"
+                                                    {...fieldProps}
+                                                    autoComplete="current-password"
+                                                />
                                             </FormControl>
-                                            <button type="button" onClick={() => setShowPassword(prev => !prev)} className="absolute right-3 top-8 text-gray-500">
+                                            {/* Toggle button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(prev => !prev)}
+                                                className="absolute right-3 top-8 text-gray-500 "
+                                            >
                                                 {showPassword ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
                                             </button>
                                             <FormMessage />
@@ -139,86 +191,138 @@ const LoginForm: React.FC = () => {
                         </Form>
 
                         <div className="mt-4 text-center text-sm">
-                            <button onClick={() => setIsLogin(false)} className="text-xs font-semibold text-black hover:text-blue-600 ml-1">
+                            <button
+                                onClick={() => setIsLogin(false)}
+                                className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
+                            >
                                 Don&apos;t have an account? Sign up
                             </button>
                         </div>
 
-                        <div className="mt-8 bg-white bg-opacity-70 p-4 rounded-md text-center">
-                            <RandomStockQuote />
-                        </div>
+                        {/* Random Stock Quote */}
+                        <RandomStockQuote />
                     </CardContent>
                 </Card>
             </div>
-
             {/* Sign Up Form */}
             <div
-                className={`absolute z-10 min-h-screen w-full md:w-2/5 lg:w-1/3 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
-                    !isLogin
-                        ? "translate-x-0 opacity-100 duration-700 left-0"
-                        : "translate-x-[-100vw] opacity-0 duration-200 left-0"
-                }`}
+                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin
+                        ? "translate-x-[100vw] opacity-0 duration-200 right-0"
+                        : "translate-x-0 opacity-100 duration-700 right-0"
+                    }`}
             >
                 <Card className="w-full">
                     <CardHeader>
-                        <CardTitle className="text-3xl font-bold text-center text-gray-800">Create Account</CardTitle>
+                        <CardTitle className="text-3xl font-bold text-center text-gray-800">
+                            Create Account
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Form {...signUpForm}>
                             <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-6">
+                                {/* Name Field */}
                                 <FormField
                                     control={signUpForm.control}
                                     name="name"
-                                    render={({ field }) => (
+                                    render={({ field: fieldProps }) => (
                                         <FormItem>
                                             <FormLabel>Name</FormLabel>
                                             <FormControl>
-                                                <Input type="text" {...field} placeholder="Enter your name" autoComplete="off" />
+                                                <Input
+                                                    type="text"
+                                                    placeholder="Enter your name"
+                                                    {...fieldProps}
+                                                    autoComplete="off"
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                {/* Email Field */}
                                 <FormField
                                     control={signUpForm.control}
                                     name="email"
-                                    render={({ field }) => (
+                                    render={({ field: fieldProps }) => (
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
                                             <FormControl>
-                                                <Input type="email" {...field} placeholder="Enter your email" autoComplete="off" />
+                                                <Input
+                                                    type="email"
+                                                    placeholder="Enter your email"
+                                                    {...fieldProps}
+                                                    autoComplete="off"
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                {/* Password Field with toggle */}
                                 <FormField
                                     control={signUpForm.control}
                                     name="password"
-                                    render={({ field }) => (
+                                    render={({ field: fieldProps }) => (
                                         <FormItem className="relative">
                                             <FormLabel>Password</FormLabel>
                                             <FormControl>
-                                                <Input type={showPasswordSignUp.password ? "text" : "password"} {...field} placeholder="Enter your password" autoComplete="off" />
+                                                <Input
+                                                    type={showPasswordSignUp.password ? "text" : "password"}
+                                                    placeholder="Enter your password"
+                                                    {...fieldProps}
+                                                    autoComplete="off"
+                                                />
                                             </FormControl>
-                                            <button type="button" onClick={() => setShowPasswordSignUp(prev => ({ ...prev, password: !prev.password }))} className="absolute right-3 top-8 text-gray-500">
-                                                {showPasswordSignUp.password ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setShowPasswordSignUp(prev => ({
+                                                        ...prev,
+                                                        password: !prev.password,
+                                                    }))
+                                                }
+                                                className="absolute right-3 top-8 text-gray-500"
+                                            >
+                                                {showPasswordSignUp.password ? (
+                                                    <MdVisibilityOff size={20} />
+                                                ) : (
+                                                    <MdVisibility size={20} />
+                                                )}
                                             </button>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                {/* Confirm Password Field with toggle */}
                                 <FormField
                                     control={signUpForm.control}
                                     name="confirmPassword"
-                                    render={({ field }) => (
+                                    render={({ field: fieldProps }) => (
                                         <FormItem className="relative">
                                             <FormLabel>Confirm Password</FormLabel>
                                             <FormControl>
-                                                <Input type={showPasswordSignUp.confirmPassword ? "text" : "password"} {...field} placeholder="Confirm your password" autoComplete="off" />
+                                                <Input
+                                                    type={showPasswordSignUp.confirmPassword ? "text" : "password"}
+                                                    placeholder="Confirm your password"
+                                                    {...fieldProps}
+                                                    autoComplete="off"
+                                                />
                                             </FormControl>
-                                            <button type="button" onClick={() => setShowPasswordSignUp(prev => ({ ...prev, confirmPassword: !prev.confirmPassword }))} className="absolute right-3 top-8 text-gray-500">
-                                                {showPasswordSignUp.confirmPassword ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setShowPasswordSignUp(prev => ({
+                                                        ...prev,
+                                                        confirmPassword: !prev.confirmPassword,
+                                                    }))
+                                                }
+                                                className="absolute right-3 top-8 text-gray-500"
+                                            >
+                                                {showPasswordSignUp.confirmPassword ? (
+                                                    <MdVisibilityOff size={20} />
+                                                ) : (
+                                                    <MdVisibility size={20} />
+                                                )}
                                             </button>
                                             <FormMessage />
                                         </FormItem>
@@ -228,11 +332,14 @@ const LoginForm: React.FC = () => {
                             </form>
                         </Form>
 
+                        {/* Conditionally render login buttons only if not on a mobile device */}
                         {!isMobile && (
                             <>
                                 <div className="relative flex items-center w-full my-4">
                                     <hr className="w-full border-gray-300" />
-                                    <span className="absolute left-1/2 -translate-x-1/2 bg-white px-2 text-gray-500 text-sm">or continue with</span>
+                                    <span className="absolute left-1/2 -translate-x-1/2 bg-white px-2 text-gray-500 text-sm">
+                                        or continue with
+                                    </span>
                                 </div>
                                 <div className="py-4 flex justify-center items-center gap-4">
                                     <GitHubLoginButton>Github</GitHubLoginButton>
@@ -243,12 +350,16 @@ const LoginForm: React.FC = () => {
                         )}
 
                         <div className="mt-4 text-center text-sm">
-                            <button onClick={() => setIsLogin(true)} className="text-xs font-semibold text-black hover:text-blue-600 ml-1">Already have an account? Sign in</button>
+                            <button
+                                onClick={() => setIsLogin(true)}
+                                className="text-xs font-semibold text-black hover:text-blue-600 ml-1"
+                            >
+                                Already have an account? Sign in
+                            </button>
                         </div>
 
-                        <div className="mt-8 bg-white bg-opacity-70 p-4 rounded-md text-center">
-                            <RandomStockQuote />
-                        </div>
+                        {/* Random Stock Quote */}
+                        <RandomStockQuote />
                     </CardContent>
                 </Card>
             </div>
