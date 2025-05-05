@@ -303,6 +303,23 @@ export default function ScratchOffs() {
       });
       if (!res.ok) throw new Error(`Purchase failed: ${res.status}`);
       await reloadData();
+      // Fetch latest token count for global update
+      let updatedTokens = 0;
+      try {
+        const userRes = await fetch('/api/user', { credentials: 'include' });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          updatedTokens = userData.tokenCount || 0;
+        }
+      } catch (err) {
+        console.error('Error fetching updated token count:', err);
+      }
+      // Dispatch global token update events
+      window.dispatchEvent(new CustomEvent('token-balance-updated', { detail: { newBalance: updatedTokens } }));
+      window.localStorage.setItem('token-balance-updated', Date.now().toString());
+      window.dispatchEvent(new StorageEvent('storage', { key: 'token-refresh', newValue: Date.now().toString() }));
+      window.dispatchEvent(new StorageEvent('storage', { key: `user-${session?.user?.id}-tokens`, newValue: updatedTokens.toString() }));
+      // Tickets updated events
       window.dispatchEvent(new CustomEvent('tickets-updated'));
       localStorage.setItem('tickets-updated', Date.now().toString());
       toast({ title: 'Purchase Successful', description: `You bought a ${ticket.name} ticket!` });

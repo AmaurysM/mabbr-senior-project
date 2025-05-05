@@ -2,6 +2,7 @@
 
 import { FaPercentage } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
+import { useToast } from '@/app/hooks/use-toast';
 
 interface DailyInterestPanelProps {
   interestRate: number;
@@ -14,10 +15,13 @@ const DailyInterestPanel: React.FC<DailyInterestPanelProps> = ({
   tokenCount,
   tokenValue
 }) => {
+  const { toast } = useToast();
   // Lock interest rate at 3%
   const lockedRate = 0.03;
   // Daily simple interest (3%) – this is what you collect each day
   const dailyInterestAmount = tokenCount * lockedRate;
+  // Always round up interest tokens to at least 1
+  const claimAmount = Math.max(1, Math.ceil(dailyInterestAmount));
   const dailyInterestValue = dailyInterestAmount * tokenValue;
   // If collected every day: simple sums
   const weeklyInterestAmount = dailyInterestAmount * 7;
@@ -53,8 +57,13 @@ const DailyInterestPanel: React.FC<DailyInterestPanelProps> = ({
     // Initialize claim state from localStorage
     if (typeof window !== 'undefined') {
       const todayKey = new Date().toISOString().split('T')[0];
-      if (localStorage.getItem('daily-claim-date') === todayKey) {
+      const storedKey = localStorage.getItem('daily-claim-date');
+      // If claim date matches today, mark claimed, else clear stale entries
+      if (storedKey === todayKey) {
         setClaimed(true);
+      } else if (storedKey) {
+        localStorage.removeItem('daily-claim-date');
+        setClaimed(false);
       }
     }
     // Start timer
@@ -75,12 +84,31 @@ const DailyInterestPanel: React.FC<DailyInterestPanelProps> = ({
   }, [timeLeft, claimed]);
 
   // Handle claim button click
-  const handleClaim = () => {
-    if (typeof window !== 'undefined' && !claimed) {
-      const todayKey = new Date().toISOString().split('T')[0];
-      localStorage.setItem('daily-claim-date', todayKey);
-      setClaimed(true);
-      // TODO: call API to credit daily interest amount
+  const handleClaim = async () => {
+    if (typeof window === 'undefined' || claimed) return;
+    // Record claim in localStorage to prevent double claims today
+    const todayKey = new Date().toISOString().split('T')[0];
+    localStorage.setItem('daily-claim-date', todayKey);
+    setClaimed(true);
+    try {
+      // Credit tokens via API, rounding up
+      const res = await fetch(`/api/user/token?Tokens=${claimAmount}`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const newBalance = data.tokenCount;
+        // Broadcast global token update events
+        window.localStorage.setItem('token-balance-updated', Date.now().toString());
+        window.dispatchEvent(new CustomEvent('token-balance-updated', { detail: { newBalance } }));
+        window.dispatchEvent(new StorageEvent('storage', { key: 'token-refresh', newValue: Date.now().toString() }));
+        // Show success toast
+        toast({ title: 'Claimed Tokens', description: `You claimed ${claimAmount} tokens!` });
+      } else {
+        console.error('Failed to credit interest tokens');
+        toast({ title: 'Claim Failed', description: 'Unable to credit interest tokens.' });
+      }
+    } catch (err) {
+      console.error('Error claiming interest tokens:', err);
+      toast({ title: 'Error', description: 'An error occurred while claiming tokens.' });
     }
   };
 
@@ -105,10 +133,10 @@ const DailyInterestPanel: React.FC<DailyInterestPanelProps> = ({
           <button
             onClick={handleClaim}
             disabled={claimed}
-            title={claimed ? `You claimed ${dailyInterestAmount.toFixed(1)} tokens` : `Click to claim ${dailyInterestAmount.toFixed(1)} tokens`}
+            title={claimed ? `You claimed ${claimAmount} tokens` : `Click to claim ${claimAmount} tokens`}
             className={`absolute right-4 top-1/2 transform -translate-y-1/2 px-5 py-2 text-base font-semibold rounded-full shadow-lg transition-all duration-200 ${claimed ? 'bg-gray-600 text-gray-300 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'}`}
           >
-            {claimed ? `Collect again in ${Math.ceil(timeLeft / 3600000)}h` : `Claim ${dailyInterestAmount.toFixed(1)} tokens`}
+            {claimed ? `Collect again in ${Math.ceil(timeLeft / 3600000)}h` : `Claim ${claimAmount} tokens`}
           </button>
           <div className="text-blue-200 text-sm mt-2">Current Daily Interest Rate</div>
         </div>
