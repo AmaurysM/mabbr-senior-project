@@ -15,6 +15,7 @@ interface TransactionCardProps {
     isCurrentUser?: boolean;
     publicNote?: string;
     privateNote?: string;
+    scratchRewards?: string[];
   };
 }
 
@@ -31,14 +32,12 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     timestamp,
     isCurrentUser,
     publicNote,
-    privateNote
+    privateNote,
+    scratchRewards,
   } = transaction;
   
-  // Scratch ticket win subtypes
+  // Scratch ticket win flag
   const isScratchWin = type === 'SCRATCH_WIN';
-  const isScratchTokenWin = isScratchWin && publicNote?.includes('tokens');
-  const isScratchCashWin = isScratchWin && publicNote?.startsWith('Won $');
-  const isScratchStockWin = isScratchWin && publicNote?.includes('shares of');
 
   // Format the timestamp
   const formattedTime = formatDistanceToNow(
@@ -100,26 +99,6 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     return 'text-gray-400';
   };
 
-  // Price/amount display for various win types
-  const getScratchDisplay = () => {
-    if (isScratchStockWin && publicNote) {
-      const match = /Won (\d+(?:\.\d+)?) shares of (\w+)/.exec(publicNote);
-      if (match) {
-        const shares = match[1];
-        const sym = match[2];
-        return `${shares} shares of ${sym} ($${totalCost.toFixed(2)})`;
-      }
-    }
-    if (isScratchCashWin) {
-      return `$${totalCost.toFixed(2)}`;
-    }
-    if (isScratchTokenWin) {
-      return `${totalCost} tokens`;
-    }
-    // fallback for unknown scratch win
-    return `${totalCost} tokens`;
-  };
-
   return (
     <div className="bg-gray-800/60 rounded-xl p-4 mb-3 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
       <div className="flex justify-between items-start mb-2">
@@ -143,7 +122,13 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         </div>
         <div className={`text-right ${getCostColor()}`}>
           {isScratchWin ? (
-            <div className="font-bold">{getScratchDisplay()}</div>
+            <div className="font-bold space-y-1">
+              {scratchRewards && scratchRewards.length > 0
+                ? scratchRewards.map((line, idx) => (
+                    <div key={idx}>{line}</div>
+                  ))
+                : publicNote}
+            </div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>
           ) : isLootboxRedeem ? (

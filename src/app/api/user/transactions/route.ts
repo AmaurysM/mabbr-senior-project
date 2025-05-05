@@ -226,6 +226,20 @@ export async function GET() {
         });
       }
     
+      // Build detailed reward lines for scratch win
+      const rewards: string[] = [];
+      if (data.tokens && data.tokens > 0) { rewards.push(`${data.tokens} tokens`); }
+      if (data.cash && data.cash > 0) { rewards.push(`$${Number(data.cash).toFixed(2)}`); }
+      if (data.stockShares && typeof data.stockShares === 'object') {
+        Object.entries(data.stockShares).forEach(([symbol, info]: [string, any]) => {
+          if (info && typeof info === 'object' && 'shares' in info && 'value' in info) {
+            const shares = Number(info.shares) || 0;
+            const value = Number(info.value) || 0;
+            rewards.push(`${shares} share${shares !== 1 ? 's' : ''} @ $${value.toFixed(2)}`);
+          }
+        });
+      }
+    
       return {
         id: win.id,
         userEmail: win.user.email,
@@ -238,6 +252,7 @@ export async function GET() {
         timestamp: win.createdAt,
         status: 'COMPLETED',
         publicNote: `Won from ${data.ticketName ?? 'scratch ticket'}${data.isBonus ? ' (Bonus!)' : ''}`,
+        scratchRewards: rewards,
         isCurrentUser
       };
     };
