@@ -113,7 +113,9 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
                 className="w-8 h-8 rounded-full object-cover"
               />
             )}
-            <span className="text-white font-semibold">{friend.name || 'Chat'}</span>
+            <span className="text-white font-semibold">
+              {friend.name || 'Chat'}
+            </span>
           </div>
           <button onClick={() => onClose(friend.id)} className="text-white text-xl">
             ×
@@ -121,21 +123,23 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-700">
+        <div className="flex flex-col flex-1 overflow-y-auto p-4 space-y-3 bg-gray-700">
           {msgs.map((m) => {
             const isMe = m.sender.id === sessionStorage.getItem('userId');
             return (
               <div
                 key={m.id}
-                className={`max-w-[75%] px-4 py-2 rounded-2xl break-words ${
-                  isMe
-                    ? 'bg-blue-500 ml-auto text-white'
-                    : 'bg-gray-600 mr-auto text-gray-100'
-                }`}
+                className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
               >
-                {m.content}
-                <div className="text-xs text-gray-300 text-right mt-1">
-                  {new Date(m.createdAt).toLocaleTimeString()}
+                <div
+                  className={`max-w-[75%] px-4 py-2 rounded-2xl break-words ${
+                    isMe ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-100'
+                  }`}
+                >
+                  {m.content}
+                  <div className="text-xs text-gray-300 text-right mt-1">
+                    {new Date(m.createdAt).toLocaleTimeString()}
+                  </div>
                 </div>
               </div>
             );
