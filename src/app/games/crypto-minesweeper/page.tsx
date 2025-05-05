@@ -14,7 +14,7 @@ type Grid = Cell[][];
 
 const rows = 10;
 const cols = 10;
-const BOMB_PROBABILITY = 0.15; // 15% chance of a bomb, adjustable between 0 and 1
+const BOMB_PROBABILITY = 0.50; // 15% chance of a bomb, adjustable between 0 and 1
 const GAME_COST = 25; // Cost in tokens to play the game
 
 const CryptoSweeper = () => {
@@ -230,7 +230,7 @@ const CryptoSweeper = () => {
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < cols; j++) {
         if (!newGrid[i][j].isBomb) {
-          newGrid[i][j].isBonus = Math.random() < 0.03; // 3% chance for bonus tile
+          newGrid[i][j].isBonus = Math.random() < 0.01; // 3% chance for bonus tile
         }
       }
     }
