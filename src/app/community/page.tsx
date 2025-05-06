@@ -123,10 +123,16 @@ const CommunityPage = () => {
               <span>{getDisplayName(value)}</span>
             </button>
           ))}
-        </nav>
+
+                  {/* Friends List */}
+
         <div className="mt-8">
           <OnlineFriendsList />
         </div>
+          
+        </nav>
+        
+ 
       </div>
 
       {/* Mobile Menu Toggle */}

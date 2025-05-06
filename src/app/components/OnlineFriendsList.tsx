@@ -131,6 +131,35 @@ export default function OnlineFriendsList() {
               <FaCircle className="text-green-500 text-xs" />
               <span className="text-sm truncate max-w-[100px]">{f.name || f.id}</span>
             </button>
+
+
+            {contextMenu.visible && contextMenu.friend?.id === f.id && (
+              <div
+                className="
+                  custom-context-menu
+                  absolute left-full top-1/2
+                  transform -translate-y-1/2
+                  -ml-4            /* pull the bubble 16px left */
+                  bg-gray-900 border border-gray-700
+                  rounded px-3 py-1 text-white text-sm z-50
+                  overflow-hidden
+                "
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveChats((prev) =>
+                      prev.some((x) => x.id === f.id) ? prev : [...prev, f]
+                    );
+                    setContextMenu({ visible: false, friend: null });
+                  }}
+                  className="hover:text-blue-400"
+                >
+                  💬 Message
+                </button>
+              </div>
+            )}
+
           </li>
         ))}
       </ul>
@@ -138,7 +167,7 @@ export default function OnlineFriendsList() {
       {offline.length > 0 && <div className="border-t border-gray-700" />}
       {offline.length > 0 && (
         <>
-          <h3 className="text-sm font-semibold text-gray-300">
+          <h3 className="text-sm font-semibold text-gray-300 overflow">
             Offline — {offline.length}
           </h3>
           <ul className="space-y-2 overflow-visible">
