@@ -182,32 +182,32 @@ export default function GamesLayout({
           }`}>
         
         {/* User Token Display at the top of sidebar */}
-        <div className="mb-4">
+        <div className='mb-4'>
           <UserTokenDisplay />
         </div>
         
-        <nav className="space-y-2 sticky top-0">
-          {Object.values(Tab).map((value) => (
-            <button
-              key={value}
-              onClick={() => handleTabClick(value)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === value
-                ? "bg-blue-600 text-white"
-                : "text-gray-300 hover:bg-gray-700/50"
+        <div className='sticky top-0 space-y-8'>
+          <nav className='space-y-2'>
+            {Object.values(Tab).map((value) => (
+              <button
+                key={value}
+                onClick={() => handleTabClick(value)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                  activeTab === value
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-700/50'
                 }`}
-            >
-              {getTabIcon(value)}
-              <span className="flex-grow text-center">{getDisplayName(value)}</span>
-              {value === Tab.dailyDraw && (
-                <span className="text-xs font-medium px-1.5 py-0.5 min-w-8 text-center rounded bg-gray-700 text-gray-300 ml-1 shrink-0">
-                  {timeRemaining}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-        
-        <div className="mt-8">
+              >
+                {getTabIcon(value)}
+                <span className='flex-grow text-center'>{getDisplayName(value)}</span>
+                {value === Tab.dailyDraw && (
+                  <span className='text-xs font-medium px-1.5 py-0.5 min-w-8 text-center rounded bg-gray-700 text-gray-300 ml-1 shrink-0'>
+                    {timeRemaining}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
           <TokenLeaderboard />
         </div>
       </div>
