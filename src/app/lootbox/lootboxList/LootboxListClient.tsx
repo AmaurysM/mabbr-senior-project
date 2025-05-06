@@ -35,6 +35,22 @@ const LootboxListClient = ({ initialLootboxes, title = "Market", subtitle = "Sel
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Purchase failed");
 
+      // Fetch updated token count and broadcast update
+      try {
+        const userRes = await fetch('/api/user', { credentials: 'include' });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          const newBalance = userData.tokenCount;
+          if (typeof window !== 'undefined' && newBalance != null) {
+            localStorage.setItem(`user-${session?.user?.id}-tokens`, newBalance.toString());
+            window.localStorage.setItem('token-balance-updated', Date.now().toString());
+            window.dispatchEvent(new CustomEvent('token-balance-updated', { detail: { newBalance } }));
+          }
+        }
+      } catch (tokenErr) {
+        console.error('Error updating token balance:', tokenErr);
+      }
+
       setSelectedLootbox(null); 
     } catch (error: any) {
       console.error("Error buying lootbox:", error);
@@ -99,7 +115,7 @@ const LootboxListClient = ({ initialLootboxes, title = "Market", subtitle = "Sel
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-gray-400 text-sm">Price:</span>
-                <span className="text-2xl font-bold text-green-400 ml-2">${selectedLootbox.price}</span>
+                <span className="text-2xl font-bold text-yellow-400 ml-2">{selectedLootbox.price} tokens</span>
               </div>
               <div className="flex gap-3">
                 <button

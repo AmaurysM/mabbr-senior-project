@@ -95,7 +95,7 @@ const OwnedLootboxTile = ({  userLootbox }: { userLootbox: UserLootBox }) => {
         </div>
         <div className="bg-black/50 rounded px-2 py-1">
           <span className={clsx("text-sm font-bold", rarity.text)}>
-            ${userLootbox.lootBox.price}
+            {Math.ceil(userLootbox.lootBox.price / 2)} tokens
           </span>
         </div>
       </div>

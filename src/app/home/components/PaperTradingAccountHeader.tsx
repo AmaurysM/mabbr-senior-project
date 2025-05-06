@@ -1,52 +1,47 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { authClient } from '@/lib/auth-client';
 import useStockData from '@/hooks/useStockData';
+import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+
+// Fetcher for portfolio data
+const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(res => res.json());
 
 interface UserPortfolio {
   balance: number;
-  positions: {
-    [symbol: string]: {
-      shares: number;
-      averagePrice: number;
-    };
-  };
+  positions: Record<string, { shares: number; averagePrice: number }>;
 }
 
 const PaperTradingAccountHeader = () => {
-  const {
-    data: session,
-
-  } = authClient.useSession();
+  const { data: session } = authClient.useSession();
   const user = session?.user;
   const router = useRouter();
-  const [portfolio, setPortfolio] = useState<UserPortfolio>({ balance: 100000, positions: {} });
+
+  // Use SWR to fetch and cache portfolio, preserving stale data
+  const { data: portfolio, mutate: mutatePortfolio } = useSWR<UserPortfolio>(
+    user ? '/api/user/portfolio' : null,
+    fetcher,
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+      fallbackData: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('paperPortfolio') || 'null') : undefined
+    }
+  );
+
   const [searchQuery, setSearchQuery] = useState('');
-  const symbolsToFetch = Object.keys(portfolio.positions);
+  const symbolsToFetch = Object.keys(portfolio?.positions || {});
 
   const { stocks: swrStocks } = useStockData(symbolsToFetch, searchQuery);
-
+  
+  // Revalidate on external portfolio update events
   useEffect(() => {
-    const fetchPortfolio = async () => {
-      if (!user) return;
-      try {
-        const res = await fetch('/api/user/portfolio');
-        const data = await res.json();
-        if (!data.error) {
-          setPortfolio(data);
-        }
-      } catch (error) {
-        console.error('Error fetching portfolio:', error);
-      }
-    };
-    fetchPortfolio();
-    const intervalId = user ? setInterval(fetchPortfolio, 30000) : null;
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [user]);
+    const handler = () => mutatePortfolio();
+    window.addEventListener('portfolio-updated', handler);
+    return () => window.removeEventListener('portfolio-updated', handler);
+  }, [mutatePortfolio]);
 
   return (
     <div className="mb-4 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/10">
@@ -56,30 +51,33 @@ const PaperTradingAccountHeader = () => {
           <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
             <h3 className="text-lg font-medium text-gray-300 mb-1">Cash</h3>
             <p className="text-2xl font-semibold text-green-400">
-              ${portfolio.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${portfolio?.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-sm text-gray-400 mt-1">Available for trading</p>
           </div>
           <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
             <h3 className="text-lg font-medium text-gray-300 mb-1">Holdings</h3>
             <p className="text-2xl font-semibold text-blue-400">
-              ${Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
-                const stock = swrStocks.find(s => s.symbol === symbol);
-                return total + (stock ? position.shares * stock.price : 0);
-              }, 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${Object.entries(portfolio?.positions || {}).reduce(
+                (total, [symbol, position]) => {
+                  const stock = swrStocks.find(s => s.symbol === symbol);
+                  return total + (stock ? position.shares * stock.price : 0);
+                },
+                0
+              ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-sm text-gray-400 mt-1">Current market value</p>
           </div>
           <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
             <h3 className="text-lg font-medium text-gray-300 mb-1">Net Worth</h3>
             <p className="text-2xl font-semibold text-green-400">
-              ${(
-                portfolio.balance +
-                Object.entries(portfolio.positions).reduce((total, [symbol, position]) => {
+              ${(portfolio?.balance ?? 0 + Object.entries(portfolio?.positions || {}).reduce(
+                (total, [symbol, position]) => {
                   const stock = swrStocks.find(s => s.symbol === symbol);
                   return total + (stock ? position.shares * stock.price : 0);
-                }, 0)
-              ).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                },
+                0
+              )).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>

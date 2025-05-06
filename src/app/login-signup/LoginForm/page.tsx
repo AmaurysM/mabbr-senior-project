@@ -25,6 +25,7 @@ import GoogleLoginButton from "@/app/components/LoginWithGoogle";
 import DiscordLoginButton from "@/app/components/LoginWithDiscord";
 import { Toaster } from "@/app/components/ui/sonner";
 import { MdVisibility, MdVisibilityOff } from "react-icons/md";
+import RandomStockQuote from '../../components/RandomStockQuote';
 
 const LoginForm: React.FC = () => {
     const [isLogin, setIsLogin] = useState<boolean>(true);
@@ -121,14 +122,14 @@ const LoginForm: React.FC = () => {
 
     return (
         <div className="relative w-full min-h-screen flex overflow-hidden">
-            {/* Login Form */}
+            {/* Toaster for notifications */}
             <Toaster />
+            {/* Login Form */}
             <div
-                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
-                    isLogin
+                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin
                         ? "translate-x-0 opacity-100 duration-700 right-0"
                         : "translate-x-[100vw] opacity-0 duration-200 right-0"
-                }`}
+                    }`}
             >
                 <Card className="w-full">
                     <CardHeader>
@@ -197,16 +198,18 @@ const LoginForm: React.FC = () => {
                                 Don&apos;t have an account? Sign up
                             </button>
                         </div>
+
+                        {/* Random Stock Quote */}
+                        <RandomStockQuote />
                     </CardContent>
                 </Card>
             </div>
             {/* Sign Up Form */}
             <div
-                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${
-                    isLogin
+                className={`absolute z-10 min-h-screen w-full sm:w-1/2 bg-white bg-opacity-70 p-6 shadow-xl backdrop-filter backdrop-blur-lg transition-all ${isLogin
                         ? "translate-x-[100vw] opacity-0 duration-200 right-0"
                         : "translate-x-0 opacity-100 duration-700 right-0"
-                }`}
+                    }`}
             >
                 <Card className="w-full">
                     <CardHeader>
@@ -354,6 +357,9 @@ const LoginForm: React.FC = () => {
                                 Already have an account? Sign in
                             </button>
                         </div>
+
+                        {/* Random Stock Quote */}
+                        <RandomStockQuote />
                     </CardContent>
                 </Card>
             </div>

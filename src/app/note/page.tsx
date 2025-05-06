@@ -90,33 +90,39 @@ const StockNotes = () => {
     [selectedTransaction]
   );
 
+  // Fetch transactions from API
+  const fetchTransactions = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/user/note");
+      if (!response.ok) throw new Error("Failed to fetch transactions");
+      const data: UserTransactions = await response.json();
+      setTransactions(data);
+      const firstWithNotes = data.find((t) => t.publicNote || t.privateNote);
+      if (firstWithNotes) setSelectedTransactionId(firstWithNotes.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      console.error("Error fetching transactions:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial load
   useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/user/note");
+    fetchTransactions();
+  }, [fetchTransactions]);
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch transactions");
-        }
-
-        const data: UserTransactions = await response.json();
-        setTransactions(data);
-
-        const firstWithNotes = data.find((t) => t.publicNote || t.privateNote);
-        if (firstWithNotes) {
-          setSelectedTransactionId(firstWithNotes.id);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
-        console.error("Error fetching transactions:", err);
-      } finally {
-        setLoading(false);
+  // Listen for scratch-ticket wins and refresh
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'transactions-updated') {
+        fetchTransactions();
       }
     };
-
-    fetchTransactions();
-  }, []);
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [fetchTransactions]);
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     // Close sidebar if click is outside both sidebar and menu button

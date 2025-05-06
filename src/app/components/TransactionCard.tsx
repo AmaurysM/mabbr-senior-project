@@ -11,6 +11,7 @@ interface TransactionCardProps {
     price: number;
     totalCost: number;
     type: string;
+    status: string;
     timestamp: string | Date;
     isCurrentUser?: boolean;
     publicNote?: string;
@@ -28,12 +29,24 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     price,
     totalCost,
     type,
+    status,
     timestamp,
     isCurrentUser,
     publicNote,
-    privateNote
+    privateNote,
   } = transaction;
   
+  // Map of scratch ticket type to its token cost
+  const scratchCostMap: Record<string, number> = {
+    'Golden Fortune': 25,
+    'Cash Splash': 50,
+    'Stock Surge': 75,
+    'Mystic Chance': 100,
+    'Diamond Scratch': 200,
+  };
+  // Detect scratch win entries
+  const isScratchWin = status === 'SCRATCH_WIN';
+
   // Format the timestamp
   const formattedTime = formatDistanceToNow(
     new Date(timestamp),
@@ -46,7 +59,6 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   const isSell = type === 'SELL';
   const isLootboxPurchase = type === 'LOOTBOX';
   const isLootboxRedeem = type === 'LOOTBOX_REDEEM';
-  const isScratchWin = type === 'SCRATCH_WIN';
   const isDailyDrawWin = type === 'DAILY_DRAW_WIN';
 
   const hasNotes = publicNote || (isCurrentUser && privateNote);
@@ -70,9 +82,12 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   };
 
   const getPriceDisplay = () => {
+    if (isScratchWin) {
+      // price = number of shares won
+      return `${price.toFixed(2)} ${price === 1 ? 'share' : 'shares'}`;
+    }
     if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
     if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
-    if (isScratchWin) return `Value: $${price.toFixed(2)}`;
     if (isDailyDrawWin) return `${price.toLocaleString()} tokens`;
     return `${quantity} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
   };
@@ -94,7 +109,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isDailyDrawWin) return 'text-purple-400';
     return 'text-gray-400';
   };
-  
+
   return (
     <div className="bg-gray-800/60 rounded-xl p-4 mb-3 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
       <div className="flex justify-between items-start mb-2">
@@ -117,12 +132,15 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
           </div>
         </div>
         <div className={`text-right ${getCostColor()}`}>
-          {isLootboxRedeem ? (
-            <div className="font-bold">REDEEMED LOOTBOX</div>
-          ) : isScratchWin ? (
-            <div className="font-bold">SCRATCH WIN</div>
+          {isScratchWin ? (
+            // scratch win: display token cost of ticket
+            <div className="font-bold">
+              {scratchCostMap[stockSymbol] ?? 0} tokens
+            </div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>
+          ) : isLootboxRedeem ? (
+            <div className="font-bold">REDEEMED LOOTBOX</div>
           ) : (
             <div className="font-bold">${totalCost.toFixed(2)}</div>
           )}

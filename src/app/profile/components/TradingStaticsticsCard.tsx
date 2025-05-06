@@ -135,6 +135,9 @@ const TradingStaticsticsCard = () => {
         );
     }
 
+    const winRate = calculateWinRate();
+    const profit = calculateProfit();
+
     return (
         <div className="p-6">
             <h2 className="text-2xl font-bold text-white mb-6">Trading Statistics</h2>
@@ -145,14 +148,14 @@ const TradingStaticsticsCard = () => {
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">
                     <div className="text-sm text-gray-400 mb-1">Win Rate</div>
-                    <div className={`text-xl font-bold ${calculateWinRate() > 50 ? 'text-green-400' : 'text-red-400'}`}>
-                        {calculateWinRate().toFixed(0)}%
+                    <div className={`text-xl font-bold ${winRate > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {winRate.toFixed(0)}%
                     </div>
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">
                     <div className="text-sm text-gray-400 mb-1">Total Profit</div>
-                    <div className={`text-xl font-bold ${calculateProfit() >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        ${Math.abs(calculateProfit()).toLocaleString()}
+                    <div className={`text-xl font-bold ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        ${Math.abs(profit).toLocaleString()}
                     </div>
                 </div>
                 <div className="bg-gray-800/30 p-4 rounded-lg">

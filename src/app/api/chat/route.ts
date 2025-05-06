@@ -1,49 +1,41 @@
+// app/api/chat/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { globalPosts } from '@/lib/prisma_types';
 
-// GET /api/chat - Get chat messages
 export async function GET(req: NextRequest) {
-  try {
+  const { searchParams } = new URL(req.url);
 
-    // Get query parameters
-    const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '100');
-    //const before = searchParams.get('before');
+  // parse limit, order, before, page, etc.
+  const limit = parseInt(searchParams.get('limit') || '100', 10);
+  const order: 'asc' | 'desc' =
+    searchParams.get('order') === 'asc' ? 'asc' : 'desc';
 
-    // Fetch messages with user data
-    const messages: globalPosts = await prisma.comment.findMany({
-      where:{
-        commentableType: "GLOBALCHAT"
-      },
-      orderBy: {
-        createdAt: 'asc'
-      },
-      take: limit,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-      },
-    });
+  const before = searchParams.get('before');
+  const after  = searchParams.get('after');
+  const beforeDate = before ? new Date(before) : undefined;
+  const afterDate  = after  ? new Date(after)  : undefined;
 
-    return NextResponse.json(messages);
-  } catch (error) {
-    console.error('Error fetching chat messages:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch chat messages' },
-      { status: 500 }
-    );
-  }
+  const messages = await prisma.comment.findMany({
+    where: {
+      commentableType: 'GLOBALCHAT',
+      ...(afterDate  && { createdAt: { gt: afterDate  } }),
+      ...( !afterDate && beforeDate && { createdAt: { lt: beforeDate } }),
+    },
+    orderBy: { createdAt: order },
+    take: limit,
+    include: {
+      user: { select: { id: true, name: true, image: true } },
+    },
+  });
+
+  return NextResponse.json(messages);
 }
 
-// POST /api/chat - Create a new chat message
+
+// POST /api/chat
 export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({
@@ -88,4 +80,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

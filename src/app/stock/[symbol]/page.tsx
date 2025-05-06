@@ -287,14 +287,6 @@ const StockPage = () => {
       curve: "smooth",
       width: [3, 1],
     },
-    title: {
-      text: `${symbol} Stock Price`,
-      align: "left",
-      style: {
-        color: "#FFFFFF",
-        fontSize: "20px",
-      },
-    },
     xaxis: {
       type: "datetime",
       labels: {

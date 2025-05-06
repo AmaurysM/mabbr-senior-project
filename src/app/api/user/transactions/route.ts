@@ -22,7 +22,9 @@ export async function GET() {
     
     // Get user's transactions
     const userTransactions = await prisma.transaction.findMany({
-      where: { userId: userId },
+      where: {
+        userId: userId
+      },
       orderBy: { timestamp: 'desc' },
       take: 20, // Limit to recent transactions
       select: {
@@ -91,29 +93,6 @@ export async function GET() {
       take: 50 // Limit to recent transactions
     });
     
-    // Get user's scratch ticket wins from activity feed
-    const userScratchWins = await prisma.activityFeedEntry.findMany({
-      where: {
-        userId: userId,
-        type: 'SCRATCH_WIN'
-      },
-      select: {
-        id: true,
-        userId: true,
-        type: true,
-        data: true,
-        createdAt: true,
-        user: {
-          select: {
-            email: true,
-            name: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20
-    });
-    
     // Get user's daily draw wins from activity feed
     const userDailyDrawWins = await prisma.activityFeedEntry.findMany({
       where: {
@@ -135,29 +114,6 @@ export async function GET() {
       },
       orderBy: { createdAt: 'desc' },
       take: 20
-    });
-    
-    // Get friends' scratch ticket wins from activity feed
-    const friendScratchWins = await prisma.activityFeedEntry.findMany({
-      where: {
-        userId: { in: friendIds },
-        type: 'SCRATCH_WIN'
-      },
-      select: {
-        id: true,
-        userId: true,
-        type: true,
-        data: true,
-        createdAt: true,
-        user: {
-          select: {
-            email: true,
-            name: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50
     });
     
     // Get friends' daily draw wins from activity feed
@@ -200,86 +156,76 @@ export async function GET() {
       isCurrentUser: false
     }));
     
-    // Format scratch ticket wins as transactions
-    const formatScratchWin = (win: any, isCurrentUser: boolean) => {
-      // Parse the data JSON if it's a string
-      const data = typeof win.data === 'string' ? JSON.parse(win.data) : win.data;
-      
-      // Calculate total value from prize data
-      let totalValue = 0;
-      if (data.tokens) totalValue += data.tokens;
-      if (data.cash) totalValue += data.cash;
-      
-      // Add stock values if available
-      if (data.stockShares && Object.keys(data.stockShares).length > 0) {
-        Object.entries(data.stockShares).forEach(([symbol, info]: [string, any]) => {
-          totalValue += info.shares * info.value;
-        });
-      }
-      
-      return {
-        id: win.id,
-        userEmail: win.user.email,
-        userName: win.user.name,
-        stockSymbol: data.ticketName || 'Scratch Ticket',
-        type: 'SCRATCH_WIN',
-        quantity: 1,
-        price: totalValue,
-        totalCost: totalValue,
-        timestamp: win.createdAt,
-        status: 'COMPLETED',
-        publicNote: `Won from ${data.ticketName} scratch ticket${data.isBonus ? ' (Bonus!)' : ''}`,
-        isCurrentUser
-      };
-    };
-    
     // Format daily draw wins as transactions
     const formatDailyDrawWin = (win: any, isCurrentUser: boolean) => {
-      // Parse the data JSON if it's a string
-      const data = typeof win.data === 'string' ? JSON.parse(win.data) : win.data;
-      
-      return {
-        id: win.id,
-        userEmail: win.user.email,
-        userName: win.user.name,
-        stockSymbol: 'Daily Draw',
-        type: 'DAILY_DRAW_WIN',
-        quantity: 1,
-        price: data.tokens,
-        totalCost: data.tokens,
-        timestamp: win.createdAt,
-        status: 'COMPLETED',
-        publicNote: `Won ${data.tokens} tokens from Daily Draw with ${data.totalParticipants} participants!`,
-        isCurrentUser
-      };
+      try {
+        // Parse the data JSON if it's a string
+        const data = typeof win.data === 'string' ? JSON.parse(win.data) : win.data;
+        
+        // Handle potential missing tokens value
+        const tokens = data && data.tokens ? Number(data.tokens) : 0;
+        const participants = data && data.totalParticipants ? data.totalParticipants : 'unknown number of';
+        
+        return {
+          id: win.id,
+          userEmail: win.user.email,
+          userName: win.user.name,
+          stockSymbol: 'Daily Draw',
+          type: 'DAILY_DRAW_WIN',
+          quantity: 1,
+          price: tokens,
+          totalCost: tokens,
+          timestamp: win.createdAt,
+          status: 'COMPLETED',
+          publicNote: `Won ${tokens} tokens from Daily Draw with ${participants} participants!`,
+          isCurrentUser
+        };
+      } catch (error) {
+        console.error('Error formatting daily draw win:', error, win);
+        // Return a fallback object with basic information
+        return {
+          id: win.id,
+          userEmail: win.user?.email || 'unknown',
+          userName: win.user?.name || 'unknown',
+          stockSymbol: 'Daily Draw',
+          type: 'DAILY_DRAW_WIN',
+          quantity: 1,
+          price: 0,
+          totalCost: 0,
+          timestamp: win.createdAt,
+          status: 'COMPLETED',
+          publicNote: 'Won tokens from Daily Draw!',
+          isCurrentUser
+        };
+      }
     };
     
-    const formattedUserScratchWins = userScratchWins.map(win => 
-      formatScratchWin(win, true)
-    );
+    const formattedUserDailyDrawWins = userDailyDrawWins.map(win => {
+      try {
+        return formatDailyDrawWin(win, true);
+      } catch (error) {
+        console.error('Error formatting user daily draw win:', error, win);
+        return null;
+      }
+    }).filter(Boolean);
     
-    const formattedUserDailyDrawWins = userDailyDrawWins.map(win => 
-      formatDailyDrawWin(win, true)
-    );
-    
-    const formattedFriendScratchWins = friendScratchWins.map(win => 
-      formatScratchWin(win, false)
-    );
-    
-    const formattedFriendDailyDrawWins = friendDailyDrawWins.map(win => 
-      formatDailyDrawWin(win, false)
-    );
+    const formattedFriendDailyDrawWins = friendDailyDrawWins.map(win => {
+      try {
+        return formatDailyDrawWin(win, false);
+      } catch (error) {
+        console.error('Error formatting friend daily draw win:', error, win);
+        return null;
+      }
+    }).filter(Boolean);
     
     // Combine all transactions and sort by timestamp
     const allTransactions = [
       ...formattedUserTransactions,
       ...formattedFriendTransactions,
-      ...formattedUserScratchWins,
-      ...formattedFriendScratchWins,
       ...formattedUserDailyDrawWins,
       ...formattedFriendDailyDrawWins
     ].sort((a, b) => {
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      return new Date(b?.timestamp ?? 0).getTime() - new Date(a?.timestamp ?? 0).getTime();
     });
     
     // Set cache control headers in the response
@@ -300,4 +246,4 @@ export async function GET() {
       error: 'Failed to fetch transactions. Please try again later.' 
     }, { status: 500 });
   }
-} 
+}

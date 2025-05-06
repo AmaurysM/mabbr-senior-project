@@ -52,12 +52,34 @@ export async function GET() {
     // High token value = low interest, Low token value = high interest
     const interestRate = minInterest + (maxInterest - minInterest) * (1 - normalizedValue);
     
-    // Mock market data
+    // Calculate 24h supply change by fetching last two market data points
+    let prevSupply = 0;
+    try {
+      // Try to fetch the latest two records
+      let historyPoints;
+      if ((prisma as any).TokenMarketDataPoint) {
+        historyPoints = await (prisma as any).TokenMarketDataPoint.findMany({
+          orderBy: { timestamp: 'desc' },
+          take: 2
+        });
+      } else if ((prisma as any).tokenMarketDataPoint) {
+        historyPoints = await (prisma as any).tokenMarketDataPoint.findMany({
+          orderBy: { timestamp: 'desc' },
+          take: 2
+        });
+      }
+      if (historyPoints && historyPoints.length >= 2) {
+        prevSupply = historyPoints[1].tokensInCirculation || 0;
+      }
+    } catch (err) {
+      console.error('Error calculating 24h supply change:', err);
+    }
+    const supplyChange = totalTokens - prevSupply;
     return NextResponse.json({
       tokenValue,
       interestRate,
       tokenSupply: totalTokens,
-      dailyVolume: Math.floor(totalTokens * 0.05), // Assume 5% daily volume
+      dailyVolume: supplyChange, // repurposed as 24h supply change
       marketCap: totalTokens * tokenValue,
     });
   } catch (error) {

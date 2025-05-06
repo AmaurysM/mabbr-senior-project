@@ -72,9 +72,15 @@ const OwnedScratchTicket: React.FC<OwnedScratchTicketProps> = ({ userTicket, onC
         </div>
       </div>
 
-      {/* Unscratched overlay */}
+      {/* Bonus badge for bonus tickets */}
+      {userTicket.isBonus && (
+        <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+          Bonus - 25% Higher Reward
+        </div>
+      )}
+      {/* Unscratched overlay moved to top-left */}
       {!userTicket.scratched && (
-        <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-2 py-1 m-2 rounded-full">
+        <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
           New
         </div>
       )}

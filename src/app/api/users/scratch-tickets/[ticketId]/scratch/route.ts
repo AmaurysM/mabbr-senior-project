@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import prisma, { reconnectPrisma } from "@/lib/prisma";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { headers } from "next/headers";
 
 // Maximum number of retries
@@ -13,7 +13,7 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // Mark a scratch ticket as scratched
 export async function POST(
   request: NextRequest,
-  context: { params: { ticketId: string } }
+  { params }: { params: { ticketId: string } }
 ) {
   // Implement retries for database issues
   let retryCount = 0;
@@ -21,7 +21,8 @@ export async function POST(
   
   while (retryCount < MAX_RETRIES) {
     try {
-      console.log("[TICKET_SCRATCH] Request received for ticketId:", context.params.ticketId);
+      const ticketId = params.ticketId;
+      console.log("[TICKET_SCRATCH] Request received for ticketId:", ticketId);
       
       // Get authenticated session first
       const session = await auth.api.getSession({
@@ -36,9 +37,6 @@ export async function POST(
         );
       }
 
-      // Properly access the dynamic route params in Next.js App Router
-      const { ticketId } = context.params;
-      
       if (!ticketId) {
         console.log("[TICKET_SCRATCH] No ticket ID provided");
         return NextResponse.json(

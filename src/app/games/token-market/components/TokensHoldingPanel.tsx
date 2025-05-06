@@ -12,6 +12,7 @@ interface TokensHoldingPanelProps {
 const TokensHoldingPanel: React.FC<TokensHoldingPanelProps> = ({
   tokenCount: initialTokenCount,
   tokenValue,
+  // interestRate prop ignored, lock daily interest at 3%
   interestRate
 }) => {
   // Local state to track token count for real-time updates
@@ -67,7 +68,9 @@ const TokensHoldingPanel: React.FC<TokensHoldingPanelProps> = ({
   }, []);
   
   const totalValue = tokenCount * tokenValue;
-  const dailyInterest = tokenCount * interestRate;
+  // Lock daily interest rate at 3%
+  const lockedRate = 0.03;
+  const dailyInterest = tokenCount * lockedRate;
   const dailyInterestValue = dailyInterest * tokenValue;
 
   return (
@@ -104,7 +107,7 @@ const TokensHoldingPanel: React.FC<TokensHoldingPanelProps> = ({
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 p-4 rounded-lg">
           <div className="text-blue-200 font-medium mb-1">Hold Bonus</div>
           <div className="text-sm text-blue-100">
-            Hold your tokens to earn a daily interest rate of {(interestRate * 100).toFixed(1)}%. 
+            Hold your tokens to earn a daily interest rate of 3.0%. 
             Interest is paid in tokens directly to your balance each day.
           </div>
         </div>
