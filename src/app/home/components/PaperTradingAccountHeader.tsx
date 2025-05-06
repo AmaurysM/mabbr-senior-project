@@ -1,22 +1,18 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { authClient } from '@/lib/auth-client';
 import useStockData from '@/hooks/useStockData';
+import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
-// Fetcher for SWR
+// Fetcher for portfolio data
 const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(res => res.json());
 
 interface UserPortfolio {
   balance: number;
-  positions: {
-    [symbol: string]: {
-      shares: number;
-      averagePrice: number;
-    };
-  };
+  positions: Record<string, { shares: number; averagePrice: number }>;
 }
 
 const PaperTradingAccountHeader = () => {
