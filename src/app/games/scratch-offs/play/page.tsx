@@ -1318,6 +1318,12 @@ const ScratchOffPlayContent = () => {
                 key: 'token-refresh',
                 newValue: Date.now().toString(),
               }));
+              // Notify notes page to refresh transactions
+              localStorage.setItem('transactions-updated', Date.now().toString());
+              window.dispatchEvent(new StorageEvent('storage', {
+                key: 'transactions-updated',
+                newValue: Date.now().toString(),
+              }));
             }
           } catch (error) {
             console.error('Error updating tokens:', error);

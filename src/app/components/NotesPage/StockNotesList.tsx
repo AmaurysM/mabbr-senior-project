@@ -16,6 +16,8 @@ const StockNotesList = (
                 const isSell = transaction.type === 'SELL';
                 const isLootbox = transaction.type === 'LOOTBOX';
                 const isLootboxRedeem = transaction.type === 'LOOTBOX_REDEEM';
+                const isTokenExchange = transaction.type === 'TOKEN_EXCHANGE';
+                const isWin = transaction.type === 'WIN';
                 
                 // Determine styling based on transaction type
                 let bgColor = 'bg-gray-900/20';
@@ -34,10 +36,22 @@ const StockNotesList = (
                     bgColor = 'bg-blue-900/20';
                     textColor = 'text-blue-300';
                     borderColor = 'border-blue-700/30';
+                } else if (isWin) {
+                    // Scratch win styling
+                    bgColor = 'bg-yellow-900/20';
+                    textColor = 'text-yellow-300';
+                    borderColor = 'border-yellow-700/30';
                 }
                 
                 // Determine display text
-                const displayType = isLootboxRedeem ? 'REDEEMED LOOTBOX' : transaction.type;
+                let displayType = transaction.type;
+                if (isLootboxRedeem) {
+                    displayType = 'REDEEMED LOOTBOX';
+                } else if (isTokenExchange) {
+                    displayType = 'TOKEN EXCHANGE';
+                } else if (isWin) {
+                    displayType = 'SCRATCH WIN';
+                }
 
                 return (
                     <li

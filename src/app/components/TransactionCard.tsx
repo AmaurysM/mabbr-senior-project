@@ -11,11 +11,11 @@ interface TransactionCardProps {
     price: number;
     totalCost: number;
     type: string;
+    status: string;
     timestamp: string | Date;
     isCurrentUser?: boolean;
     publicNote?: string;
     privateNote?: string;
-    scratchRewards?: string[];
   };
 }
 
@@ -29,15 +29,23 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     price,
     totalCost,
     type,
+    status,
     timestamp,
     isCurrentUser,
     publicNote,
     privateNote,
-    scratchRewards,
   } = transaction;
   
-  // Scratch ticket win flag
-  const isScratchWin = type === 'SCRATCH_WIN';
+  // Map of scratch ticket type to its token cost
+  const scratchCostMap: Record<string, number> = {
+    'Golden Fortune': 25,
+    'Cash Splash': 50,
+    'Stock Surge': 75,
+    'Mystic Chance': 100,
+    'Diamond Scratch': 200,
+  };
+  // Detect scratch win entries
+  const isScratchWin = status === 'SCRATCH_WIN';
 
   // Format the timestamp
   const formattedTime = formatDistanceToNow(
@@ -74,9 +82,12 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   };
 
   const getPriceDisplay = () => {
+    if (isScratchWin) {
+      // price = number of shares won
+      return `${price.toFixed(2)} ${price === 1 ? 'share' : 'shares'}`;
+    }
     if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
     if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
-    if (isScratchWin) return ``;
     if (isDailyDrawWin) return `${price.toLocaleString()} tokens`;
     return `${quantity} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
   };
@@ -122,12 +133,9 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         </div>
         <div className={`text-right ${getCostColor()}`}>
           {isScratchWin ? (
-            <div className="font-bold space-y-1">
-              {scratchRewards && scratchRewards.length > 0
-                ? scratchRewards.map((line, idx) => (
-                    <div key={idx}>{line}</div>
-                  ))
-                : publicNote}
+            // scratch win: display token cost of ticket
+            <div className="font-bold">
+              {scratchCostMap[stockSymbol] ?? 0} tokens
             </div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>
