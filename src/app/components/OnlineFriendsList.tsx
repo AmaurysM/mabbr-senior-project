@@ -130,7 +130,7 @@ export default function OnlineFriendsList() {
                   -ml-4            /* pull the bubble 16px left */
                   bg-gray-900 border border-gray-700
                   rounded px-3 py-1 text-white text-sm z-50
-                  overflow-visible
+                  overflow-hidden
                 "
               >
                 <button
@@ -154,7 +154,7 @@ export default function OnlineFriendsList() {
       {offline.length > 0 && <div className="border-t border-gray-700" />}
       {offline.length > 0 && (
         <>
-          <h3 className="text-sm font-semibold text-gray-300">
+          <h3 className="text-sm font-semibold text-gray-300 overflow">
             Offline — {offline.length}
           </h3>
           <ul className="space-y-2 overflow-visible">
