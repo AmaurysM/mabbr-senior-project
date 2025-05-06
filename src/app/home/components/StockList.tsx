@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client"
 import useStockData from '@/hooks/useStockData';
 import { DEFAULT_STOCKS } from '@/app/constants/DefaultStocks';
 import CompactStockCard from '@/app/components/CompactStockCard';
+import { toast } from 'react-hot-toast';
 
 interface UserPortfolio {
     balance: number;
@@ -123,6 +124,9 @@ const StockList = () => {
                     throw new Error(data.error || 'Trade failed');
                 }
                 await Promise.all([mutateStocks()]);
+                // Notify header to update portfolio and show toast
+                toast.success(`${type === 'BUY' ? 'Bought' : 'Sold'} ${amount.toFixed(2)} shares of ${symbol}`);
+                window.dispatchEvent(new CustomEvent('portfolio-updated'));
             } catch (error) {
                 console.error('Trade failed:', error);
                 setSearchError(error instanceof Error ? error.message : 'Trade failed');

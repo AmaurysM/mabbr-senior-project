@@ -7,6 +7,8 @@ export const TransactionHeader = ({ transaction }: { transaction: UserTransactio
     const isLootbox = transaction.type === 'LOOTBOX';
     const isLootboxRedeem = transaction.type === 'LOOTBOX_REDEEM';
     const isSell = transaction.type === 'SELL';
+    const isTokenExchange = transaction.type === 'TOKEN_EXCHANGE';
+    const isWin = transaction.type === 'WIN';
     
     // Determine display colors
     let bgColor = 'bg-gray-900/20';
@@ -25,10 +27,21 @@ export const TransactionHeader = ({ transaction }: { transaction: UserTransactio
         bgColor = 'bg-blue-900/20';
         textColor = 'text-blue-300';
         borderColor = 'border-blue-700/30';
+    } else if (isWin) {
+        bgColor = 'bg-yellow-900/20';
+        textColor = 'text-yellow-300';
+        borderColor = 'border-yellow-700/30';
     }
     
     // Determine display text
-    const displayType = isLootboxRedeem ? 'REDEEMED LOOTBOX' : transaction.type;
+    let displayType = transaction.type;
+    if (isLootboxRedeem) {
+        displayType = 'REDEEMED LOOTBOX';
+    } else if (isTokenExchange) {
+        displayType = 'TOKEN EXCHANGE';
+    } else if (isWin) {
+        displayType = 'SCRATCH WIN';
+    }
 
     return (
         <div className="flex justify-between items-center mb-6">

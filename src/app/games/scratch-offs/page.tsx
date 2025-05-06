@@ -65,14 +65,14 @@ const generateDailyShop = (): ScratchTicket[] => {
       type: "random" as const,
       name: "Mystic Chance",
       price: 100,
-      description: "Win anything with a 100x multiplier! High risk but incredible rewards if you hit!",
+      description: "Win anything with a 10x multiplier! High risk but incredible rewards if you hit!",
       chance: 24.75,
     },
     {
       type: "diamond" as const,
       name: "Diamond Scratch",
       price: 200,
-      description: "ULTRA RARE - 1% CHANCE TO APPEAR! Win anything with a 300x multiplier!",
+      description: "ULTRA RARE - 1% CHANCE TO APPEAR! Win anything with a 50x multiplier!",
       chance: 1.0, // Explicitly set to 1.0% chance
     }
   ];

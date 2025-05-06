@@ -1212,11 +1212,11 @@ const ScratchOffPlayContent = () => {
         }
         // Handle regular symbols (legacy support)
         else {
-          // Apply special multipliers for Mystic Chance (100x) and Diamond Scratch (300x)
+          // Apply special multipliers for Mystic Chance (10x) and Diamond Scratch (50x)
           let ticketTypeMultiplier = 1;
           if (ticket && ticket.ticket) {
             if (ticket.ticket.type === 'random') {
-              ticketTypeMultiplier = 100; // Mystic Chance: 100x multiplier
+              ticketTypeMultiplier = 10; // Mystic Chance: 10x multiplier
             } else if (ticket.ticket.type === 'diamond') {
               ticketTypeMultiplier = 50; // Diamond Scratch: 50x multiplier
             }
@@ -1238,8 +1238,7 @@ const ScratchOffPlayContent = () => {
           // Apply special multipliers for these ticket types
           if (ticket && ticket.ticket) {
             if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
-              const specialMultiplier = ticket.ticket.type === 'random' ? 100 : 300;
-              
+              const specialMultiplier = ticket.ticket.type === 'random' ? 10 : 50;
               // If we already calculated the value, multiply it by the special multiplier
               tokenPrize *= specialMultiplier;
             }
@@ -1251,8 +1250,7 @@ const ScratchOffPlayContent = () => {
           // Apply special multipliers for these ticket types
           if (ticket && ticket.ticket) {
             if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
-              const specialMultiplier = ticket.ticket.type === 'random' ? 100 : 300;
-              
+              const specialMultiplier = ticket.ticket.type === 'random' ? 10 : 50;
               // If we already calculated the value, multiply it by the special multiplier
               cashPrize *= specialMultiplier;
             }
@@ -1318,6 +1316,12 @@ const ScratchOffPlayContent = () => {
               localStorage.setItem('token-refresh', Date.now().toString());
               window.dispatchEvent(new StorageEvent('storage', {
                 key: 'token-refresh',
+                newValue: Date.now().toString(),
+              }));
+              // Notify notes page to refresh transactions
+              localStorage.setItem('transactions-updated', Date.now().toString());
+              window.dispatchEvent(new StorageEvent('storage', {
+                key: 'transactions-updated',
                 newValue: Date.now().toString(),
               }));
             }
