@@ -145,7 +145,7 @@ export default function GamesLayout({
       case Tab.stockPredictor:
         return "Stock Predictor";
       case Tab.cryptoMinesweeper:
-        return "Crypto Sweeper";
+        return "Stock Sweeper";
       case Tab.tokenMarket:
         return "Token Market";
       default:

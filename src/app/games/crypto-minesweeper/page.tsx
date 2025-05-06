@@ -44,6 +44,7 @@ const CryptoSweeper = () => {
   const hasWonRef = useRef(false);
   const isFirstClickRef = useRef(true);
   const gamesPlayedRef = useRef(0);
+  const [isCashedOut, setIsCashedOut] = useState(false);
 
   useEffect(() => {
     const mobileCheck = /Mobi|Android/i.test(navigator.userAgent);
@@ -71,15 +72,10 @@ const CryptoSweeper = () => {
 
   // Calculate potential cashout value whenever gameTokens changes
   useEffect(() => {
-    // Calculate win bonus based on difficulty (bomb probability)
-    if (isGameStarted) {
-      // Calculate potential difficulty bonus that would be applied if player wins
-      const difficultyBonus = Math.floor(bombProbability * 100);
-      // But don't apply it yet since they haven't won
-      setPotentialCashout(gameTokens);
-    } else {
-      setPotentialCashout(0);
-    }
+    // Calculate potential difficulty bonus that would be applied if player wins
+    const difficultyBonus = Math.floor(bombProbability * 100);
+    // But don't apply it yet since they haven't won
+    setPotentialCashout(gameTokens);
   }, [gameTokens, bombProbability, isGameStarted]);
 
   const fetchUserTokens = async () => {
@@ -150,6 +146,7 @@ const CryptoSweeper = () => {
   };
 
   const startNewGame = async () => {
+    setIsCashedOut(false);
     if (isGameStarted) {
       // If already in a game, this is a cash-out button
       await cashOut();
@@ -210,6 +207,17 @@ const CryptoSweeper = () => {
     }
   };
 
+  // Helper to reveal all bombs on the grid
+  const revealBombs = () => {
+    setGrid(prevGrid =>
+      prevGrid.map(row =>
+        row.map(cell =>
+          cell.isBomb ? { ...cell, isRevealed: true } : cell
+        )
+      )
+    );
+  };
+
   const cashOut = async () => {
     if (isCashing) return;
 
@@ -239,16 +247,26 @@ const CryptoSweeper = () => {
       window.localStorage.setItem('token-balance-updated', Date.now().toString());
       window.dispatchEvent(new StorageEvent('storage', { key: 'token-refresh', newValue: Date.now().toString() }));
 
-      // Reset game state
-      setIsGameStarted(false);
-      setGameTokens(0);
-      setPotentialCashout(0);
-      setStreakCount(0);
+      // Reveal all bomb locations on cash out
+      revealBombs();
+      setGameOver(true);
+      setIsCashedOut(true);
 
-      // Initialize an empty grid
-      initializeEmptyGrid();
+      // Delay resetting the game to allow bomb reveal
+      setTimeout(() => {
+        // Reset game state after bomb reveal
+        setIsGameStarted(false);
+        setGameTokens(0);
+        setPotentialCashout(0);
+        setStreakCount(0);
+        initializeEmptyGrid();
+        // Hide result messages
+        setGameOver(false);
+        setWin(false);
+        setIsCashedOut(false);
+      }, 3000);
 
-      toast.success(`Successfully cashed out ${gameTokens} tokens!`);
+      toast.success(`Collected ${gameTokens} tokens!`);
     } catch (error) {
       console.error('Error cashing out:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to cash out');
@@ -383,6 +401,8 @@ const CryptoSweeper = () => {
   };
 
   const revealCell = async (row: number, col: number) => {
+    // Reset cashedOut flag for reveal (loss) scenarios
+    setIsCashedOut(false);
     if (gameOver || win || !isGameStarted) return;
     if (grid[row][col].isRevealed || grid[row][col].isFlagged) return;
 
@@ -439,6 +459,7 @@ const CryptoSweeper = () => {
       }
       setGrid(newGrid);
       setGameOver(true);
+      setIsCashedOut(false);
       setStreakCount(0);
 
       toast.error(`💣 BOOM! Game Over! You lost ${gameTokens} tokens.`);
@@ -692,8 +713,11 @@ const CryptoSweeper = () => {
       </div>
 
       {/* Game State Messages */}
-      {gameOver && (
+      {gameOver && !win && !isCashedOut && (
         <p className="text-center text-red-500 font-semibold text-lg">💣 BOOM! Game Over!</p>
+      )}
+      {gameOver && isCashedOut && (
+        <p className="text-center text-green-500 font-semibold text-lg">Collected {gameTokens} tokens!</p>
       )}
       {win && (
         <p className="text-center text-green-500 font-semibold text-lg">🎉 JACKPOT! You Win!</p>
@@ -711,6 +735,7 @@ const CryptoSweeper = () => {
                 onRightClick={() => flagCell(i, j)}
                 isMobile={isMobile}
                 isFlagMode={isFlagMode}
+                isCashedOut={isCashedOut}
               />
             ))
           )}
@@ -744,12 +769,14 @@ const Cell = ({
   onRightClick,
   isMobile,
   isFlagMode,
+  isCashedOut,
 }: {
   cell: Cell;
   onClick: () => void;
   onRightClick: () => void;
   isMobile: boolean;
   isFlagMode: boolean;
+  isCashedOut: boolean;
 }) => {
   const handleClick = () => {
     if (!cell.isRevealed && !cell.isFlagged) {
@@ -781,21 +808,29 @@ const Cell = ({
 
   if (cell.isRevealed) {
     if (cell.isBomb) {
-      bgClass = 'bg-red-600';
-
+      // Gray bombs on cash-out, red on actual loss
+      bgClass = isCashedOut ? 'bg-gray-800' : 'bg-red-600';
       content = '💣';
     } else if (cell.isBonus) {
-      bgClass = 'bg-orange-500';
+      bgClass = multiplierColors[cell.adjacentBombs];
       if (cell.adjacentBombs > 0) {
         content = cell.adjacentBombs.toString();
-        textClass = 'text-white font-bold'; // Make text more visible on orange
+        textClass = {
+          1: 'text-blue-400',
+          2: 'text-green-400',
+          3: 'text-red-400',
+          4: 'text-purple-400',
+          5: 'text-maroon-400',
+          6: 'text-teal-400',
+          7: 'text-black',
+          8: 'text-gray-400',
+        }[cell.adjacentBombs] || 'text-white';
       }
     } else {
       if (cell.isBonus) {
         bgClass = multiplierColors[cell.adjacentBombs];
       } else {
         bgClass = 'bg-gray-800';
-
       }
 
       if (cell.adjacentBombs > 0) {
