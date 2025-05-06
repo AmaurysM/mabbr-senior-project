@@ -94,7 +94,7 @@ const CommunityPage = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-x-visible overflow-y-hidden">
+    <div className="flex h-full overflow-x-visible overflow-y-hidden">
       {/* Left Sidebar */}
       <div
         ref={sidebarRef}

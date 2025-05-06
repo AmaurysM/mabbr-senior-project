@@ -14,6 +14,7 @@ export const useGlobalMarketChat = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<Date | null>(null);
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -22,7 +23,15 @@ export const useGlobalMarketChat = () => {
     setMessagesData(prev => {
       const existingIds = new Set(prev.map(m => m.id));
       const newMessages = incoming.filter(m => !existingIds.has(m.id));
-      return toStart ? [...newMessages, ...prev] : [...prev, ...newMessages];
+      
+      // Sort messages by date to ensure chronological order
+      const combined = toStart 
+        ? [...newMessages, ...prev] 
+        : [...prev, ...newMessages];
+        
+      return combined.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
     });
   };
 
@@ -31,8 +40,15 @@ export const useGlobalMarketChat = () => {
     const loadInitialMessages = async () => {
       try {
         const latest = await fetcher('/api/chat?limit=20&order=desc');
-        addMessages(latest.reverse()); // reverse to chronological order
-        if (latest.length < 20) setHasMore(false);
+        const latestChrono = latest.reverse(); // reverse to chronological order
+        addMessages(latestChrono);
+        
+        if (latest.length < 20) {
+          setHasMore(false);
+        } else if (latest.length > 0) {
+          setLastFetchedTimestamp(new Date(latest[0].createdAt));
+        }
+        
         setIsInitialLoad(false);
       } catch (err) {
         console.error(err);
@@ -42,49 +58,73 @@ export const useGlobalMarketChat = () => {
 
     loadInitialMessages();
 
-    // Polling every 5 seconds
+    // Polling for new messages every 5 seconds
     pollingIntervalRef.current = setInterval(async () => {
       try {
         const latest = await fetcher('/api/chat?limit=20&order=desc');
         const latestChrono = latest.reverse();
 
         setMessagesData(prev => {
+          // Keep temporary messages
           const tempMessages = prev.filter(msg => msg.id.startsWith("temp-"));
-          const combined = [...tempMessages, ...latestChrono];
-
+          
+          // Combine with latest messages from server
           const seen = new Set<string>();
-          const deduped = combined.filter(msg => {
-            if (seen.has(msg.id)) return false;
-            seen.add(msg.id);
-            return true;
-          });
-
-          return deduped;
+          
+          // Add all existing messages first
+          prev.forEach(msg => seen.add(msg.id));
+          
+          // Filter out messages we already have
+          const newMessages = latestChrono.filter(msg => !seen.has(msg.id));
+          
+          // Add new messages and sort
+          const combined = [...prev, ...newMessages].sort((a, b) => 
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          
+          return combined;
         });
       } catch (err) {
         console.error('Polling error:', err);
       }
     }, 5000);
 
-
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     };
   }, []);
 
-  const oldestMessage = messagesData[0] ?? null;
-
   const loadMoreMessages = async () => {
-    if (isLoadingMore || !hasMore || !oldestMessage) return;
+    if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
+    
     try {
+      // Get the oldest message timestamp
+      const oldestMessage = messagesData[0];
+      if (!oldestMessage) {
+        setIsLoadingMore(false);
+        return;
+      }
+      
       const before = oldestMessage.createdAt;
       const url = `/api/chat?limit=20&order=asc&before=${before}`;
       const olderMessages = await fetcher(url);
-      addMessages(olderMessages, true);
-      if (olderMessages.length < 20) setHasMore(false);
+      
+      if (olderMessages.length > 0) {
+        addMessages(olderMessages, true); // Add to the beginning
+        
+        // Update last fetched timestamp for the next load more
+        if (olderMessages.length > 0) {
+          setLastFetchedTimestamp(new Date(olderMessages[0].createdAt));
+        }
+      }
+      
+      // If we got less than the requested amount, we've reached the end
+      if (olderMessages.length < 20) {
+        setHasMore(false);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error loading more messages:', err);
       setError(err);
     } finally {
       setIsLoadingMore(false);

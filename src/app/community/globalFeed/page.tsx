@@ -10,27 +10,21 @@ import GlobalMarketChat from '@/app/components/GlobalMarketChat';
 const GlobalFeed = () => {
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
-        {/* Left Column - Global Chat */}
-        <div className="w-full">
+    <div className="flex flex-col min-h-full">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1">
+        <div className="w-full lg:w-3/4 h-[calc(100vh-10rem)]">
           <GlobalMarketChat />
         </div>
 
-        {/* Right Column - Leaderboards & Friends */}
-        <div className="flex flex-col gap-6 w-full">
-          {/* Top five leader board */}
-          <Leaderboard num={5}/>
-
-          {/* Market Sentiment */}
-          <MarketSentimentTable/>
-          
+        <div className="w-full lg:w-1/4 flex flex-col gap-6">
+          <Leaderboard num={5} />
+          <MarketSentimentTable />
         </div>
-
       </div>
-      <Toaster />
 
+      <Toaster />
     </div>
+
   )
 }
 
