@@ -133,32 +133,7 @@ export default function OnlineFriendsList() {
             </button>
 
 
-            {contextMenu.visible && contextMenu.friend?.id === f.id && (
-              <div
-                className="
-                  custom-context-menu
-                  absolute left-full top-1/2
-                  transform -translate-y-1/2
-                  -ml-4            /* pull the bubble 16px left */
-                  bg-gray-900 border border-gray-700
-                  rounded px-3 py-1 text-white text-sm z-50
-                  overflow-hidden
-                "
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveChats((prev) =>
-                      prev.some((x) => x.id === f.id) ? prev : [...prev, f]
-                    );
-                    setContextMenu({ visible: false, friend: null });
-                  }}
-                  className="hover:text-blue-400"
-                >
-                  💬 Message
-                </button>
-              </div>
-            )}
+            
 
           </li>
         ))}
