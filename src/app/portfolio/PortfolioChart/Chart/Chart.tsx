@@ -18,9 +18,10 @@ interface PortfolioData {
   netWorth: number;
   cash: number;
   holdings: number;
+  tokens: number;
 }
 
-type ChartView = 'netWorth' | 'cash' | 'holdings';
+type ChartView = 'netWorth' | 'cash' | 'holdings' | 'tokens';
 
 const PortfolioChart: React.FC = () => {
   const [isClient, setIsClient] = useState(false);
@@ -61,6 +62,15 @@ const PortfolioChart: React.FC = () => {
           .filter((tx: any) => tx.isCurrentUser)
           .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
+        // Fetch current user token count and derive initial tokens
+        const userRes = await fetch('/api/user', { credentials: 'include' });
+        const userData = await userRes.json();
+        const currentTokens: number = userData.tokenCount || 0;
+        const tokenTxs = userTx.filter(tx => tx.type === 'TOKEN_PURCHASE' || tx.type === 'TOKEN_EXCHANGE');
+        const netTokenChange = tokenTxs.reduce((sum, tx) =>
+          tx.type === 'TOKEN_PURCHASE' ? sum + tx.quantity : sum - tx.quantity, 0);
+        let runningTokens = currentTokens - netTokenChange;
+
         // Generate data with complete date range
         const dataMap = new Map<string, PortfolioData>();
         
@@ -88,12 +98,19 @@ const PortfolioChart: React.FC = () => {
           cash: runningCash,
           holdings: 0,
           netWorth: runningCash,
+          tokens: runningTokens,
         });
         
         // Process transactions and update running values
         userTx.forEach((tx: Transaction) => {
           const transactionDate = new Date(tx.timestamp).toISOString().split('T')[0];
           
+          // Update token count on token-related transactions
+          if (tx.type === 'TOKEN_PURCHASE') {
+            runningTokens += tx.quantity;
+          } else if (tx.type === 'TOKEN_EXCHANGE') {
+            runningTokens -= tx.quantity;
+          }
           if (tx.type === 'BUY') {
             runningCash -= tx.totalCost;
             runningHoldings += tx.totalCost;
@@ -107,6 +124,7 @@ const PortfolioChart: React.FC = () => {
             cash: runningCash,
             holdings: runningHoldings,
             netWorth: runningCash + runningHoldings,
+            tokens: runningTokens,
           });
         });
 
@@ -116,6 +134,7 @@ const PortfolioChart: React.FC = () => {
           cash: currentBalance,
           holdings: currentHoldings,
           netWorth: currentBalance + currentHoldings,
+          tokens: currentTokens,
         });
 
         // Convert to array and sort by date
@@ -153,6 +172,7 @@ const PortfolioChart: React.FC = () => {
                 cash: interpolatedCash,
                 holdings: interpolatedHoldings,
                 netWorth: interpolatedCash + interpolatedHoldings,
+                tokens: currentValues.tokens,
               });
             }
           }
@@ -180,8 +200,17 @@ const PortfolioChart: React.FC = () => {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
-  const formatYAxis = (value: number) => {
-    return `$${Math.round(value / 1000)}k`;
+  const formatYAxis = (value: number): string => {
+    if (chartView === 'tokens') {
+      return value.toLocaleString();
+    }
+    if (value >= 1_000_000) {
+      return `$${(value / 1_000_000).toFixed(2)}M`;
+    }
+    if (value >= 1_000) {
+      return `$${(value / 1_000).toFixed(2)}k`;
+    }
+    return `$${value.toLocaleString()}`;
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -190,10 +219,11 @@ const PortfolioChart: React.FC = () => {
       return (
         <div className="bg-gray-800 p-3 border border-gray-700 rounded shadow-lg">
           <p className="text-white font-medium">{new Date(label).toLocaleDateString()}</p>
-          <p className="text-blue-400">
+          <p className={`${chartView === 'tokens' ? 'text-yellow-400' : 'text-blue-400'}`}>
             {chartView === 'netWorth' && `Net Worth: $${data.netWorth.toLocaleString(undefined, {maximumFractionDigits: 2})}`}
             {chartView === 'cash' && `Cash: $${data.cash.toLocaleString(undefined, {maximumFractionDigits: 2})}`}
             {chartView === 'holdings' && `Holdings: $${data.holdings.toLocaleString(undefined, {maximumFractionDigits: 2})}`}
+            {chartView === 'tokens' && `Tokens: ${data.tokens.toLocaleString()}`}
           </p>
         </div>
       );
@@ -221,6 +251,16 @@ const PortfolioChart: React.FC = () => {
 
   const [minValue, maxValue] = getMinMaxValues();
 
+  // Estimate width for the largest Y-axis label
+  const maxLabel = formatYAxis(maxValue);
+  const charWidth = 8;
+  const estimatedLabelWidth = Math.ceil(maxLabel.length * charWidth);
+  const tickMargin = 0;
+  // Add a bit of base offset for tokens view
+  const baseLeftOffset = chartView === 'tokens' ? 20 : 0;
+  const yAxisWidth = estimatedLabelWidth;
+  const chartMarginLeft = yAxisWidth + tickMargin + baseLeftOffset;
+
   return (
     <div className="bg-gray-800 p-4 rounded-lg">
       {loading ? (
@@ -234,7 +274,7 @@ const PortfolioChart: React.FC = () => {
         <>
           <div className="flex justify-end mb-4">
             <div className="inline-flex bg-gray-700 rounded-lg p-1">
-              {(['netWorth', 'cash', 'holdings'] as const).map((view) => (
+              {(['netWorth', 'cash', 'holdings', 'tokens'] as const).map((view) => (
                 <button
                   key={view}
                   onClick={() => setChartView(view)}
@@ -244,33 +284,37 @@ const PortfolioChart: React.FC = () => {
                       : 'text-gray-300 hover:bg-gray-600'
                   }`}
                 >
-                  {view === 'netWorth' ? 'Net Worth' : 
-                   view === 'cash' ? 'Cash' : 'Holdings'}
+                  {view === 'netWorth' ? 'Net Worth' 
+                   : view === 'cash' ? 'Cash' 
+                   : view === 'holdings' ? 'Holdings' 
+                   : 'Tokens'}
                 </button>
               ))}
             </div>
           </div>
           
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={portfolioData}>
+            <LineChart data={portfolioData} margin={{ top: 5, right: 20, left: chartMarginLeft, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" />
               <XAxis 
                 dataKey="date" 
-                tick={{ fill: '#9CA3AF' }} 
+                tick={{ fill: '#9CA3AF' }}
                 tickFormatter={formatXAxis}
                 minTickGap={30}
                 interval="preserveStartEnd"
               />
-              <YAxis 
+              <YAxis
+                width={yAxisWidth}
                 domain={[minValue, maxValue]}
-                tick={{ fill: '#9CA3AF' }} 
+                tick={{ fill: '#9CA3AF' }}
                 tickFormatter={formatYAxis}
+                tickMargin={tickMargin}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line 
                 type="monotone" 
                 dataKey={chartView} 
-                stroke="#6366F1" 
+                stroke={chartView === 'tokens' ? '#FFD700' : '#6366F1'} 
                 strokeWidth={2}
                 activeDot={{ r: 6 }}
                 dot={{ r: 1 }}
