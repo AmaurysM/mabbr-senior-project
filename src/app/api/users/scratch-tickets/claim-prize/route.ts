@@ -243,46 +243,59 @@ export async function POST(request: NextRequest) {
           where: { id: updatedTicket.ticketId },
           select: { name: true, type: true }
         });
-        // Create a summary transaction record for scratch-win using actual stockShares
+        // Create transaction records for scratch-win prizes
         if (ticketDetails?.type === 'stocks' && prize.stockShares) {
-          // Sum all won shares
-          const stockSharesMap = prize.stockShares as Record<string, { shares: number }>;
-          const totalShares = Object.values(stockSharesMap).reduce(
-            (sum, info) => sum + (info.shares || 0),
-            0
-          );
-          const sharesRounded = Math.round(totalShares * 100) / 100;
+          // Create one transaction per stock symbol won
+          for (const [symbol, info] of Object.entries(
+            prize.stockShares as Record<string, { shares: number; value: number }>
+          )) {
+            const sharesWon = Math.round((info.shares || 0) * 100) / 100;
+            const perShareValue = Number(info.value) || 0;
+            const totalValue = Math.round(sharesWon * perShareValue * 100) / 100;
+            await tx.transaction.create({
+              data: {
+                userId: session.user.id,
+                stockSymbol: symbol,
+                type: 'WIN',
+                quantity: sharesWon,
+                price: perShareValue,
+                totalCost: totalValue,
+                status: 'SCRATCH_WIN',
+                publicNote: `Won ${sharesWon.toFixed(2)} shares of ${symbol}`,
+                privateNote: null
+              }
+            });
+          }
+        } else if (ticketDetails?.type === 'money') {
+          // Cash prize
+          const cashVal = prize.cash || 0;
+          const cashRounded = Math.round(cashVal * 100) / 100;
           await tx.transaction.create({
             data: {
               userId: session.user.id,
               stockSymbol: ticketDetails.name,
               type: 'WIN',
               quantity: 1,
-              price: sharesRounded,
-              totalCost: sharesRounded,
+              price: cashRounded,
+              totalCost: cashRounded,
               status: 'SCRATCH_WIN',
-              publicNote: `Won ${sharesRounded.toFixed(2)} shares of ${ticketDetails.name}`,
+              publicNote: `Won $${cashRounded.toFixed(2)}`,
               privateNote: null
             }
           });
         } else {
-          // Handle cash or token prizes
-          const prizeValue = ticketDetails?.type === 'money'
-            ? Math.round((prize.cash || 0) * 100) / 100
-            : (prize.tokens || 0);
-          const noteText = ticketDetails?.type === 'money'
-            ? `Won $${prizeValue.toFixed(2)}`
-            : `Won ${prizeValue} tokens`;
+          // Token prize or other
+          const tokenVal = prize.tokens || 0;
           await tx.transaction.create({
             data: {
               userId: session.user.id,
-              stockSymbol: ticketDetails.name,
+              stockSymbol: ticketDetails?.name || 'Scratch Ticket',
               type: 'WIN',
               quantity: 1,
-              price: prizeValue,
-              totalCost: prizeValue,
+              price: tokenVal,
+              totalCost: tokenVal,
               status: 'SCRATCH_WIN',
-              publicNote: noteText,
+              publicNote: `Won ${tokenVal} tokens`,
               privateNote: null
             }
           });
