@@ -1,7 +1,8 @@
+import { UserTransactions } from "@/lib/prisma_types";
 import { useState, useEffect } from "react";
 
 export const useFriendTransactions = () => {
-  const [friendTransactions, setFriendTransactions] = useState([]);
+  const [friendTransactions, setFriendTransactions] = useState<UserTransactions>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -9,10 +10,10 @@ export const useFriendTransactions = () => {
     const fetchData = async () => {
       try {
         const res = await fetch("/api/user/friendTransactions");
-        const data = await res.json();
+        const data: UserTransactions = await res.json();
+        console.log("9989898989989898989889899898 data" + data)
 
-        
-        setFriendTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+        setFriendTransactions(Array.isArray(data) ? data : []);
       } catch (err) {
         setError("Failed to load friend transactions");
       } finally {
