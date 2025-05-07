@@ -148,7 +148,7 @@ const RecentActivityList = () => {
                         {filteredTransactions.map((transaction) => (
                             <TransactionCard
                                 key={transaction.id}
-                                transaction={{ ...transaction, userEmail: transaction.userEmail || '', totalCost: transaction.totalCost || 0 }}
+                                transaction={{ ...transaction, userEmail: transaction.userEmail || '', totalCost:  transaction.totalCost || 0, status: transaction.status || 'COMPLETE' }}
                             />
                         ))}
                     </div>
