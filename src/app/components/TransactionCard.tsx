@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { abbreviateNumber } from '@/lib/utils';
 
 interface TransactionCardProps {
   transaction: {
@@ -86,9 +87,9 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
       // price = number of shares won
       return `${price.toFixed(2)} ${price === 1 ? 'share' : 'shares'}`;
     }
-    if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
-    if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
-    if (isDailyDrawWin) return `${price.toLocaleString()} tokens`;
+    if (isLootboxPurchase) return `Cost: $${ abbreviateNumber(price)}`;
+    if (isLootboxRedeem) return `Value: $${abbreviateNumber(price)}`;
+    if (isDailyDrawWin) return `${abbreviateNumber(price)} tokens`;
     return `${quantity} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
   };
 
@@ -142,7 +143,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
           ) : isLootboxRedeem ? (
             <div className="font-bold">REDEEMED LOOTBOX</div>
           ) : (
-            <div className="font-bold">${totalCost.toFixed(2)}</div>
+            <div className="font-bold">${abbreviateNumber(totalCost)}</div>
           )}
         </div>
       </div>

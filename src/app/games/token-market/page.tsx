@@ -244,13 +244,11 @@ export default function TokenMarket() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Token Holdings Panel - First column */}
         <div className="lg:col-span-1">
-          <div className="h-[450px]">
             <TokensHoldingPanel 
               tokenCount={userTokens || 0} 
               tokenValue={tokenValue} 
               interestRate={marketData.interestRate}
             />
-          </div>
         </div>
         
         {/* Token Value Chart - Second and third column */}

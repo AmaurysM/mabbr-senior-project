@@ -36,7 +36,7 @@ const UserPortfolio: React.FC = () => {
           </section>
 
           {/* Portfolio Holdings Section */}
-          <section className="bg-gray-800 rounded-xl shadow-lg p-6">
+          <section className="bg-gray-800 rounded-xl shadow-lg">
             <h2 className="text-3xl font-bold text-white mb-4">
               Your Current Holdings
             </h2>
