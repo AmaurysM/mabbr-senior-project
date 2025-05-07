@@ -241,31 +241,33 @@ export async function POST(request: NextRequest) {
         // Fetch ticket details for summary
         const ticketDetails = await (tx as any).scratchTicket.findUnique({
           where: { id: updatedTicket.ticketId },
-          select: { name: true, type: true }
+          select: { name: true, type: true, price: true }
         });
         // Create transaction records for scratch-win prizes
         if (ticketDetails?.type === 'stocks' && prize.stockShares) {
-          // Create one transaction per stock symbol won
-          for (const [symbol, info] of Object.entries(
-            prize.stockShares as Record<string, { shares: number; value: number }>
-          )) {
-            const sharesWon = Math.round((info.shares || 0) * 100) / 100;
-            const perShareValue = Number(info.value) || 0;
-            const totalValue = Math.round(sharesWon * perShareValue * 100) / 100;
-            await tx.transaction.create({
-              data: {
-                userId: session.user.id,
-                stockSymbol: symbol,
-                type: 'WIN',
-                quantity: sharesWon,
-                price: perShareValue,
-                totalCost: totalValue,
-                status: 'SCRATCH_WIN',
-                publicNote: `Won ${sharesWon.toFixed(2)} shares of ${symbol}`,
-                privateNote: null
-              }
-            });
-          }
+          // Consolidate multiple stock wins into a single transaction
+          const entries = Object.entries(prize.stockShares as Record<string, { shares: number; value: number }>);
+          const symbols = entries.map(([symbol]) => symbol);
+          const count = symbols.length;
+          // Total shares won across all symbols
+          const totalShares = entries.reduce((sum, [, info]) => sum + info.shares, 0);
+          // Ticket price
+          const ticketPrice = ticketDetails?.price || 0;
+          // Build multi-line public note
+          const publicNoteLines = entries.map(([symbol, info]) => `Won ${info.shares.toFixed(2)} shares of ${symbol}`);
+          await tx.transaction.create({
+            data: {
+              userId: session.user.id,
+              stockSymbol: symbols.join(', '),
+              type: 'WIN',
+              quantity: count,
+              price: ticketPrice,
+              totalCost: Number(totalShares.toFixed(2)),
+              status: 'SCRATCH_WIN',
+              publicNote: publicNoteLines.join('\n'),
+              privateNote: null
+            }
+          });
         } else if (ticketDetails?.type === 'money') {
           // Cash prize
           const cashVal = prize.cash || 0;

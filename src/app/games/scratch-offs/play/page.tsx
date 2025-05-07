@@ -1168,8 +1168,7 @@ const ScratchOffPlayContent = () => {
           if (ticket && ticket.ticket && ticket.ticket.type === 'stocks') {
             baseValue = win.count * 0.4; // Double shares for stock scratch-offs
           }
-          
-          // Apply special multipliers for Mystic Chance (100x) and Diamond Scratch (300x)
+          // Apply special multipliers for Mystic Chance (10x) and Diamond Scratch (50x)
           let ticketTypeMultiplier = 1;
           if (ticket && ticket.ticket) {
             if (ticket.ticket.type === 'random') {
@@ -1178,16 +1177,13 @@ const ScratchOffPlayContent = () => {
               ticketTypeMultiplier = 50; // Diamond Scratch: 50x multiplier
             }
           }
-          
           const shares = baseValue * multiplier * ticketTypeMultiplier;
-          
           // Find the stock value from STOCK_SYMBOLS
           const stockInfo = STOCK_SYMBOLS.find(s => s.symbol === stockSymbol);
           if (stockInfo) {
             // Add to stock prize and track shares
             const value = shares * stockInfo.value;
             stockPrize += value;
-            
             // Track shares by stock symbol
             if (!stockShares[stockSymbol]) {
               stockShares[stockSymbol] = { shares: 0, value: stockInfo.value };
@@ -1516,8 +1512,23 @@ const ScratchOffPlayContent = () => {
                     }
                     else if (symbolType.startsWith('stock_')) {
                       const stockSymbol = symbolType.replace('stock_', '');
-                      const shareCount = win.count * 0.2 * win.multiplier;
-                      displayValue = `${win.count} in a row - ${shareCount.toFixed(2)} shares of ${stockSymbol}`;
+                      let baseValue = win.count * 0.2;
+                      if (ticket && ticket.ticket && ticket.ticket.type === 'stocks') {
+                        baseValue = win.count * 0.4; // Double shares for stock scratch-offs
+                      }
+                      // Apply special multipliers for Mystic Chance (10x) and Diamond Scratch (50x)
+                      let ticketTypeMultiplier = 1;
+                      if (ticket && ticket.ticket) {
+                        if (ticket.ticket.type === 'random') {
+                          ticketTypeMultiplier = 10; // Mystic Chance: 10x multiplier
+                        } else if (ticket.ticket.type === 'diamond') {
+                          ticketTypeMultiplier = 50; // Diamond Scratch: 50x multiplier
+                        }
+                      }
+                      const shareCount = baseValue * win.multiplier * ticketTypeMultiplier;
+                      // Apply bonus if applicable
+                      const finalShareCount = ticket?.isBonus ? shareCount * 1.25 : shareCount;
+                      displayValue = `${win.count} in a row - ${finalShareCount.toFixed(2)} shares of ${stockSymbol}`;
                     }
                     else if (symbolType.startsWith('cash_')) {
                       const cashAmount = parseInt(symbolType.replace('cash_', ''));

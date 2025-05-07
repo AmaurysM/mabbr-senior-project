@@ -283,6 +283,40 @@ export default function ScratchOffs() {
     };
   }, [session?.user]);
 
+  // Super secret key combo to reset daily ticket purchases (Konami Code)
+  useEffect(() => {
+    if (!session?.user) return;
+    const secretCombo = [
+      "ArrowUp","ArrowUp","ArrowDown","ArrowDown",
+      "ArrowLeft","ArrowRight","ArrowLeft","ArrowRight",
+      "b","a"
+    ];
+    let comboIndex = 0;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === secretCombo[comboIndex]) {
+        comboIndex++;
+        if (comboIndex === secretCombo.length) {
+          comboIndex = 0;
+          fetch("/api/users/scratch-tickets/reset-daily", {
+            method: "POST",
+            credentials: "include"
+          })
+            .then(res => {
+              if (res.ok) {
+                reloadData();
+                toast({ title: "Secret Mode Activated", description: "Daily purchases reset!" });
+              }
+            })
+            .catch(err => console.error("Error resetting purchases:", err));
+        }
+      } else {
+        comboIndex = 0;
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [session?.user]);
+
   // Purchase handler
   const handlePurchase = async (ticket: ScratchTicket) => {
     if (isLoading || !session?.user) return;

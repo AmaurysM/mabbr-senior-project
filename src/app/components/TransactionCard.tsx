@@ -83,8 +83,8 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
 
   const getPriceDisplay = () => {
     if (isScratchWin) {
-      // price = number of shares won
-      return `${price.toFixed(2)} ${price === 1 ? 'share' : 'shares'}`;
+      // display shares won and per-share price
+      return `${quantity.toFixed(2)} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
     }
     if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
     if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
@@ -133,9 +133,9 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         </div>
         <div className={`text-right ${getCostColor()}`}>
           {isScratchWin ? (
-            // scratch win: display token cost of ticket
+            // scratch win: display total market value of shares won
             <div className="font-bold">
-              {scratchCostMap[stockSymbol] ?? 0} tokens
+              ${totalCost.toFixed(2)}
             </div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>

@@ -15,22 +15,16 @@ export async function GET() {
 
     const userId = session.user.id;
 
-    const holdings: UserStocks = await prisma.userStock.findMany({
-        where: {
-           userId 
-        },
-        include: {
-            stock: true
-        }
-    })
-
-    holdings.forEach(e=>{
-      console.log(e.stock.name + "Somethings --------------------" + e.stock.price)
-    })
-
-    
-
-    return NextResponse.json(holdings ??[] ); 
+    const holdingsRaw = await prisma.userStock.findMany({
+        where: { userId },
+        include: { stock: true }
+    });
+    // Convert stored integer quantity to fractional shares
+    const holdings = holdingsRaw.map(h => ({
+      ...h,
+      quantity: h.quantity / 100
+    }));
+    return NextResponse.json(holdings ?? []);
   } catch (error) {
     console.error('Error getting friends transactions:', error);
     return NextResponse.json({ transactions: [] }, { status: 500 }); 
