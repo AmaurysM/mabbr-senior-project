@@ -244,7 +244,7 @@ const NotificationBell = ({ refreshKey,onBellClick  }) => {
       <button
         ref={bellRef}
         onClick={() => {setIsOpen(!isOpen); onBellClick()}}
-        className="relative p-2 text-gray-400 hover:text-white transition-colors"
+        className="relative p-2 text-gray-400 hover:text-blue-600 transition-colors"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
