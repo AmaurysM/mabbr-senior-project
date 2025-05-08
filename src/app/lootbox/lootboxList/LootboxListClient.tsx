@@ -115,7 +115,7 @@ const LootboxListClient = ({ initialLootboxes, title = "Market", subtitle = "Sel
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-gray-400 text-sm">Price:</span>
-                <span className="text-2xl font-bold text-yellow-400 ml-2">{selectedLootbox.price} tokens</span>
+                <span className="text-2xl font-bold text-yellow-400 ml-2">{Math.ceil(selectedLootbox.price / 2)} tokens</span>
               </div>
               <div className="flex gap-3">
                 <button
