@@ -50,6 +50,31 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
   const [syncTooltips, setSyncTooltips] = useState(true);
   const [showLegend, setShowLegend] = useState(false);
   const [viewMode, setViewMode] = useState<'cash' | 'stock'>('cash');
+  // New state to track chart height for responsive design
+  const [chartHeight, setChartHeight] = useState(500);
+
+  // Update chart height based on screen size
+  useEffect(() => {
+    function updateChartHeight() {
+      // Set chart height based on window width
+      if (window.innerWidth < 640) { // sm breakpoint
+        setChartHeight(300); // Smaller height for phones
+      } else if (window.innerWidth < 768) { // md breakpoint
+        setChartHeight(400); // Medium height for tablets
+      } else {
+        setChartHeight(500); // Full height for desktops
+      }
+    }
+
+    // Initial calculation
+    updateChartHeight();
+    
+    // Listen for window resize events
+    window.addEventListener('resize', updateChartHeight);
+    
+    // Clean up
+    return () => window.removeEventListener('resize', updateChartHeight);
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -260,11 +285,28 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
   }, [loading, userCashPortfolios, userStockPortfolios, visibleUsers, viewMode, topUsers, timeframe]);
 
   const formatCurrency = (value: number) => {
+    // Full format for tooltips and stats
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2
     }).format(value);
+  };
+  
+  // Compact format for Y-axis labels - K for thousands, M for millions, etc.
+  const formatCompactCurrency = (value: number) => {
+    if (value === 0) return '$0';
+    
+    // Use compact notation for the Y-axis
+    if (Math.abs(value) >= 1000000000) {
+      return `${(value / 1000000000).toFixed(1)}B`;
+    } else if (Math.abs(value) >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    } else if (Math.abs(value) >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    } else {
+      return `${value.toFixed(0)}`;
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -305,23 +347,28 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      // More compact tooltip for mobile
+      const isMobile = window.innerWidth < 640;
+      
       return (
-        <div className="bg-gray-900 p-3 rounded-md shadow-lg border border-gray-700">
-          <p className="text-gray-300 mb-2">{formatDate(label)}</p>
+        <div className="bg-gray-900 p-2 rounded-md shadow-lg border border-gray-700 max-w-xs">
+          <p className="text-gray-300 text-sm mb-1">{formatDate(label)}</p>
           <div className="space-y-1">
             {payload
               .sort((a: any, b: any) => b.value - a.value)
               .map((entry: any, index: number) => {
                 const userId = entry.dataKey;
                 const userName = payload[0].payload[`${userId}-name`] || 'Unknown';
+                const displayName = isMobile && userName.length > 10 ? `${userName.substring(0, 10)}...` : userName;
+                
                 return (
-                  <div key={index} className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
+                  <div key={index} className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+                    <div className="flex items-center gap-1">
                       <div 
-                        className="w-3 h-3 rounded-full" 
+                        className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" 
                         style={{ backgroundColor: entry.color }}
                       />
-                      <span className="text-white">{userName}</span>
+                      <span className="text-white truncate max-w-20 sm:max-w-32">{displayName}</span>
                     </div>
                     <span className="font-medium text-white">{formatCurrency(entry.value)}</span>
                   </div>
@@ -368,16 +415,31 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
       max + padding
     ];
   };
+  const [windowWidth, setWindowWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+
+    // Set initial width
+    handleResize();
+
+    // Listen for window resize
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const isMobile = windowWidth !== null && windowWidth < 640;
+
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/10">
-      <div className="flex flex-col space-y-4">
-        {/* View mode and Show/Hide controls */}
-        <div className="flex justify-between items-center">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-3 sm:p-5 shadow-lg border border-white/10">
+      <div className="flex flex-col space-y-3 sm:space-y-4">
+        {/* View mode and Show/Hide controls - stack on mobile */}
+        <div className="flex flex-col sm:flex-row justify-between space-y-2 sm:space-y-0 sm:items-center">
           <div className="flex gap-2">
             <button 
               onClick={() => setViewMode('cash')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex-1 sm:flex-none ${
                 viewMode === 'cash' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:text-white'
               }`}
             >
@@ -385,7 +447,7 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
             </button>
             <button 
               onClick={() => setViewMode('stock')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex-1 sm:flex-none ${
                 viewMode === 'stock' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:text-white'
               }`}
             >
@@ -396,21 +458,21 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
           <div className="flex gap-2">
             <button 
               onClick={() => toggleAllUsers(true)}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-1 sm:flex-none"
             >
               Show All
             </button>
             <button 
               onClick={() => toggleAllUsers(false)}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700/50 hover:bg-gray-600 text-white transition-colors"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-gray-700/50 hover:bg-gray-600 text-white transition-colors flex-1 sm:flex-none"
             >
               Hide All
             </button>
           </div>
         </div>
 
-        {/* User toggles - 4x2 grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* User toggles - 2x4 grid on mobile, 4x2 grid on desktop */}
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
           {topUsers.slice(0, 8).map((user, idx) => {
             const colorIndex = idx % colorPalette.length;
             const color = colorPalette[colorIndex];
@@ -418,7 +480,7 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
               <button
                 key={user.id}
                 onClick={() => toggleUser(user.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                   visibleUsers[user.id] 
                     ? 'text-white border-l-4' 
                     : 'bg-gray-800/50 text-gray-400 border-l-4 border-transparent'
@@ -434,31 +496,49 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
           })}
         </div>
 
-        {/* Chart */}
-        <div className="h-[500px] w-full">
+        {/* Chart with dynamic height */}
+        <div className={`h-[${chartHeight}px] w-full`} style={{ height: chartHeight }}>
           {loading ? (
             <SkeletonLoader />
           ) : error ? (
-            <div className="text-red-500">{error}</div>
+            <div className="text-red-500 text-center py-10">{error}</div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 0, bottom: 20, left: 60 }}>
+              <LineChart 
+                data={chartData} 
+                margin={{ 
+                  top: 10, 
+                  right: 0, 
+                  // Adjust bottom margin for mobile to prevent X-axis labels from being cut off
+                  bottom: window.innerWidth < 640 ? 30 : 20, 
+                  // Make left margin smaller on mobile for better use of space
+                  left: window.innerWidth < 640 ? 40 : 60 
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDate}
-                  stroke="#9CA3AF"
-                  tick={{ fill: '#9CA3AF' }}
-                  tickMargin={10}
-                />
+              dataKey="date"
+              tickFormatter={formatDate}
+              stroke="#6b7280"
+              tick={{ fill: '#6b7280', fontSize: isMobile ? 10 : 12 }}
+              tickMargin={10}
+              // Significantly reduce number of ticks to prevent crowding
+              interval={isMobile ? "preserveStartEnd" : Math.ceil(chartData.length / 6)}
+              minTickGap={40}
+              axisLine={{ stroke: '#d1d5db' }}
+            />
                 <YAxis
-                  tickFormatter={formatCurrency}
+                  tickFormatter={formatCompactCurrency}
                   stroke="#9CA3AF"
-                  tick={{ fill: '#9CA3AF' }}
+                  tick={{ fill: '#9CA3AF', fontSize: window.innerWidth < 640 ? 10 : 12 }}
                   tickMargin={10}
-                  width={60}
+                  width={window.innerWidth < 640 ? 40 : 50}
                   domain={calculateDomain(chartData, Object.keys(visibleUsers).filter(id => visibleUsers[id]))}
                   allowDataOverflow={false}
+                  // Limit number of ticks on mobile
+                  interval="preserveStartEnd"
+                  // Customize number of ticks to prevent overcrowding
+                  tickCount={5}
                 />
                 <Tooltip 
                   content={<CustomTooltip />}
@@ -475,7 +555,7 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
                       name={user.name}
                       stroke={colorPalette[colorIndex]}
                       dot={false}
-                      strokeWidth={2}
+                      strokeWidth={window.innerWidth < 640 ? 1.5 : 2}
                       isAnimationActive={true}
                       animationDuration={300}
                     />
@@ -486,10 +566,10 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
           )}
         </div>
 
-        {/* Portfolio stats */}
-        <div className="mt-4 bg-gray-700/50 rounded-lg p-3">
+        {/* Portfolio stats - stack on mobile */}
+        <div className="mt-2 sm:mt-4 bg-gray-700/50 rounded-lg p-2 sm:p-3">
           {visibleUsers && Object.keys(visibleUsers).filter(id => visibleUsers[id]).length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {topUsers
                 .filter(user => visibleUsers[user.id])
                 .slice(0, 3)
@@ -502,15 +582,15 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
                     : 0;
                   
                   return (
-                    <div key={user.id} className="flex flex-col">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colorPalette[idx] }} />
-                        <span className="text-white font-medium">{user.name}</span>
+                    <div key={user.id} className="flex flex-col border-b sm:border-b-0 pb-2 sm:pb-0 last:border-b-0 last:pb-0">
+                      <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: colorPalette[idx] }} />
+                        <span className="text-white font-medium text-sm sm:text-base truncate">{user.name}</span>
                       </div>
-                      <div className="text-lg font-bold text-white">
+                      <div className="text-base sm:text-lg font-bold text-white">
                         {latestData ? formatCurrency(latestData) : 'N/A'}
                       </div>
-                      <div className={`text-sm ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-xs sm:text-sm ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {percentChange >= 0 ? '↑' : '↓'} {Math.abs(percentChange).toFixed(2)}%
                       </div>
                     </div>
@@ -519,7 +599,7 @@ export default function LeaderboardLineChart({ topUsers, timeframe }: { topUsers
               }
             </div>
           ) : (
-            <p className="text-gray-400 text-center">Select users to view portfolio stats</p>
+            <p className="text-gray-400 text-center text-sm sm:text-base py-2">Select users to view portfolio stats</p>
           )}
         </div>
       </div>
