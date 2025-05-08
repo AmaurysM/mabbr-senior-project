@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserPlus, Search, X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
+import { useToast } from '@/app/hooks/use-toast';
 
 // Improved DropdownPortal component with better positioning and accessibility
 interface DropdownPortalProps {
@@ -131,6 +132,7 @@ const UserAvatar = ({ user, size = 8 }: { user: User; size?: number }) => {
 
 export const AddFriendCard = () => {
   const { data: session } = authClient.useSession();
+  const { toast } = useToast();
   const user = session?.user;
 
   const [friendEmail, setFriendEmail] = useState('');
@@ -306,6 +308,7 @@ export const AddFriendCard = () => {
 
       if (data.success) {
         setFriendSuccess('Friend request sent successfully!');
+        toast({ title: 'Friend Request Sent', description: 'Your friend request has been sent.' });
         setFriendEmail('');
         setSelectedUser(null);
       } else {

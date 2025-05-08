@@ -21,6 +21,7 @@ import StockAbout from "@/app/components/StockAbout";
 import StockKeyInsights from "@/app/components/StockKeyInsights";
 import StockAnalystRating from "@/app/components/StockAnalystRating";
 import { authClient } from "@/lib/auth-client";
+import { useToast } from '@/app/hooks/use-toast';
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -63,6 +64,7 @@ const StockPage = () => {
     data: session,
   } = authClient.useSession();
   const user = session?.user;
+  const { toast } = useToast();
   const [series, setSeries] = useState<SeriesData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -166,6 +168,7 @@ const StockPage = () => {
       setTradeError("Please enter an amount");
       return;
     }
+
     try {
       const quantity = isDollarAmount 
         ? Number(estimatedShares) 
@@ -206,6 +209,7 @@ const StockPage = () => {
       if (!portfolioData.error) {
         setPortfolio(portfolioData);
       }
+      toast({ title: `${tradeType === 'buy' ? 'Bought' : 'Sold'} ${quantity} shares of ${symbol}` });
     } catch (error) {
       console.error('Trade failed:', error);
       setTradeError(error instanceof Error ? error.message : 'Trade failed');
