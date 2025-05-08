@@ -7,7 +7,6 @@ import { authClient } from "@/lib/auth-client"; // Adjust the import path based 
 import CommunityStats from "./components/communityStats";
 import Overview from "./components/overview";
 import Stocks from "./components/stocks";
-import Achievements from "./components/achievements";
 import { FaCheckCircle, FaUserShield, FaUserPlus, FaUserCheck } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
@@ -396,15 +395,6 @@ const FriendsProfilePage = () => {
                         >
                             Portfolio
                         </button>
-                        <button
-                            onClick={() => setActiveTab("achievements")}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === "achievements"
-                                ? "bg-blue-600 text-white"
-                                : "text-gray-400 hover:text-white"
-                                }`}
-                        >
-                            Achievements
-                        </button>
                     </div>
                 </div>
 
@@ -412,7 +402,6 @@ const FriendsProfilePage = () => {
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
                     {activeTab === "overview" && <Overview userId={user.id} />}
                     {activeTab === "stocks" && <Stocks userId={user.id} />}
-                    {activeTab === "achievements" && <Achievements userId={user.id} />}
                 </div>
             </div>
         </div>
