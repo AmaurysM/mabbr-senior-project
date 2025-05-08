@@ -103,10 +103,10 @@ const DailyMarketPulseButton: React.FC = () => {
     if (!mounted || !isOpen) return null;
 
     const portalContent = (
-      <div className="fixed inset-x-0 top-16 bottom-0 flex justify-center animate-slideDown px-4 overflow-y-auto pb-4">
+      <div className="fixed inset-x-0 top-16 flex justify-center animate-slideDown px-4 overflow-y-auto">
         <div 
           ref={overlayRef}
-          className="w-full max-w-5xl bg-gray-900/95 backdrop-blur-md shadow-2xl rounded-xl"
+          className="w-full max-w-5xl bg-gray-900/95 backdrop-blur-md shadow-2xl rounded-xl overflow-y-auto max-h-[calc(100vh-5rem)]"
         >
           <div className="p-2">
             <div className="flex items-center justify-between mb-2">
