@@ -238,39 +238,64 @@ export async function POST(request: NextRequest) {
         
         console.log(`[PRIZE_CLAIM] Marked ticket ${ticketIdToUpdate} as scratched`);
         
-        try {
-          // Add activity feed entry for this scratch ticket win
-          // Get ticket details for the activity feed
-          const ticketDetails = await (tx as any).scratchTicket.findUnique({
-            where: { id: updatedTicket.ticketId },
-            select: { name: true, type: true }
-          });
-
-          // Prepare prize data for activity feed
-          const prizeData = {
-            ticketName: ticketDetails?.name || "Scratch Ticket",
-            ticketType: ticketDetails?.type || "unknown",
-            ticketId: ticketIdToUpdate,
-            tokens: prize.tokens || 0,
-            cash: prize.cash || 0,
-            stocks: prize.stocks || 0,
-            stockShares: prize.stockShares || {},
-            isBonus: ticketCheck.isBonus,
-            timestamp: new Date().toISOString()
-          };
-
-          // Create the activity feed entry
-          await (tx as any).activityFeedEntry.create({
+        // Fetch ticket details for summary
+        const ticketDetails = await (tx as any).scratchTicket.findUnique({
+          where: { id: updatedTicket.ticketId },
+          select: { name: true, type: true, price: true }
+        });
+        // Create separate transaction entries for each prize type
+        // Stock prizes
+        if (prize.stockShares && Object.keys(prize.stockShares).length > 0) {
+          const entries = Object.entries(prize.stockShares as Record<string, { shares: number; value: number }>);
+          const totalShares = entries.reduce((sum, [, info]) => sum + info.shares, 0);
+          const publicNoteLines = entries.map(([symbol, info]) => `Won ${info.shares.toFixed(2)} shares of ${symbol}`);
+          await tx.transaction.create({
             data: {
               userId: session.user.id,
-              type: "SCRATCH_WIN",
-              data: prizeData
+              stockSymbol: ticketDetails?.name || 'Scratch Ticket',
+              type: 'WIN',
+              quantity: 1,
+              price: 0,
+              totalCost: Number(totalShares.toFixed(2)),
+              status: 'SCRATCH_WIN',
+              publicNote: publicNoteLines.join('\n'),
+              privateNote: null
             }
           });
-          console.log(`[PRIZE_CLAIM] Created activity feed entry for win`);
-        } catch (activityError) {
-          // Don't fail the whole transaction if the activity feed entry fails
-          console.error(`[PRIZE_CLAIM] Error creating activity feed entry: ${activityError}`);
+        }
+        // Cash prizes
+        if (prize.cash && prize.cash > 0) {
+          const cashRounded = Math.round(prize.cash * 100) / 100;
+          await tx.transaction.create({
+            data: {
+              userId: session.user.id,
+              stockSymbol: ticketDetails?.name || 'Scratch Ticket',
+              type: 'WIN',
+              quantity: 1,
+              price: cashRounded,
+              totalCost: cashRounded,
+              status: 'SCRATCH_WIN',
+              publicNote: `Won $${cashRounded.toFixed(2)}`,
+              privateNote: null
+            }
+          });
+        }
+        // Token prizes
+        if (prize.tokens && prize.tokens > 0) {
+          const tokenVal = prize.tokens;
+          await tx.transaction.create({
+            data: {
+              userId: session.user.id,
+              stockSymbol: ticketDetails?.name || 'Scratch Ticket',
+              type: 'WIN',
+              quantity: 1,
+              price: tokenVal,
+              totalCost: tokenVal,
+              status: 'SCRATCH_WIN',
+              publicNote: `Won ${tokenVal} tokens`,
+              privateNote: null
+            }
+          });
         }
 
         console.log(`[PRIZE_CLAIM] Successfully claimed prize for ticket: ${ticketIdToUpdate}`);

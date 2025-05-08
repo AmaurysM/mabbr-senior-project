@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { FaCircle } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
@@ -11,21 +12,36 @@ const ONLINE_THRESHOLD_MINUTES = 2;
 const POLLING_INTERVAL_MS = 15000;
 
 export default function OnlineFriendsList() {
-  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friends, setFriends] = useState<(Friend & { isOnline?: boolean })[]>([]);
   const [loading, setLoading] = useState(true);
   const { data: session } = authClient.useSession();
   const router = useRouter();
 
+  // Context menu state and position
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
+    friend: Friend | null;
     x: number;
     y: number;
-    friend: Friend | null;
-  }>({ visible: false, x: 0, y: 0, friend: null });
+  }>({ visible: false, friend: null, x: 0, y: 0 });
 
   const [activeChats, setActiveChats] = useState<Friend[]>([]);
 
-  // Load friends + online status
+  const portalContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = document.createElement('div');
+    portalContainerRef.current = container;
+    document.body.appendChild(container);
+
+    return () => {
+      if (portalContainerRef.current) {
+        document.body.removeChild(portalContainerRef.current);
+        portalContainerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const fetchFriends = async () => {
       if (!session?.user?.id) {
@@ -33,16 +49,11 @@ export default function OnlineFriendsList() {
         return;
       }
       try {
-        const res = await fetch('/api/user/friends', {
-          credentials: 'include'
-        });
+        const res = await fetch('/api/user/friends', { credentials: 'include' });
         if (!res.ok) throw new Error(res.statusText);
         const { friends: list } = await res.json();
 
-        // Optionally fetch active sessions to mark online
-        const sessionsRes = await fetch('/api/user/active-sessions', {
-          credentials: 'include'
-        });
+        const sessionsRes = await fetch('/api/user/active-sessions', { credentials: 'include' });
         const activeSessions = sessionsRes.ok
           ? (await sessionsRes.json()).activeSessions || {}
           : {};
@@ -50,9 +61,7 @@ export default function OnlineFriendsList() {
         const withStatus = list.map((f: Friend) => {
           const last = activeSessions[f.id];
           const isOnline =
-            last &&
-            (new Date().getTime() - new Date(last).getTime()) / 60000 <
-              ONLINE_THRESHOLD_MINUTES;
+            last && (Date.now() - new Date(last).getTime()) / 60000 < ONLINE_THRESHOLD_MINUTES;
           return { ...f, isOnline };
         });
         setFriends(withStatus);
@@ -73,47 +82,38 @@ export default function OnlineFriendsList() {
     router.push('/friendsProfile');
   };
 
-  const onRightClick = (
-    e: React.MouseEvent<HTMLButtonElement>,
-    f: Friend
-  ) => {
+  const onRightClick = (e: React.MouseEvent<HTMLButtonElement>, f: Friend) => {
     e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setContextMenu({
-      visible: true,
-      x: rect.left + rect.width / 2,
-      y: rect.top + window.scrollY - 40,
-      friend: f
-    });
+    setContextMenu({ visible: true, friend: f, x: e.clientX, y: e.clientY });
   };
 
-  // Hide context on outside click
+  // Close context menu on outside click
   useEffect(() => {
     const close = (e: MouseEvent) => {
       const tgt = e.target as HTMLElement;
       if (!tgt.closest('.custom-context-menu')) {
-        setContextMenu({ visible: false, x: 0, y: 0, friend: null });
+        setContextMenu({ visible: false, friend: null, x: 0, y: 0 });
       }
     };
     window.addEventListener('click', close);
     return () => window.removeEventListener('click', close);
   }, []);
 
-  const online = friends.filter((f: any) => f.isOnline);
-  const offline = friends.filter((f: any) => !f.isOnline);
+  const online = friends.filter(f => f.isOnline);
+  const offline = friends.filter(f => !f.isOnline);
 
   return (
-    <div className="space-y-4 px-1 relative">
+    <div className="space-y-4 px-1 relative overflow-visible">
       <h3 className="text-sm font-semibold text-gray-300">
         Online — {online.length}
       </h3>
-      <ul className="space-y-2">
-        {online.map((f) => (
-          <li key={f.id}>
+      <ul className="space-y-2 overflow-visible">
+        {online.map(f => (
+          <li key={f.id} className="relative">
             <button
               onClick={() => openProfile(f.id)}
-              onContextMenu={(e) => onRightClick(e, f)}
-              className="flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 p-1 rounded"
+              onContextMenu={e => onRightClick(e, f)}
+              className="w-full flex items-center space-x-2 text-gray-300 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left"
             >
               {f.image ? (
                 <Image
@@ -121,7 +121,7 @@ export default function OnlineFriendsList() {
                   alt={f.name || f.id}
                   width={28}
                   height={28}
-                  className="rounded-full"
+                  className="w-7 h-7 rounded-full object-cover"
                 />
               ) : (
                 <div className="w-7 h-7 bg-gray-700 rounded-full flex items-center justify-center">
@@ -129,8 +129,12 @@ export default function OnlineFriendsList() {
                 </div>
               )}
               <FaCircle className="text-green-500 text-xs" />
-              <span className="truncate">{f.name || f.id}</span>
+              <span className="text-sm truncate max-w-[100px]">{f.name || f.id}</span>
             </button>
+
+
+            
+
           </li>
         ))}
       </ul>
@@ -138,16 +142,16 @@ export default function OnlineFriendsList() {
       {offline.length > 0 && <div className="border-t border-gray-700" />}
       {offline.length > 0 && (
         <>
-          <h3 className="text-sm font-semibold text-gray-300">
+          <h3 className="text-sm font-semibold text-gray-300 overflow">
             Offline — {offline.length}
           </h3>
-          <ul className="space-y-2">
-            {offline.map((f) => (
-              <li key={f.id}>
+          <ul className="space-y-2 overflow-visible">
+            {offline.map(f => (
+              <li key={f.id} className="relative">
                 <button
                   onClick={() => openProfile(f.id)}
-                  onContextMenu={(e) => onRightClick(e, f)}
-                  className="flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 p-1 rounded"
+                  onContextMenu={e => onRightClick(e, f)}
+                  className="w-full flex items-center space-x-2 text-gray-500 hover:bg-gray-700/50 rounded-lg p-1.5 transition-colors text-left"
                 >
                   {f.image ? (
                     <Image
@@ -155,14 +159,14 @@ export default function OnlineFriendsList() {
                       alt={f.name || f.id}
                       width={28}
                       height={28}
-                      className="rounded-full grayscale"
+                      className="w-7 h-7 rounded-full object-cover grayscale"
                     />
                   ) : (
                     <div className="w-7 h-7 bg-gray-700 rounded-full flex items-center justify-center">
                       {f.name?.[0] || f.id[0]}
                     </div>
                   )}
-                  <span className="truncate">{f.name || f.id}</span>
+                  <span className="text-sm truncate max-w-[100px]">{f.name || f.id}</span>
                 </button>
               </li>
             ))}
@@ -170,36 +174,46 @@ export default function OnlineFriendsList() {
         </>
       )}
 
-      {/* Context Menu */}
-      {contextMenu.visible && contextMenu.friend && (
-        <div
-          className="custom-context-menu fixed bg-gray-900 border border-gray-700 rounded px-3 py-1 text-white text-sm z-50"
-          style={{ top: contextMenu.y, left: contextMenu.x, transform: 'translate(-50%, -100%)' }}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveChats((prev) =>
-                prev.some((x) => x.id === contextMenu.friend!.id)
-                  ? prev
-                  : [...prev, contextMenu.friend!]
-              );
-              setContextMenu({ visible: false, x: 0, y: 0, friend: null });
-            }}
-          >
-            💬 Message
-          </button>
-        </div>
-      )}
-
       {/* Chat windows */}
-      {activeChats.map((f) => (
+      {activeChats.map(f => (
         <ChatWindow
           key={f.id}
           friend={f}
-          onClose={(id) => setActiveChats((prev) => prev.filter((x) => x.id !== id))}
+          onClose={id => setActiveChats(prev => prev.filter(x => x.id !== id))}
         />
       ))}
+
+      {/* Context menu via portal */}
+      {contextMenu.visible && contextMenu.friend && portalContainerRef.current &&
+        createPortal(
+          <div
+            className="custom-context-menu bg-gray-900 border border-gray-700 rounded px-3 py-1 text-white text-sm shadow-lg"
+            style={{
+              position: 'absolute',
+              top: contextMenu.y,
+              left: contextMenu.x,
+              zIndex: 1000,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setActiveChats(prev =>
+                  prev.some(x => x.id === contextMenu.friend!.id)
+                    ? prev
+                    : [...prev, contextMenu.friend!]
+                );
+                setContextMenu({ visible: false, friend: null, x: 0, y: 0 });
+              }}
+              className="hover:text-blue-400"
+            >
+              💬 Message
+            </button>
+          </div>,
+          portalContainerRef.current
+        )
+      }
 
       {loading && <div className="text-gray-400">Loading friends…</div>}
       {!loading && friends.length === 0 && (

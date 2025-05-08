@@ -135,7 +135,7 @@ model User {
   banExpires     Int?
   balance        Float         @default(100000.0)
   bio            String?       @default("No bio yet.")
-  tokenCount     Int           @default(0)
+  tokenCount     Int           @default(750)
 
   votes          UserVote[]
   favoriteStocks String[]      @default([])
@@ -287,7 +287,7 @@ model UserStock {
   userId   String
   stock    Stock  @relation(fields: [stockId], references: [id])
   stockId  String
-  quantity Int
+  quantity Float
 
   @@unique([userId, stockId]) // Ensures each user can only have one entry per stock
 }
@@ -427,8 +427,6 @@ model AlphaVantageNews {
   @@map("alphavantage_news")
 }
 
-
-
 model MarketSentiment {
   id            String   @id @default(cuid()) @map("_id")
   date          String   @unique // Format: YYYY-MM-DD
@@ -550,111 +548,6 @@ model ActivityFeedEntry {
   @@map("activity_feed_entry")
 }
 
-
-model DailyDrawWinner {
-  id                String   @id @default(cuid()) @map("_id")
-  userId            String
-  user              User     @relation(fields: [userId], references: [id])
-  tokens            Int
-  drawDate          String   // YYYY-MM-DD format
-  totalParticipants Int
-  createdAt         DateTime @default(now())
-
-  @@index([drawDate])
-  @@map("daily_draw_winner")
-}
-
-model ScratchTicket {
-  id          String   @id @default(cuid()) @map("_id")
-  name        String
-  type        String   // tokens, money, stocks, random, diamond
-  price       Int
-  description String
-  createdAt   DateTime @default(now())
-  
-  // Define if this is a daily shop item
-  isDailyShop Boolean  @default(true)
-  dayKey      String?  // Format: YYYY-MM-DD to track which day's shop it belongs to
-  
-  // Relation to user tickets
-  userTickets UserScratchTicket[]
-  
-  @@map("scratch_ticket")
-}
-
-model UserScratchTicket {
-  id        String   @id @default(cuid()) @map("_id")
-  
-  // Relations
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  ticketId  String
-  ticket    ScratchTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  
-  // Daily shop tracking
-  dayKey    String   // Format: YYYY-MM-DD to track which day's shop it belongs to
-  shopTicketId String?  // ID of the ticket in the daily shop UI (for purchase tracking)
-  
-  // Ticket state
-  purchased Boolean  @default(true)
-  scratched Boolean  @default(false)
-  isBonus   Boolean  @default(false)
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  scratchedAt DateTime?
-  
-  // Prize details (if any)
-  prizeTokens Int?
-  prizeCash   Float?
-  prizeStocks Float?
-  prizeStockShares UserScratchTicketPrizeStockShares? // Use the type from second schema
-  
-  @@unique([userId, id])
-  @@unique([userId, ticketId, dayKey]) // Prevent multiple purchases of same ticket type per day
-  @@map("user_scratch_ticket")
-}
-
-// Token market history models
-model TokenMarketHistory {
-  id            String   @id @default(cuid()) @map("_id")
-  date          DateTime @default(now())
-  tokenValue    Float
-  totalSupply   Int
-  holdersCount  Int
-  dailyVolume   Int
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@map("token_market_history")
-}
-
-model TokenMarketDataPoint {
-  id                String   @id @default(cuid()) @map("_id")
-  timestamp         DateTime @default(now())
-  tokenValue        Float
-  tokensInCirculation Int
-  totalTransactionValue Float
-  
-  @@index([timestamp])
-  @@map("token_market_data_point")
-}
-
-model GameHistory {
-  id        String   @id @default(cuid()) @map("_id")
-  userId    String
-  gameType  String   // e.g., "STOCKET"
-  outcome   String   // "Crashed" or "Sold"
-  multiplier Float
-  profit    Float
-  betAmount Float
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-}
-
 // New models found in the second schema file
 model StockChat {
   id        String   @id @default(cuid()) @map("_id")
@@ -716,4 +609,106 @@ model UserTicket {
   @@map("user_ticket")
 }
 
+model DailyDrawWinner {
+  id                String   @id @default(cuid()) @map("_id")
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  tokens            Int
+  drawDate          String   // YYYY-MM-DD format
+  totalParticipants Int
+  createdAt         DateTime @default(now())
 
+  @@index([drawDate])
+  @@map("daily_draw_winner")
+}
+
+model ScratchTicket {
+  id          String   @id @default(cuid()) @map("_id")
+  name        String
+  type        String   // tokens, money, stocks, random, diamond
+  price       Int
+  description String
+  createdAt   DateTime @default(now())
+  
+  // Define if this is a daily shop item
+  isDailyShop Boolean  @default(true)
+  dayKey      String?  // Format: YYYY-MM-DD to track which day's shop it belongs to
+  
+  // Relation to user tickets
+  userTickets UserScratchTicket[]
+  
+  @@map("scratch_ticket")
+}
+
+model UserScratchTicket {
+  id        String   @id @default(cuid()) @map("_id")
+  
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  ticketId  String
+  ticket    ScratchTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  // Daily shop tracking
+  dayKey    String   // Format: YYYY-MM-DD to track which day's shop it belongs to
+  shopTicketId String?  // ID of the ticket in the daily shop UI (for purchase tracking)
+  
+  // Ticket state
+  purchased Boolean  @default(true)
+  scratched Boolean  @default(false)
+  isBonus   Boolean  @default(false)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  scratchedAt DateTime?
+  
+  // Prize details (if any)
+  prizeTokens Int?
+  prizeCash   Float?
+  prizeStocks Float?
+  prizeStockShares Json? // Store details of stock shares won
+  
+  @@unique([userId, id])
+  @@unique([userId, ticketId, dayKey]) // Prevent multiple purchases of same ticket type per day
+  @@map("user_scratch_ticket")
+}
+
+// Add TokenMarketHistory model after existing models
+model TokenMarketHistory {
+  id            String   @id @default(cuid()) @map("_id")
+  date          DateTime @default(now())
+  tokenValue    Float
+  totalSupply   Int
+  holdersCount  Int
+  dailyVolume   Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("token_market_history")
+}
+
+model GameHistory {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  gameType  String   // e.g., "STOCKET"
+  outcome   String   // "Crashed" or "Sold"
+  multiplier Float
+  profit    Float
+  betAmount Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model TokenMarketDataPoint {
+  id                String   @id @default(cuid()) @map("_id")
+  timestamp         DateTime @default(now())
+  tokenValue        Float
+  tokensInCirculation Int
+  totalTransactionValue Float
+  
+  @@index([timestamp])
+  @@map("token_market_data_point")
+}

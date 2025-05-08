@@ -169,15 +169,13 @@ export default function DailyDraw() {
       if (user?.id) {
         // Update localStorage with the new token amount
         localStorage.setItem(`user-${user.id}-tokens`, data.userTokens.toString());
-        
-        // Trigger a storage event for UserTokenDisplay
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'token-refresh',
-          newValue: Date.now().toString()
-        }));
-        
-        // Also trigger a custom event that other components can listen for
-        window.dispatchEvent(new CustomEvent('token-balance-updated'));
+        // Dispatch custom event with new balance
+        window.dispatchEvent(new CustomEvent('token-balance-updated', { detail: { newBalance: data.userTokens } }));
+        // Also update a key for storage listeners
+        window.localStorage.setItem('token-balance-updated', Date.now().toString());
+        // Dispatch storage events
+        window.dispatchEvent(new StorageEvent('storage', { key: 'token-refresh', newValue: Date.now().toString() }));
+        window.dispatchEvent(new StorageEvent('storage', { key: `user-${user.id}-tokens`, newValue: data.userTokens.toString() }));
       }
 
       toast.success(`Added ${tokens} tokens to the pot!`);

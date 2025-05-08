@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { abbreviateNumber } from '@/lib/utils';
 
 interface TransactionCardProps {
   transaction: {
@@ -11,6 +12,7 @@ interface TransactionCardProps {
     price: number;
     totalCost: number;
     type: string;
+    status: string;
     timestamp: string | Date;
     isCurrentUser?: boolean;
     publicNote?: string;
@@ -28,12 +30,29 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     price,
     totalCost,
     type,
+    status,
     timestamp,
     isCurrentUser,
     publicNote,
-    privateNote
+    privateNote,
   } = transaction;
   
+  // Map of scratch ticket type to its token cost
+  const scratchCostMap: Record<string, number> = {
+    'Golden Fortune': 25,
+    'Cash Splash': 50,
+    'Stock Surge': 75,
+    'Mystic Chance': 100,
+    'Diamond Scratch': 200,
+  };
+  // Detect scratch win entries
+  const isScratchWin = status === 'SCRATCH_WIN';
+
+  // Determine scratch prize type based on note
+  const scratchPrizeType = isScratchWin ? (
+    publicNote?.includes('tokens') ? 'tokens' : publicNote?.includes('$') ? 'cash' : 'shares'
+  ) : null;
+
   // Format the timestamp
   const formattedTime = formatDistanceToNow(
     new Date(timestamp),
@@ -46,7 +65,6 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   const isSell = type === 'SELL';
   const isLootboxPurchase = type === 'LOOTBOX';
   const isLootboxRedeem = type === 'LOOTBOX_REDEEM';
-  const isScratchWin = type === 'SCRATCH_WIN';
   const isDailyDrawWin = type === 'DAILY_DRAW_WIN';
 
   const hasNotes = publicNote || (isCurrentUser && privateNote);
@@ -70,10 +88,13 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   };
 
   const getPriceDisplay = () => {
-    if (isLootboxPurchase) return `Cost: $${price.toFixed(2)}`;
-    if (isLootboxRedeem) return `Value: $${price.toFixed(2)}`;
-    if (isScratchWin) return `Value: $${price.toFixed(2)}`;
-    if (isDailyDrawWin) return `${price.toLocaleString()} tokens`;
+    if (isScratchWin) {
+      // For scratch wins, this section is now blank as per new spec
+      return ""; 
+    }
+    if (isLootboxPurchase) return `Cost: $${ abbreviateNumber(price)}`;
+    if (isLootboxRedeem) return `Value: $${abbreviateNumber(price)}`;
+    if (isDailyDrawWin) return `${abbreviateNumber(price)} tokens`;
     return `${quantity} ${quantity === 1 ? 'share' : 'shares'} @ $${price.toFixed(2)}`;
   };
 
@@ -90,11 +111,15 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isBuy) return 'text-green-400';
     if (isSell) return 'text-red-400';
     if (isLootboxPurchase || isLootboxRedeem) return 'text-blue-400';
-    if (isScratchWin) return 'text-yellow-400';
+    if (isScratchWin) {
+      if (scratchPrizeType === 'tokens') return 'text-yellow-400';
+      if (scratchPrizeType === 'cash') return 'text-green-400';
+      return 'text-blue-400'; // shares
+    }
     if (isDailyDrawWin) return 'text-purple-400';
     return 'text-gray-400';
   };
-  
+
   return (
     <div className="bg-gray-800/60 rounded-xl p-4 mb-3 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
       <div className="flex justify-between items-start mb-2">
@@ -117,14 +142,18 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
           </div>
         </div>
         <div className={`text-right ${getCostColor()}`}>
-          {isLootboxRedeem ? (
-            <div className="font-bold">REDEEMED LOOTBOX</div>
-          ) : isScratchWin ? (
-            <div className="font-bold">SCRATCH WIN</div>
+          {isScratchWin ? (
+            <div className="font-bold">
+              {scratchPrizeType === 'tokens' && `${totalCost.toLocaleString()} tokens`}
+              {scratchPrizeType === 'cash' && `$${totalCost.toFixed(2)}`}
+              {scratchPrizeType === 'shares' && `${totalCost.toFixed(2)} shares`}
+            </div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>
+          ) : isLootboxRedeem ? (
+            <div className="font-bold">REDEEMED LOOTBOX</div>
           ) : (
-            <div className="font-bold">${totalCost.toFixed(2)}</div>
+            <div className="font-bold">${abbreviateNumber(totalCost)}</div>
           )}
         </div>
       </div>
@@ -146,7 +175,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
               {publicNote && (
                 <div className="bg-gray-700/30 rounded-lg p-3">
                   <div className="text-xs text-gray-400 mb-1">Public Note</div>
-                  <div className="text-gray-200">{publicNote}</div>
+                  <div className="text-gray-200 whitespace-pre-line">{publicNote}</div>
                 </div>
               )}
               {isCurrentUser && privateNote && (

@@ -6,6 +6,7 @@ import { IoEllipse } from "react-icons/io5";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import { abbreviateNumber } from "@/lib/utils";
 
 interface TokenUser {
   id: string;
@@ -144,7 +145,8 @@ const TokenLeaderboard: React.FC = () => {
               <div className="w-5 flex justify-center text-xs font-semibold text-gray-400">
                 {index + 1}
               </div>
-              <div className="relative">
+              <div className="w-7 h-7 rounded-full">
+                {/* Avatar: match community styling */}
                 {user.image ? (
                   <Image
                     src={user.image}
@@ -167,7 +169,7 @@ const TokenLeaderboard: React.FC = () => {
               </span>
               <div className="flex items-center ml-auto">
                 <IoEllipse className="text-yellow-400 w-3.5 h-3.5 mr-1" />
-                <span className="text-xs font-semibold text-gray-300">{formatTokens(user.tokens)}</span>
+                <span className="text-xs font-semibold text-gray-300">{abbreviateNumber((user.tokens))}</span>
               </div>
             </button>
           </li>

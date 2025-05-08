@@ -3,12 +3,42 @@ import { FaAngleRight } from "react-icons/fa";
 import Link from "next/link";
 
 const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) => {
-  const total = transaction.price * transaction.quantity;
+  // For scratch-win stocks, totalCost holds total shares; otherwise calculate total transaction value
+  const total = transaction.status === 'SCRATCH_WIN'
+    ? transaction.totalCost
+    : transaction.price * transaction.quantity;
   
   const isBuy = transaction.type === 'BUY';
   const isSell = transaction.type === 'SELL';
   const isLootbox = transaction.type === 'LOOTBOX';
   const isLootboxRedeem = transaction.type === 'LOOTBOX_REDEEM';
+  const isTokenExchange = transaction.type === 'TOKEN_EXCHANGE';
+  const isWin = transaction.status === 'SCRATCH_WIN';
+  
+  // Scratch-off ticket mappings for cost and prize formatting
+  const scratchCostMap: Record<string, number> = {
+    'Golden Fortune': 25,
+    'Cash Splash': 50,
+    'Stock Surge': 75,
+    'Mystic Chance': 100,
+    'Diamond Scratch': 200,
+  };
+  const scratchPrizeFormatMap: Record<string, (val: number) => string> = {
+    'Golden Fortune': (val) => `${val.toLocaleString()} tokens`,
+    'Cash Splash': (val) => `$${val.toFixed(2)}`,
+    'Stock Surge': (val) => `${val} shares`,
+    'Mystic Chance': (val) => `${val}`,
+    'Diamond Scratch': (val) => `${val}`,
+  };
+
+  // Price: ticket cost for scratch-win, otherwise price per share
+  const displayPrice = isWin
+    ? `${scratchCostMap[transaction.stockSymbol] || transaction.price} tokens`
+    : `$${transaction.price.toFixed(2)}`;
+  // Total: total shares won for scratch-win, otherwise total transaction value
+  const displayTotal = isWin
+    ? `${total.toFixed(2)} shares`
+    : `$${total.toFixed(2)}`;
   
   // Get styling for the transaction type
   let typeClasses = 'bg-gray-900/20 text-gray-300 border-gray-700/30';
@@ -18,10 +48,20 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
     typeClasses = 'bg-red-900/20 text-red-300 border-red-700/30';
   } else if (isLootbox || isLootboxRedeem) {
     typeClasses = 'bg-blue-900/20 text-blue-300 border-blue-700/30';
+  } else if (isWin) {
+    // Scratch win styling
+    typeClasses = 'bg-yellow-900/20 text-yellow-300 border-yellow-700/30';
   }
   
   // Determine display text
-  const displayType = isLootboxRedeem ? 'REDEEMED LOOTBOX' : transaction.type;
+  let displayType = transaction.type;
+  if (isLootboxRedeem) {
+    displayType = 'REDEEMED LOOTBOX';
+  } else if (isTokenExchange) {
+    displayType = 'TOKEN EXCHANGE';
+  } else if (isWin) {
+    displayType = 'SCRATCH WIN';
+  }
 
   return (
     <div className="space-y-6">
@@ -51,11 +91,11 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
 
       {/* Transaction Details Grid */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
-        <h3 className="text-lg font-medium text-white mb-4">Transaction Details</h3>
+        <h3 className="text-lg font-medium text-white mb-4">{isWin ? 'Details' : 'Transaction Details'}</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
             <div className="text-sm text-gray-400">Price</div>
-            <div className="text-lg font-semibold text-white">${transaction.price.toFixed(2)}</div>
+            <div className="text-lg font-semibold text-white">{displayPrice}</div>
           </div>
           <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
             <div className="text-sm text-gray-400">Quantity</div>
@@ -63,11 +103,14 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
           </div>
           <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
             <div className="text-sm text-gray-400">Total</div>
-            <div className="text-lg font-semibold text-white">${total.toFixed(2)}</div>
+            <div className="text-lg font-semibold text-white">{displayTotal}</div>
           </div>
           <div className="bg-gray-700/30 rounded-xl p-4 border border-white/5">
-            <div className="text-sm text-gray-400">Status</div>
-            <div className="text-lg font-semibold text-white">{transaction.status}</div>
+            {/* For scratch-off wins, show Type instead of Status */}
+            <div className="text-sm text-gray-400">{isWin ? 'Type' : 'Status'}</div>
+            <div className="text-lg font-semibold text-white">
+              {isWin ? transaction.stockSymbol : transaction.status}
+            </div>
           </div>
         </div>
       </div>

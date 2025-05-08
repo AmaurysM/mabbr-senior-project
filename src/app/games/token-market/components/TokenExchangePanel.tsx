@@ -1,5 +1,6 @@
 "use client";
 
+import { abbreviateNumber } from '@/lib/utils';
 import { useState } from 'react';
 import { FaExchangeAlt } from 'react-icons/fa';
 
@@ -79,14 +80,14 @@ const TokenExchangePanel: React.FC<TokenExchangePanelProps> = ({
           </div>
           
           <div className="mt-2 text-right text-sm text-gray-400">
-            Available: {tokenCount.toLocaleString()} tokens
+            Available: {abbreviateNumber(tokenCount)} tokens
           </div>
         </div>
         
         <div className="bg-gray-700 p-4 rounded-lg">
           <div className="text-gray-400 text-sm mb-1">You Receive</div>
           <div className="text-2xl font-bold text-green-400">${cashValue.toFixed(2)}</div>
-          <div className="text-xs text-gray-400">at ${tokenValue.toFixed(4)} per token</div>
+          <div className="text-xs text-gray-400">at ${abbreviateNumber(tokenValue)} per token</div>
         </div>
         
         <div className="pt-2">
@@ -101,10 +102,6 @@ const TokenExchangePanel: React.FC<TokenExchangePanelProps> = ({
           >
             {isProcessing ? 'Processing...' : `Exchange ${amount || 0} Tokens`}
           </button>
-        </div>
-        
-        <div className="text-xs text-gray-400 mt-2">
-          Note: Exchanging tokens may affect the market value. Large exchanges may result in a lower rate.
         </div>
       </div>
     </div>

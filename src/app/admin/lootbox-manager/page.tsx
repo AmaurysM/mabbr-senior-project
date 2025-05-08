@@ -5,8 +5,9 @@ import { useLootboxCrud } from '@/hooks/useLootboxCrud';
 import { useStockCrud } from '@/hooks/useStockCrud';
 
 export const LootboxManager = () => {
+  // Fetch lootboxes; default to empty array
   const {
-    lootboxes,
+    lootboxes = [],
     createLootbox,
     updateLootbox,
     deleteLootbox,
@@ -14,7 +15,7 @@ export const LootboxManager = () => {
     error: lootboxError
   } = useLootboxCrud();
 
-  const { stocks } = useStockCrud();
+  const { stocks = [] } = useStockCrud();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -78,7 +79,8 @@ export const LootboxManager = () => {
       name: lootbox.name,
       description: lootbox.description || '',
       price: lootbox.price,
-      selectedStocks: lootbox.stocks.map((stock: any) => stock.id)
+      // Guard stocks array
+      selectedStocks: lootbox.stocks?.map((stock: any) => stock.id) ?? []
     });
   };
 
@@ -162,21 +164,17 @@ export const LootboxManager = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price
+                  Price (tokens)
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
-                    name="price"
-                    className="w-full pl-8 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
+                <input
+                  type="number"
+                  name="price"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  min="0"
+                  required
+                />
               </div>
 
               <div>
@@ -245,11 +243,11 @@ export const LootboxManager = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
               Existing Lootboxes
               <span className="block mt-1 text-sm font-normal text-gray-500">
-                {lootboxes?.length} lootbox{lootboxes?.length !== 1 && 'es'} available
+                {lootboxes.length} lootbox{lootboxes.length !== 1 ? 'es' : ''} available
               </span>
             </h2>
 
-            {lootboxes && lootboxes.length === 0 ? (
+            {!Array.isArray(lootboxes) || lootboxes.length === 0 ? (
               <div className="text-center py-12">
                 <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full">
                   <svg
@@ -270,94 +268,95 @@ export const LootboxManager = () => {
               </div>
             ) : (
               <div className="space-y-4 pr-2 h-[calc(100vh-260px)] overflow-y-auto custom-scrollbar">
-                {lootboxes?.map(lootbox => (
-                  <div
-                    key={lootbox.id}
-                    className="group p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-colors"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {lootbox.name}
-                          {editingId === lootbox.id && (
-                            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                              Editing
-                            </span>
+                {lootboxes.map((lootbox) => {
+                  const boxStocks = lootbox.stocks || [];
+                  return (
+                    <div
+                      key={lootbox.id}
+                      className="group p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {lootbox.name}
+                            {editingId === lootbox.id && (
+                              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                Editing
+                              </span>
+                            )}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {lootbox.description || 'No description'}
+                          </p>
+                        </div>
+                        <span className="text-lg font-bold text-blue-600">
+                          {lootbox.price} tokens
+                        </span>
+                      </div>
+
+                      <div className="mb-4">
+                        <div className="text-xs font-medium text-gray-500 mb-2">
+                          Included stocks ({boxStocks.length})
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {boxStocks.length === 0 ? (
+                            <span className="text-xs text-gray-400 italic">No stocks selected</span>
+                          ) : (
+                            boxStocks.map((stock: any) => (
+                              <span
+                                key={stock.id}
+                                className="px-2.5 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-full"
+                              >
+                                {stock.name}
+                              </span>
+                            ))
                           )}
-                        </h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {lootbox.description || 'No description'}
-                        </p>
+                        </div>
                       </div>
-                      <span className="text-lg font-bold text-blue-600">
-                        ${lootbox.price.toFixed(2)}
-                      </span>
-                    </div>
 
-                    <div className="mb-4">
-                      <div className="text-xs font-medium text-gray-500 mb-2">
-                        Included stocks ({lootbox.stocks.length})
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {lootbox.stocks.length === 0 ? (
-                          <span className="text-xs text-gray-400 italic">
-                            No stocks selected
-                          </span>
-                        ) : (
-                          lootbox.stocks.map((stock: any) => (
-                            <span
-                              key={stock.id}
-                              className="px-2.5 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-full"
-                            >
-                              {stock.name}
-                            </span>
-                          ))
-                        )}
+                      <div className="flex items-center justify-end space-x-4">
+                        <button
+                          onClick={() => handleEdit(lootbox)}
+                          className="flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(lootbox.id)}
+                          className="flex items-center text-sm text-red-600 hover:text-red-800 font-medium"
+                        >
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          Delete
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-end space-x-4">
-                      <button
-                        onClick={() => handleEdit(lootbox)}
-                        className="flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                          />
-                        </svg>
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(lootbox.id)}
-                        className="flex items-center text-sm text-red-600 hover:text-red-800 font-medium"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -1,19 +1,21 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { IoTicket, IoEllipse } from "react-icons/io5";
+import { IoEllipse } from "react-icons/io5";
 import { authClient } from "@/lib/auth-client";
 import { FaCoins } from "react-icons/fa";
+export function abbreviateNumber(value: number): string {
+  if (value < 1000) return value.toString();
+  const suffixes = ["", "K", "M", "B", "T"];
+  const tier = Math.floor(Math.log10(value) / 3);
+  const scaled = value / Math.pow(10, tier * 3);
+  return scaled.toFixed(1).replace(/\.0$/, "") + suffixes[tier];
+}
 
 const UserTokenDisplay: React.FC = () => {
   const [tokens, setTokens] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const { data: session } = authClient.useSession();
-
-  // Format token number with commas for thousands
-  const formatTokens = (tokens: number) => {
-    return tokens.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
 
   useEffect(() => {
     const fetchUserTokens = async () => {
@@ -133,7 +135,7 @@ const UserTokenDisplay: React.FC = () => {
       <div className="flex items-center bg-gray-800/80 px-3 py-1 rounded-lg">
         <IoEllipse className="text-yellow-400 w-3.5 h-3.5 mr-1.5" />
         <span className="text-white font-semibold">
-          {tokens !== null ? formatTokens(tokens) : "..."}
+          {tokens !== null ? abbreviateNumber(tokens) : "..."}
         </span>
       </div>
     </div>

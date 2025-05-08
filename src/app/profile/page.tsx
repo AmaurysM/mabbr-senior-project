@@ -18,6 +18,7 @@ import RecentActivityList from './components/RecentActivityList';
 import AddFriendCard from '../components/AddFriendCard';
 import AccountSettings from './components/accountSettings/AccountSettings';
 import ProfileInformation from './components/ProfileInformation';
+import { abbreviateNumber } from '@/lib/utils';
 
 interface Transaction {
     id: string;
@@ -45,6 +46,7 @@ const CombinedProfilePage = () => {
     const [email, setEmail] = useState<string>('');
     const [bio, setBio] = useState('No bio yet.');
     const [balance, setBalance] = useState<number>(0);
+    const [tokenCount, setTokenCount] = useState<number>(0);
     const [newBio, setNewBio] = useState(bio);
     const [loading, setLoading] = useState(true);
     const [userId, setUserId] = useState<string | null>(null);
@@ -75,7 +77,7 @@ const CombinedProfilePage = () => {
     // All the fetch functions and other logic remain the same
     useEffect(() => {
         setBannerError(false);
-      }, [banner]);
+    }, [banner]);
     const fetchTransactions = async () => {
         try {
             const res = await fetch('/api/user/transactions', {
@@ -247,7 +249,22 @@ const CombinedProfilePage = () => {
         }
     };
 
-
+    // Fetch user info including balance and tokens on login
+    useEffect(() => {
+        if (!user) return;
+        (async () => {
+            try {
+                const res = await fetch('/api/user/info', { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    setBalance(data.balance);
+                    setTokenCount(data.tokenCount);
+                }
+            } catch (err) {
+                console.error('Error fetching user info:', err);
+            }
+        })();
+    }, [user]);
 
     const handleImageClick = () => {
         fileInputRef.current?.click();
@@ -374,7 +391,7 @@ const CombinedProfilePage = () => {
         <div className="min-h-full bg-gray-900">
             <div className="relative">
                 {/* Cover image with gradient */}
-                <div className="relative h-64 w-full overflow-hidden">
+                <div className="relative h-40 sm:h-48 md:h-56 lg:h-64 w-full overflow-hidden">
                     {/* Fallback gradient background */}
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-indigo-600/30 backdrop-blur-sm"></div>
 
@@ -385,7 +402,7 @@ const CombinedProfilePage = () => {
                                 src={banner}
                                 alt="Profile banner"
                                 fill
-                                sizes="100vw"
+                                sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, (max-width: 1024px) 100vw, (max-width: 1280px) 100vw, 100vw"
                                 priority
                                 className="object-cover"
                                 onError={() => setBannerError(true)}
@@ -396,36 +413,35 @@ const CombinedProfilePage = () => {
 
                     <div className="relative z-10 h-full flex items-center justify-center"></div>
                 </div>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="relative -mt-32">
+                <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+                    <div className="relative -mt-16 sm:-mt-20 md:-mt-24 lg:-mt-32">
                         {/* Profile Header with glassy effect */}
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
-                            <div className="flex flex-col md:flex-row items-center justify-between">
-                                <div className="flex items-center mb-4 md:mb-0">
-                                    <div className="relative w-20 h-20 md:w-24 md:h-24 group mr-4">
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 shadow-lg border border-white/10">
+                            <div className="flex flex-col sm:flex-row items-center justify-between">
+                                <div className="flex items-center mb-4 sm:mb-0">
+                                    <div className="relative w-16 h-16 sm:w-18 md:w-20 lg:w-24 sm:h-18 md:h-20 lg:h-24 group mr-3 sm:mr-4">
                                         <div
                                             className="relative w-full h-full rounded-full overflow-hidden cursor-pointer
-                                            group-hover:ring-4 group-hover:ring-blue-500/50 transition-all"
+                              group-hover:ring-4 group-hover:ring-blue-500/50 transition-all"
                                             onClick={handleImageClick}
                                         >
                                             {imageError ? (
                                                 <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                                                    <CameraIcon className="h-8 w-8 text-gray-400" />
+                                                    <CameraIcon className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-gray-400" />
                                                 </div>
                                             ) : (
                                                 <Image
                                                     src={profileImage}
                                                     alt="Profile"
                                                     fill
-                                                    sizes="64px" // Fixed the missing sizes prop
-
+                                                    sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
                                                     className="object-cover"
                                                     onError={() => setImageError(true)}
                                                 />
                                             )}
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
-                                            transition-opacity flex items-center justify-center">
-                                                <CameraIcon className="h-6 w-6 text-white" />
+                              transition-opacity flex items-center justify-center">
+                                                <CameraIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                                             </div>
                                         </div>
                                         <input
@@ -438,31 +454,42 @@ const CombinedProfilePage = () => {
                                     </div>
                                     <div>
                                         <div className="flex items-center">
-                                            <div className="text-3xl font-bold text-white">
-                                                {name}
+                                            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
+                                                {name}{icon && <span className="ml-2">{icon}</span>}
                                             </div>
-                                            {icon && <span className="ml-2">{icon}</span>}
                                         </div>
-                                        <div className="text-gray-400">{email}</div>
+                                        <div className="text-sm sm:text-base text-gray-400">{email}</div>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="text-center">
-                                        <div className="text-gray-400 text-sm">Balance</div>
-                                        <div className="text-xl font-bold text-white">
-                                            ${balance.toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
-                                            })}
+
+                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                                    {/* Cash */}
+                                    <div className="text-center bg-white/10 border border-white/20 rounded-lg p-2 sm:p-3 md:p-4 whitespace-nowrap overflow-hidden text-ellipsis">
+                                        <div className="text-xs sm:text-sm text-gray-400">Cash</div>
+                                        <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-white">
+                                            ${abbreviateNumber(balance)}
                                         </div>
                                     </div>
-                                    <div className="text-center">
-                                        <div className="text-gray-400 text-sm">Portfolio Value</div>
-                                        <div className="text-xl font-bold text-white">
-                                            ${portfolioValue.toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
-                                            })}
+                                    {/* Holdings */}
+                                    <div className="text-center bg-white/10 border border-white/20 rounded-lg p-2 sm:p-3 md:p-4 whitespace-nowrap overflow-hidden text-ellipsis">
+                                        <div className="text-xs sm:text-sm text-gray-400">Holdings</div>
+                                        <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-white">
+                                            ${abbreviateNumber(portfolioValue)}
+                                        </div>
+                                    </div>
+                                    {/* Net Worth */}
+                                    <div className="text-center bg-white/10 border border-white/20 rounded-lg p-2 sm:p-3 md:p-4 whitespace-nowrap overflow-hidden text-ellipsis">
+                                        <div className="text-xs sm:text-sm text-gray-400">Net Worth</div>
+                                        <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-white">
+                                            ${abbreviateNumber(balance + portfolioValue)}
+                                        </div>
+                                    </div>
+                                    {/* Tokens */}
+                                    <div className="text-center bg-yellow-400/10 border border-yellow-400/20 rounded-lg p-2 sm:p-3 md:p-4 whitespace-nowrap overflow-hidden text-ellipsis">
+                                        <div className="text-xs sm:text-sm text-gray-400">Tokens</div>
+                                        <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-white">
+                                            {abbreviateNumber(tokenCount)}
                                         </div>
                                     </div>
                                 </div>
@@ -473,75 +500,75 @@ const CombinedProfilePage = () => {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 pt-4">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pb-8 sm:pb-12 md:pb-16 pt-3 sm:pt-4">
                 {/* Navigation Tabs with glassy effects */}
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-lg border border-white/10">
-                    <div className="flex overflow-x-auto space-x-2 custom-scrollbar">
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-4 mb-4 sm:mb-5 md:mb-6 shadow-lg border border-white/10">
+                    <div className="flex overflow-x-auto space-x-1 sm:space-x-2 custom-scrollbar">
                         <button
                             onClick={() => setActiveTab('profile')}
-                            className={`px-4 py-2 rounded-lg flex items-center text-sm ${activeTab === 'profile'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                            className={`px-2 sm:px-3 md:px-4 py-1 sm:py-2 rounded-lg flex items-center text-xs sm:text-sm ${activeTab === 'profile'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                                 } transition-colors whitespace-nowrap`}
                         >
-                            <UserIcon className="h-5 w-5 mr-2" />
+                            <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
                             Profile
                         </button>
                         <button
                             onClick={() => setActiveTab('portfolio')}
-                            className={`px-4 py-2 rounded-lg flex items-center text-sm ${activeTab === 'portfolio'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                            className={`px-2 sm:px-3 md:px-4 py-1 sm:py-2 rounded-lg flex items-center text-xs sm:text-sm ${activeTab === 'portfolio'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                                 } transition-colors whitespace-nowrap`}
                         >
-                            <ChartBarIcon className="h-5 w-5 mr-2" />
+                            <ChartBarIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
                             Portfolio
                         </button>
                         <button
                             onClick={() => setActiveTab('activity')}
-                            className={`px-4 py-2 rounded-lg flex items-center text-sm ${activeTab === 'activity'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                            className={`px-2 sm:px-3 md:px-4 py-1 sm:py-2 rounded-lg flex items-center text-xs sm:text-sm ${activeTab === 'activity'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                                 } transition-colors whitespace-nowrap`}
                         >
-                            <ClockIcon className="h-5 w-5 mr-2" />
+                            <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
                             Activity
                         </button>
                         <button
                             onClick={() => setActiveTab('friends')}
-                            className={`px-4 py-2 rounded-lg flex items-center text-sm ${activeTab === 'friends'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                            className={`px-2 sm:px-3 md:px-4 py-1 sm:py-2 rounded-lg flex items-center text-xs sm:text-sm ${activeTab === 'friends'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                                 } transition-colors whitespace-nowrap`}
                         >
-                            <UserIcon className="h-5 w-5 mr-2" />
+                            <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
                             Friends
                         </button>
                         <button
                             onClick={() => setActiveTab('settings')}
-                            className={`px-4 py-2 rounded-lg flex items-center text-sm ${activeTab === 'settings'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                            className={`px-2 sm:px-3 md:px-4 py-1 sm:py-2 rounded-lg flex items-center text-xs sm:text-sm ${activeTab === 'settings'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                                 } transition-colors whitespace-nowrap`}
                         >
-                            <CogIcon className="h-5 w-5 mr-2" />
+                            <CogIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
                             Settings
                         </button>
                     </div>
                 </div>
 
                 {/* Content container with proper scrolling behavior and updated styles */}
-                <div className="pb-8">
+                <div className="pb-4 sm:pb-6 md:pb-8">
                     {/* Profile Tab Content */}
                     {activeTab === 'profile' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
                             {/* Left Column - Profile Info with glassy effect */}
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-lg border border-white/10">
                                 <ProfileInformation />
                             </div>
 
                             {/* Right Column - Stats with glassy effect */}
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-lg border border-white/10">
                                 <TradingStaticsticsCard />
                             </div>
                         </div>
@@ -549,20 +576,17 @@ const CombinedProfilePage = () => {
 
                     {/* Portfolio Tab Content */}
                     {activeTab === 'portfolio' && (
-                        <div className="space-y-8">
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
-                                <div className="text-2xl font-bold text-white mb-4">Portfolio Value</div>
-                                <PortfolioChart />
-                            </div>
+                        <div className="space-y-4 sm:space-y-6 md:space-y-8">
+                            <PortfolioChart />
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
-                                    <div className="text-2xl font-bold text-white mb-4">Risk Assessment</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 shadow-lg border border-white/10">
+                                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">Risk Assessment</div>
                                     <Risk />
                                 </div>
 
-                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/10">
-                                    <div className="text-2xl font-bold text-white mb-4">Your Holdings</div>
+                                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 shadow-lg border border-white/10">
+                                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4">Your Holdings</div>
                                     <PortfolioTable />
                                 </div>
                             </div>
@@ -571,18 +595,18 @@ const CombinedProfilePage = () => {
 
                     {/* Activity Tab Content */}
                     {activeTab === 'activity' && (
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-lg border border-white/10">
                             <RecentActivityList />
                         </div>
                     )}
 
                     {/* Friends Tab Content */}
                     {activeTab === 'friends' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:gap-6">
+                            <div className="backdrop-blur-sm rounded-lg sm:rounded-xl">
                                 <AddFriendCard />
                             </div>
-                            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                            <div className="backdrop-blur-sm rounded-lg sm:rounded-xl">
                                 <FriendsList />
                             </div>
                         </div>
@@ -590,7 +614,7 @@ const CombinedProfilePage = () => {
 
                     {/* Settings Tab Content */}
                     {activeTab === 'settings' && (
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10">
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-lg border border-white/10">
                             <AccountSettings />
                         </div>
                     )}

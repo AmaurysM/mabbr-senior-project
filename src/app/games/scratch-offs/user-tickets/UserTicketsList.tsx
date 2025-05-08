@@ -268,10 +268,6 @@ const UserTicketsList: React.FC<UserTicketsListProps> = ({
   const playTicket = (ticketId: string) => {
     try {
       console.log("UserTicketsList: Playing ticket:", ticketId);
-      
-      // Optimistically mark as scratched in the UI to prevent duplicated plays
-      setTickets(prevTickets => prevTickets.filter(t => t.id !== ticketId));
-      
       // Navigate to the play page
       window.location.href = `/games/scratch-offs/play?ticketId=${ticketId}`;
     } catch (error) {

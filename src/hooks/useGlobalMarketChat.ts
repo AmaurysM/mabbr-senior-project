@@ -1,48 +1,130 @@
-import { useEffect, useState } from "react";
-import { Comment } from '@prisma/client'
+import { useEffect, useState, useRef } from 'react';
+import { Comment } from '@prisma/client';
 
-// Assuming this is your type definition
-type GlobalPost = {
-  id: string;
-  content: string;
-  createdAt: string;
-  // Add other fields as needed
+const fetcher = async (url: string): Promise<Comment[]> => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
+  return res.json();
 };
-
-//export type globalPosts = GlobalPost[];
 
 export const useGlobalMarketChat = () => {
   const [messagesData, setMessagesData] = useState<Comment[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [error, setError] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<Date | null>(null);
 
-  // For loading older messages, we use the oldest message currently in the list
-  const oldestMessage = messagesData.length > 0 ? messagesData[0] : null;
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track all messages by ID to prevent duplicates
+  const addMessages = (incoming: Comment[], toStart = false) => {
+    setMessagesData(prev => {
+      const existingIds = new Set(prev.map(m => m.id));
+      const newMessages = incoming.filter(m => !existingIds.has(m.id));
+      
+      // Sort messages by date to ensure chronological order
+      const combined = toStart 
+        ? [...newMessages, ...prev] 
+        : [...prev, ...newMessages];
+        
+      return combined.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    });
+  };
+
+  // Initial load + polling
+  useEffect(() => {
+    const loadInitialMessages = async () => {
+      try {
+        const latest = await fetcher('/api/chat?limit=20&order=desc');
+        const latestChrono = latest.reverse(); // reverse to chronological order
+        addMessages(latestChrono);
+        
+        if (latest.length < 20) {
+          setHasMore(false);
+        } else if (latest.length > 0) {
+          setLastFetchedTimestamp(new Date(latest[0].createdAt));
+        }
+        
+        setIsInitialLoad(false);
+      } catch (err) {
+        console.error(err);
+        setError(err);
+      }
+    };
+
+    loadInitialMessages();
+
+    // Polling for new messages every 5 seconds
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const latest = await fetcher('/api/chat?limit=20&order=desc');
+        const latestChrono = latest.reverse();
+
+        setMessagesData(prev => {
+          // Keep temporary messages
+          const tempMessages = prev.filter(msg => msg.id.startsWith("temp-"));
+          
+          // Combine with latest messages from server
+          const seen = new Set<string>();
+          
+          // Add all existing messages first
+          prev.forEach(msg => seen.add(msg.id));
+          
+          // Filter out messages we already have
+          const newMessages = latestChrono.filter(msg => !seen.has(msg.id));
+          
+          // Add new messages and sort
+          const combined = [...prev, ...newMessages].sort((a, b) => 
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          
+          return combined;
+        });
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 5000);
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
+  }, []);
 
   const loadMoreMessages = async () => {
     if (isLoadingMore || !hasMore) return;
-
     setIsLoadingMore(true);
-
+    
     try {
-      const before = oldestMessage?.createdAt;
-      const res = await fetch(`/api/chat?limit=20&order=asc${before ? `&before=${before}` : ''}`);
-      
-      if (!res.ok) {
-        throw new Error(`Failed to load more messages: ${res.status}`);
+      // Get the oldest message timestamp
+      const oldestMessage = messagesData[0];
+      if (!oldestMessage) {
+        setIsLoadingMore(false);
+        return;
       }
       
-      const more = await res.json();
-
-      if (more.length < 20) setHasMore(false);
-
-      // Prepend older messages to the beginning of the array
-      setMessagesData((prev) => [...more, ...prev]);
+      const before = oldestMessage.createdAt;
+      const url = `/api/chat?limit=20&order=asc&before=${before}`;
+      const olderMessages = await fetcher(url);
+      
+      if (olderMessages.length > 0) {
+        addMessages(olderMessages, true); // Add to the beginning
+        
+        // Update last fetched timestamp for the next load more
+        if (olderMessages.length > 0) {
+          setLastFetchedTimestamp(new Date(olderMessages[0].createdAt));
+        }
+      }
+      
+      // If we got less than the requested amount, we've reached the end
+      if (olderMessages.length < 20) {
+        setHasMore(false);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error loading more messages:', err);
       setError(err);
     } finally {
       setIsLoadingMore(false);
@@ -54,78 +136,40 @@ export const useGlobalMarketChat = () => {
     const trimmed = newMessage.trim();
     if (!trimmed) return;
 
-    // Optimistically add message to UI
-    const optimisticMessage = {
+    const optimistic: Comment = {
       id: `temp-${Date.now()}`,
       content: trimmed,
-      createdAt: new Date().toISOString(),
-      // Add any other required fields with placeholder values
-      userId: "current-user", // This would be replaced by the actual user ID from the server
+      createdAt: new Date(),
+      userId: 'current-user',
+      commentableId: null,
+      commentableType: 'GLOBALCHAT',
+      commentDescription: null,
+      stockSymbol: null,
+      parentId: null,
+      image: null,
+      updatedAt: new Date()
     };
 
-    // Add new message to the end of the array (most recent at the bottom)
-    setMessagesData((prev) => [...prev, optimisticMessage]);
+    setMessagesData(prev => [...prev, optimistic]);
     setNewMessage("");
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: trimmed }),
       });
-
-      if (!res.ok) {
-        throw new Error(`Failed to send message: ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Failed to send: ${res.status}`);
       const saved = await res.json();
-      
-      // Replace optimistic message with saved message from server
-      setMessagesData((prev) => 
-        prev.map(msg => 
-          msg.id === optimisticMessage.id ? saved : msg
-        )
+      setMessagesData(prev =>
+        prev.map(m => (m.id === optimistic.id ? saved : m))
       );
     } catch (err) {
-      console.error("Failed to send message:", err);
-      // Remove optimistic message on error
-      setMessagesData((prev) => prev.filter(msg => msg.id !== optimisticMessage.id));
-      // Show error to user
+      console.error(err);
+      setMessagesData(prev => prev.filter(m => m.id !== optimistic.id));
       setError("Failed to send message. Please try again.");
     }
   };
-
-  useEffect(() => {
-    const fetchInitialMessages = async () => {
-      try {
-        // Load messages in descending order (newest first)
-        const res = await fetch(`/api/chat?limit=20&order=desc`);
-        
-        if (!res.ok) {
-          throw new Error(`Failed to load messages: ${res.status}`);
-        }
-        
-        const initial = await res.json();
-        
-        // Reverse the order to display oldest first, newest last
-        // This way, the chat will show messages chronologically
-        setMessagesData(initial.reverse());
-        
-        if (initial.length < 20) {
-          setHasMore(false);
-        }
-      } catch (err) {
-        console.error(err);
-        setError(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchInitialMessages();
-  }, []);
 
   return {
     messagesData,
@@ -133,7 +177,7 @@ export const useGlobalMarketChat = () => {
     setNewMessage,
     handleSendMessage,
     error,
-    isLoading,
+    isLoading: isInitialLoad,
     isLoadingMore,
     hasMore,
     loadMoreMessages,

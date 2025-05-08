@@ -235,7 +235,7 @@ export default function TokenMarket() {
   }
 
   return (
-    <div className="space-y-8 max-w-screen-2xl mx-auto px-4">
+    <div className="space-y-8 max-w-screen-2xl mx-auto px-4 pb-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-white mb-4">Token Market</h1>
       </div>
@@ -244,13 +244,11 @@ export default function TokenMarket() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Token Holdings Panel - First column */}
         <div className="lg:col-span-1">
-          <div className="h-[450px]">
             <TokensHoldingPanel 
               tokenCount={userTokens || 0} 
               tokenValue={tokenValue} 
               interestRate={marketData.interestRate}
             />
-          </div>
         </div>
         
         {/* Token Value Chart - Second and third column */}
@@ -267,7 +265,7 @@ export default function TokenMarket() {
       {/* Second row of components - with extra margin-top to prevent overlap */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-12">
         {/* Exchange Panel */}
-        <div className="lg:col-span-1 h-[350px]">
+        <div className="lg:col-span-1 min-h-[350px]">
           <TokenExchangePanel 
             tokenCount={userTokens || 0} 
             tokenValue={tokenValue}
@@ -276,7 +274,7 @@ export default function TokenMarket() {
         </div>
         
         {/* Daily Interest Panel */}
-        <div className="lg:col-span-1 h-[350px]">
+        <div className="lg:col-span-1 min-h-[350px]">
           <DailyInterestPanel 
             interestRate={marketData.interestRate} 
             tokenCount={userTokens || 0}
@@ -285,7 +283,7 @@ export default function TokenMarket() {
         </div>
         
         {/* Market Statistics Panel */}
-        <div className="lg:col-span-1 h-[350px]">
+        <div className="lg:col-span-1 min-h-[350px]">
           <MarketStatisticsPanel 
             totalSupply={marketData.tokenSupply}
             dailyVolume={marketData.dailyVolume}
