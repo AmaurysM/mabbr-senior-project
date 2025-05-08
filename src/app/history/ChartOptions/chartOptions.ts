@@ -67,6 +67,17 @@ const chartOptions: any = {
       format: "MMM dd, HH:mm",
     },
   },
+  legend: {
+    labels: {
+      colors: "#CBD5E1", 
+    },
+  },
+  noData: {
+    text: "Loading...",
+    style: {
+      color: "#CBD5E1",
+    },
+  },
 };
 
 export default chartOptions;

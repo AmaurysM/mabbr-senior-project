@@ -80,9 +80,9 @@ function getValidatedPeriod(
     return param as (typeof validPeriods)[number];
   }
   console.warn(
-    `Invalid or missing period "${param}" provided. Defaulting to "1mo".`
+    `Invalid or missing period "${param}" provided. Defaulting to "1y".`
   );
-  return "1mo";
+  return "1y";
 }
 
 /**
