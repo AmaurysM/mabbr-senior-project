@@ -84,8 +84,8 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
 
   const getPriceDisplay = () => {
     if (isScratchWin) {
-      // price = number of shares won
-      return `${price.toFixed(2)} ${price === 1 ? 'share' : 'shares'}`;
+      // For scratch wins, this section is now blank as per new spec
+      return ""; 
     }
     if (isLootboxPurchase) return `Cost: $${ abbreviateNumber(price)}`;
     if (isLootboxRedeem) return `Value: $${abbreviateNumber(price)}`;
@@ -134,9 +134,9 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         </div>
         <div className={`text-right ${getCostColor()}`}>
           {isScratchWin ? (
-            // scratch win: display token cost of ticket
+            // scratch win: display total shares won
             <div className="font-bold">
-              {scratchCostMap[stockSymbol] ?? 0} tokens
+              {totalCost.toFixed(2)} shares
             </div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>
@@ -165,7 +165,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
               {publicNote && (
                 <div className="bg-gray-700/30 rounded-lg p-3">
                   <div className="text-xs text-gray-400 mb-1">Public Note</div>
-                  <div className="text-gray-200">{publicNote}</div>
+                  <div className="text-gray-200 whitespace-pre-line">{publicNote}</div>
                 </div>
               )}
               {isCurrentUser && privateNote && (

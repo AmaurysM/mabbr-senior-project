@@ -3,14 +3,17 @@ import { FaAngleRight } from "react-icons/fa";
 import Link from "next/link";
 
 const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) => {
-  const total = transaction.price * transaction.quantity;
+  // For scratch-win stocks, totalCost holds total shares; otherwise calculate total transaction value
+  const total = transaction.status === 'SCRATCH_WIN'
+    ? transaction.totalCost
+    : transaction.price * transaction.quantity;
   
   const isBuy = transaction.type === 'BUY';
   const isSell = transaction.type === 'SELL';
   const isLootbox = transaction.type === 'LOOTBOX';
   const isLootboxRedeem = transaction.type === 'LOOTBOX_REDEEM';
   const isTokenExchange = transaction.type === 'TOKEN_EXCHANGE';
-  const isWin = transaction.type === 'WIN';
+  const isWin = transaction.status === 'SCRATCH_WIN';
   
   // Scratch-off ticket mappings for cost and prize formatting
   const scratchCostMap: Record<string, number> = {
@@ -28,16 +31,13 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
     'Diamond Scratch': (val) => `${val}`,
   };
 
-  // Determine display values for Price and Total
+  // Price: ticket cost for scratch-win, otherwise price per share
   const displayPrice = isWin
-    ? (scratchCostMap[transaction.stockSymbol] !== undefined
-        ? `${scratchCostMap[transaction.stockSymbol].toLocaleString()} tokens`
-        : transaction.price.toString())
+    ? transaction.price.toString()
     : `$${transaction.price.toFixed(2)}`;
+  // Total: total shares won for scratch-win, otherwise total transaction value
   const displayTotal = isWin
-    ? (scratchPrizeFormatMap[transaction.stockSymbol]
-        ? scratchPrizeFormatMap[transaction.stockSymbol](transaction.price)
-        : transaction.price.toString())
+    ? `${total.toFixed(2)} shares`
     : `$${total.toFixed(2)}`;
   
   // Get styling for the transaction type
@@ -109,16 +109,7 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
             {/* For scratch-off wins, show Type instead of Status */}
             <div className="text-sm text-gray-400">{isWin ? 'Type' : 'Status'}</div>
             <div className="text-lg font-semibold text-white">
-              {isWin
-                ? {
-                    'Cash Splash': 'Cash',
-                    'Golden Fortune': 'Token',
-                    'Stock Surge': 'Stock',
-                    'Mystic Chance': 'Mystery',
-                    'Diamond Scratch': 'Diamond',
-                  }[transaction.stockSymbol] || transaction.stockSymbol
-                : transaction.status
-              }
+              {isWin ? transaction.stockSymbol : transaction.status}
             </div>
           </div>
         </div>
