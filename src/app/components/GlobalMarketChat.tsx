@@ -128,19 +128,9 @@ const GlobalMarketChat = () => {
                     <div className="p-4">
                       <SkeletonLoader count={2} />
                     </div>
-                  ) : hasMore ? (
-                    <div className="p-2 flex justify-center">
-                      <button
-                        onClick={loadMoreMessages}
-                        disabled={isLoadingMore}
-                        className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors disabled:opacity-50"
-                      >
-                        {isLoadingMore ? "Loading..." : "Load more messages"}
-                      </button>
-                    </div>
                   ) : (
                     <div className="p-2 text-center text-gray-500 text-sm">
-                      You've reached the beginning of this conversation
+                      You&apos;ve reached the beginning of this conversation
                     </div>
                   ),
               }}

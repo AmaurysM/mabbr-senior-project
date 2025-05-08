@@ -12,7 +12,7 @@ const GlobalFeed = () => {
   return (
     <div className="flex flex-col min-h-full">
       <div className="flex flex-col lg:flex-row gap-6 flex-1">
-        <div className="w-full lg:w-3/4 h-[calc(100vh-10rem)]">
+        <div className="w-full lg:w-3/4 h-[calc(100vh-5rem)]">
           <GlobalMarketChat />
         </div>
 
