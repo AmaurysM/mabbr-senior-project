@@ -35,6 +35,7 @@ const CryptoSweeper = () => {
   const [gameTokens, setGameTokens] = useState(0);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isCashing, setIsCashing] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [currentDifficulty, setCurrentDifficulty] = useState(0);
   const [streakCount, setStreakCount] = useState(0);
   const [specialEvent, setSpecialEvent] = useState<string | null>(null);
@@ -45,6 +46,8 @@ const CryptoSweeper = () => {
   const isFirstClickRef = useRef(true);
   const gamesPlayedRef = useRef(0);
   const [isCashedOut, setIsCashedOut] = useState(false);
+  // Track pending post-cash-out reset so we can cancel it
+  const cashOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mobileCheck = /Mobi|Android/i.test(navigator.userAgent);
@@ -146,21 +149,36 @@ const CryptoSweeper = () => {
   };
 
   const startNewGame = async () => {
+    // Prevent spam
+    if (isStarting) return;
+    setIsStarting(true);
     setIsCashedOut(false);
+    // Cancel any pending board reset
+    if (cashOutTimerRef.current) {
+      clearTimeout(cashOutTimerRef.current);
+      cashOutTimerRef.current = null;
+    }
+    // Clear any residual game over UI when embarking on fresh session
+    if (!isGameStarted) {
+      setGameOver(false);
+      initializeEmptyGrid();
+    }
     if (isGameStarted) {
-      // If already in a game, this is a cash-out button
+      // Cash-out flow
       await cashOut();
+      setIsStarting(false);
       return;
     }
 
     // Check if user has enough tokens
     if (userTokens === null || userTokens < GAME_COST) {
       toast.error(`You need at least ${GAME_COST} tokens to play this game.`);
+      setIsStarting(false);
       return;
     }
 
     try {
-      // Call API to deduct tokens and start a new game
+      // Call API to start game
       const response = await fetch('/api/games/crypto-minesweeper', {
         method: 'POST',
         headers: {
@@ -179,12 +197,12 @@ const CryptoSweeper = () => {
       const data = await response.json();
       setUserTokens(data.tokenCount);
 
-      // Broadcast token balance update
+      // Broadcast token update
       window.dispatchEvent(new CustomEvent('token-balance-updated', { detail: { newBalance: data.tokenCount } }));
       window.localStorage.setItem('token-balance-updated', Date.now().toString());
       window.dispatchEvent(new StorageEvent('storage', { key: 'token-refresh', newValue: Date.now().toString() }));
 
-      // Generate new random parameters for this game
+      // Generate random parameters for this game
       generateGameParameters();
 
       // Increment games played counter
@@ -204,6 +222,8 @@ const CryptoSweeper = () => {
     } catch (error) {
       console.error('Error starting game:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to start game');
+    } finally {
+      setIsStarting(false);
     }
   };
 
@@ -251,11 +271,12 @@ const CryptoSweeper = () => {
       revealBombs();
       setGameOver(true);
       setIsCashedOut(true);
+      setIsGameStarted(false);
 
-      // Delay resetting the game to allow bomb reveal
-      setTimeout(() => {
+      // Delay resetting the game to allow bomb reveal, but track it so we can cancel
+      if (cashOutTimerRef.current) clearTimeout(cashOutTimerRef.current);
+      cashOutTimerRef.current = setTimeout(() => {
         // Reset game state after bomb reveal
-        setIsGameStarted(false);
         setGameTokens(0);
         setPotentialCashout(0);
         setStreakCount(0);
@@ -264,6 +285,7 @@ const CryptoSweeper = () => {
         setGameOver(false);
         setWin(false);
         setIsCashedOut(false);
+        cashOutTimerRef.current = null;
       }, 3000);
 
       toast.success(`Collected ${gameTokens} tokens!`);
@@ -693,7 +715,7 @@ const CryptoSweeper = () => {
       <div className="space-y-4">
         <button
           onClick={startNewGame}
-          disabled={isCashing || (userTokens !== null && userTokens < GAME_COST && !isGameStarted)}
+          disabled={isStarting || isCashing || (userTokens !== null && userTokens < GAME_COST && !isGameStarted)}
           className={`w-full ${isGameStarted ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-indigo-600 hover:bg-indigo-700'
             } text-white py-3 rounded-lg text-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed`}
         >
@@ -779,6 +801,8 @@ const Cell = ({
   isCashedOut: boolean;
 }) => {
   const handleClick = () => {
+    // Disable clicks while bombs are revealed after cash-out
+    if (isCashedOut) return;
     if (!cell.isRevealed && !cell.isFlagged) {
       if (isMobile && isFlagMode) {
         onRightClick(); // Flag/unflag in Flag Mode on mobile
@@ -789,6 +813,8 @@ const Cell = ({
   };
 
   const handleRightClick = (e: React.MouseEvent) => {
+    // Disable flagging while bombs are revealed after cash-out
+    if (isCashedOut) return;
     e.preventDefault();
     if (!isMobile && !cell.isRevealed) {
       onRightClick(); // Right-click flagging only on desktop
