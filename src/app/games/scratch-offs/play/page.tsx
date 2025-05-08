@@ -430,10 +430,27 @@ const checkWinningPatterns = (grid: ScratchCell[]): {
   directions.forEach(([dr, dc]) => {
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
-        // Ensure we only start scanning from the head of a segment (preceded by empty)
+        // Skip starting positions that are empty – they cannot form a run
+        if (grid[r * SIZE + c].symbol.type === 'empty') continue;
+
+        // We want to avoid counting the SAME winning line multiple times, but we
+        // still need to detect runs that begin immediately after a different
+        // symbol (e.g. WMT GOOG GOOG GOOG 2x).  We therefore only skip starting
+        // positions whose *preceding* cell (in this direction) contains the
+        // SAME base symbol (ignoring multipliers).  This allows runs that are
+        // preceded by a different symbol or a multiplier to be detected, while
+        // preventing duplicate scans of the same sequence.
+
         const pr = r - dr, pc = c - dc;
         if (pr >= 0 && pr < SIZE && pc >= 0 && pc < SIZE) {
-          if (grid[pr * SIZE + pc].symbol.type !== 'empty') continue;
+          const prevType = grid[pr * SIZE + pc].symbol.type;
+          const currType = grid[r * SIZE + c].symbol.type;
+
+          // If the previous cell is the same *base* symbol (and not a multiplier)
+          // we skip this start position to avoid duplicate counting of the same run.
+          if (!currType.startsWith('multiplier') && prevType === currType) {
+            continue;
+          }
         }
 
         // Build contiguous non-empty segment in this direction
@@ -1586,6 +1603,20 @@ const ScratchOffPlayContent = () => {
                       <div className="bg-yellow-900/30 border border-yellow-600/30 rounded-md p-2 mb-3">
                         <p className="text-yellow-400 font-semibold flex items-center">
                           <FaStar className="mr-2 text-yellow-400" /> 25% Bonus Applied to All Winnings!
+                        </p>
+                      </div>
+                    )}
+                    {ticket?.ticket?.type === 'random' && (
+                      <div className="bg-purple-900/30 border border-purple-600/30 rounded-md p-2 mb-3">
+                        <p className="text-purple-300 font-semibold flex items-center">
+                          <FaStar className="mr-2 text-purple-300" /> Mystic Chance 10x Multiplier Applied!
+                        </p>
+                      </div>
+                    )}
+                    {ticket?.ticket?.type === 'diamond' && (
+                      <div className="bg-indigo-900/30 border border-indigo-600/30 rounded-md p-2 mb-3">
+                        <p className="text-indigo-300 font-semibold flex items-center">
+                          <FaStar className="mr-2 text-indigo-300" /> Diamond Scratch 50x Multiplier Applied!
                         </p>
                       </div>
                     )}

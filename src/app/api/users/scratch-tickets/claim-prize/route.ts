@@ -243,39 +243,33 @@ export async function POST(request: NextRequest) {
           where: { id: updatedTicket.ticketId },
           select: { name: true, type: true, price: true }
         });
-        // Create transaction records for scratch-win prizes
-        if (ticketDetails?.type === 'stocks' && prize.stockShares) {
-          // Consolidate multiple stock wins into a single transaction
+        // Create separate transaction entries for each prize type
+        // Stock prizes
+        if (prize.stockShares && Object.keys(prize.stockShares).length > 0) {
           const entries = Object.entries(prize.stockShares as Record<string, { shares: number; value: number }>);
-          const symbols = entries.map(([symbol]) => symbol);
-          const count = symbols.length;
-          // Total shares won across all symbols
           const totalShares = entries.reduce((sum, [, info]) => sum + info.shares, 0);
-          // Ticket price
-          const ticketPrice = ticketDetails?.price || 0;
-          // Build multi-line public note
           const publicNoteLines = entries.map(([symbol, info]) => `Won ${info.shares.toFixed(2)} shares of ${symbol}`);
-            await tx.transaction.create({
-              data: {
-                userId: session.user.id,
-              stockSymbol: symbols.join(', '),
-                type: 'WIN',
-              quantity: count,
-              price: ticketPrice,
-              totalCost: Number(totalShares.toFixed(2)),
-                status: 'SCRATCH_WIN',
-              publicNote: publicNoteLines.join('\n'),
-                privateNote: null
-              }
-            });
-        } else if (ticketDetails?.type === 'money') {
-          // Cash prize
-          const cashVal = prize.cash || 0;
-          const cashRounded = Math.round(cashVal * 100) / 100;
           await tx.transaction.create({
             data: {
               userId: session.user.id,
-              stockSymbol: ticketDetails.name,
+              stockSymbol: ticketDetails?.name || 'Scratch Ticket',
+              type: 'WIN',
+              quantity: 1,
+              price: 0,
+              totalCost: Number(totalShares.toFixed(2)),
+              status: 'SCRATCH_WIN',
+              publicNote: publicNoteLines.join('\n'),
+              privateNote: null
+            }
+          });
+        }
+        // Cash prizes
+        if (prize.cash && prize.cash > 0) {
+          const cashRounded = Math.round(prize.cash * 100) / 100;
+          await tx.transaction.create({
+            data: {
+              userId: session.user.id,
+              stockSymbol: ticketDetails?.name || 'Scratch Ticket',
               type: 'WIN',
               quantity: 1,
               price: cashRounded,
@@ -285,9 +279,10 @@ export async function POST(request: NextRequest) {
               privateNote: null
             }
           });
-        } else {
-          // Token prize or other
-          const tokenVal = prize.tokens || 0;
+        }
+        // Token prizes
+        if (prize.tokens && prize.tokens > 0) {
+          const tokenVal = prize.tokens;
           await tx.transaction.create({
             data: {
               userId: session.user.id,
