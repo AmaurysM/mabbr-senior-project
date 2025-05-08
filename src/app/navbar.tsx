@@ -136,7 +136,6 @@ const Navbar = () => {
                   {profileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
                       <Link href="/profile" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700 rounded-lg">Your Profile</Link>
-                      <Link href="/achievements" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700 rounded-lg">Achievements</Link>
                       {user.role === 'admin' && (
                         <>
                           <Link href="/admin/lootbox-manager" onClick={() => setProfileDropdownOpen(false)} className="block px-4 py-2 hover:bg-blue-50 text-gray-700 rounded-lg">Manage Lootboxes</Link>
