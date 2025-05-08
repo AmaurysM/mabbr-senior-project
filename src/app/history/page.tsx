@@ -40,7 +40,14 @@ const StockNotes = () => {
   const [series, setSeries] = useState<SeriesData[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState("");
+    // Note editing state
+    const [publicNoteText, setPublicNoteText] = useState("");
+    const [privateNoteText, setPrivateNoteText] = useState("");
+    const [editingPublicNote, setEditingPublicNote] = useState(false);
+    const [editingPrivateNote, setEditingPrivateNote] = useState(false);
+    const [saveLoading, setSaveLoading] = useState(false);
   
+
   // Use custom hooks for data fetching
   const {
     transactions,
@@ -63,15 +70,7 @@ const StockNotes = () => {
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"notes" | "holdings">("notes");
-  const [noteDrafts, setNoteDrafts] = useState({
-    public: "",
-    private: "",
-  });
-  const [editing, setEditing] = useState({
-    public: false,
-    private: false,
-  });
-  const [saving, setSaving] = useState(false);
+
   const [noteFilter, setNoteFilter] = useState("");
   const [holdingFilter, setHoldingFilter] = useState("");
 
@@ -158,15 +157,17 @@ const StockNotes = () => {
   }, [selectedHx, period, interval, viewMode]);
 
   // Update notes when selected transaction changes
-  useEffect(() => {
-    if (selectedTx) {
-      setNoteDrafts({
-        public: selectedTx.publicNote || "",
-        private: selectedTx.privateNote || "",
-      });
-      setEditing({ public: false, private: false });
-    }
-  }, [selectedTx]);
+ // Update notes when selected transaction changes
+ useEffect(() => {
+  if (selectedTx) {
+    setPublicNoteText(selectedTx.publicNote || "");
+    setPrivateNoteText(selectedTx.privateNote || "");
+    setEditingPublicNote(false);
+    setEditingPrivateNote(false);
+  }
+}, [selectedTx]);
+
+
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (
@@ -203,39 +204,39 @@ const StockNotes = () => {
   
 
   // Save note
-  const handleSave = async (type: "public" | "private") => {
-    if (!selectedTx) return;
+  // const handleSave = async (type: "public" | "private") => {
+  //   if (!selectedTx) return;
 
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/user/note?id=${selectedTx.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          [type === "public" ? "publicNote" : "privateNote"]: noteDrafts[type],
-        }),
-      });
+  //   setSaving(true);
+  //   try {
+  //     const res = await fetch(`/api/user/note?id=${selectedTx.id}`, {
+  //       method: "PATCH",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         [type === "public" ? "publicNote" : "privateNote"]: noteDrafts[type],
+  //       }),
+  //     });
 
-      if (!res.ok) throw new Error("Save failed");
+  //     if (!res.ok) throw new Error("Save failed");
 
-      setTransactions(prev =>
-        prev.map(tx =>
-          tx.id === selectedTx.id
-            ? { ...tx, [type === "public" ? "publicNote" : "privateNote"]: noteDrafts[type] }
-            : tx
-        )
-      );
-      setEditing(prev => ({ ...prev, [type]: false }));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  };
+  //     setTransactions(prev =>
+  //       prev.map(tx =>
+  //         tx.id === selectedTx.id
+  //           ? { ...tx, [type === "public" ? "publicNote" : "privateNote"]: noteDrafts[type] }
+  //           : tx
+  //       )
+  //     );
+  //     setEditing(prev => ({ ...prev, [type]: false }));
+  //   } catch (err) {
+  //     console.error(err);
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
 
   const renderTimePeriodSelector = () => (
     <div className="flex space-x-2 mb-4">
-      {["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y"].map((option) => (
+      {["1mo", "3mo", "6mo", "1y"].map((option) => (
         <button
           key={option}
           className={`px-3 py-1 rounded ${period === option ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
@@ -245,6 +246,20 @@ const StockNotes = () => {
         </button>
       ))}
     </div>
+  );
+  const handleCancelEdit = useCallback(
+    (type: "public" | "private") => {
+      if (selectedTx) {
+        if (type === "public") {
+          setPublicNoteText(selectedTx.publicNote || "");
+          setEditingPublicNote(false);
+        } else {
+          setPrivateNoteText(selectedTx.privateNote || "");
+          setEditingPrivateNote(false);
+        }
+      }
+    },
+    [selectedTx]
   );
 
   // Select a note and show note view
@@ -297,6 +312,50 @@ const StockNotes = () => {
       </div>
     );
   }
+
+
+// Replace the handleSave function with this improved version:
+  // Save note function from old code
+  const handleSaveNote = async (type: "public" | "private", text: string) => {
+    if (!selectedTx) return;
+
+    try {
+      setSaveLoading(true);
+      const response = await fetch(`/api/user/note?id=${selectedTx.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          [type === "public" ? "publicNote" : "privateNote"]: text
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save note");
+
+      // Update local state
+      setTransactions(prev => 
+        prev.map(t => 
+          t.id === selectedTx.id 
+            ? { ...t, [type === "public" ? "publicNote" : "privateNote"]: text }
+            : t
+        )
+      );
+
+      // Reset editing state
+      if (type === "public") {
+        setEditingPublicNote(false);
+      } else {
+        setEditingPrivateNote(false);
+      }
+    } catch (error) {
+      console.error("Failed to save note:", error);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+
 
   return (
     <div className="flex h-full relative">
@@ -504,34 +563,35 @@ const StockNotes = () => {
           <div className="max-w-3xl mx-auto space-y-6">
             <TransactionDetails transaction={selectedTx} />
             
-            {["public", "private"].map((type) => (
-              <NoteSection
-                key={type}
-                title={`${type.charAt(0).toUpperCase() + type.slice(1)} Note`}
-                content={
-                  editing[type as "public" | "private"]
-                    ? noteDrafts[type as "public" | "private"]
-                    : selectedTx[`${type}Note` as "publicNote" | "privateNote"] || ""
-                }
-                isEditing={editing[type as "public" | "private"]}
-                onEdit={() => {
-                  setEditing(prev => ({ ...prev, [type]: true }));
-                }}
-                onSave={async (text) => {
-                  setNoteDrafts(prev => ({ ...prev, [type]: text }));
-                  await handleSave(type as "public" | "private");
-                }}
-                onCancel={() => {
-                  setEditing(prev => ({ ...prev, [type]: false }));
-                  setNoteDrafts(prev => ({
-                    ...prev,
-                    [type]: selectedTx[`${type}Note` as "publicNote" | "privateNote"] || ""
-                  }));
-                }}
-              />
-            ))}
+            {/* Public Note Section - Using the original component but with updated props */}
+            <NoteSection
+              title="Public Note"
+              content={editingPublicNote ? publicNoteText : selectedTx.publicNote || ""}
+              isEditing={editingPublicNote}
+              onEdit={() => {
+                setPublicNoteText(selectedTx.publicNote || "");
+                setEditingPublicNote(true);
+              }}
+              onSave={(text) => handleSaveNote("public", text)}
+              onCancel={() => handleCancelEdit("public")}
+              isSaving={saveLoading}
+            />
+            
+            {/* Private Note Section */}
+            <NoteSection
+              title="Private Note"
+              content={editingPrivateNote ? privateNoteText : selectedTx.privateNote || ""}
+              isEditing={editingPrivateNote}
+              onEdit={() => {
+                setPrivateNoteText(selectedTx.privateNote || "");
+                setEditingPrivateNote(true);
+              }}
+              onSave={(text) => handleSaveNote("private", text)}
+              onCancel={() => handleCancelEdit("private")}
+              isSaving={saveLoading}
+            />
           </div>
-        ) : 
+        ) :
         /* Chart View */
         viewMode === "chart" && selectedHx ? (
           <div className="space-y-4">
