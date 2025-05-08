@@ -17,7 +17,7 @@ interface FriendRequest {
 interface IncomingDM {
   id: string
   sender: { id: string; name: string }
-  text: string
+  content: string        // matches your Prisma schema
   createdAt: string
 }
 
@@ -47,21 +47,21 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   return (
     <div className="max-h-96 overflow-y-auto divide-y divide-gray-700/50">
-      {/* Render unread DMs */}
-      {newDMs.map((dm) => (
+      {/* Unread direct messages */}
+      {newDMs.map(dm => (
         <div key={dm.id} className="p-4 bg-blue-900/20">
           <p className="text-white font-medium">
             You got a message from {dm.sender.name}
           </p>
-          <p className="text-sm text-gray-300 truncate">Check the Community page{dm.text}</p>
+          <p className="text-sm text-gray-300 truncate">“{dm.content}”</p>
           <p className="text-xs text-gray-500 mt-1">
             {new Date(dm.createdAt).toLocaleTimeString()}
           </p>
         </div>
       ))}
 
-      {/* Render friend requests */}
-      {requests.map((req) => (
+      {/* Friend requests */}
+      {requests.map(req => (
         <div key={req.id} className="p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -74,19 +74,13 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             </div>
             <div className="flex space-x-2">
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleAcceptRequest(req.id)
-                }}
+                onClick={e => { e.stopPropagation(); handleAcceptRequest(req.id) }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm"
               >
                 Accept
               </button>
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleRejectRequest(req.id)
-                }}
+                onClick={e => { e.stopPropagation(); handleRejectRequest(req.id) }}
                 className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm"
               >
                 Reject
@@ -107,14 +101,15 @@ interface NotificationBellProps {
 const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellClick }) => {
   const [isOpen, setIsOpen] = useState(false)
 
-  // Friend-requests
+  // Friend-requests state
   const [requests, setRequests] = useState<FriendRequest[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Incoming DMs
+  // Direct-message state
   const [newDMs, setNewDMs] = useState<IncomingDM[]>([])
   const lastCheckRef = useRef<string>(new Date().toISOString())
 
+  // Portal mount flag
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
     setMounted(true)
@@ -123,7 +118,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
 
   const bellRef = useRef<HTMLButtonElement>(null)
 
-  // fetch friend requests
+  // Fetch friend requests
   const fetchRequests = async (): Promise<void> => {
     setLoading(true)
     try {
@@ -142,7 +137,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
     return () => clearInterval(iv)
   }, [refreshKey])
 
-  // poll for unread DMs
+  // Poll for new direct messages
   const fetchNewDMs = async (): Promise<void> => {
     const since = encodeURIComponent(lastCheckRef.current)
     try {
@@ -162,13 +157,13 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
     return () => clearInterval(iv)
   }, [])
 
-  // toggle dropdown
+  // Toggle dropdown
   const handleBellClick = (): void => {
     onBellClick()
-    setIsOpen((o) => !o)
+    setIsOpen(o => !o)
   }
 
-  // when dropdown closes, reset since + clear DMs
+  // When dropdown closes, reset since and clear messages
   useEffect(() => {
     if (!isOpen) {
       lastCheckRef.current = new Date().toISOString()
@@ -176,7 +171,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
     }
   }, [isOpen])
 
-  // click outside to close
+  // Close on outside click
   useEffect(() => {
     if (!isOpen) return
     const onOutside = (e: MouseEvent): void => {
@@ -194,7 +189,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
     return () => document.removeEventListener('mousedown', onOutside)
   }, [isOpen])
 
-  // accept/reject handlers
+  // Accept a friend request
   const handleAcceptRequest = async (requestId: string): Promise<void> => {
     const tid = toast.loading('Accepting friend request...')
     try {
@@ -208,7 +203,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
       const data = await res.json()
       if (res.ok) {
         toast.success(data.message || 'Accepted')
-        setRequests((r) => r.filter((x) => x.id !== requestId))
+        setRequests(r => r.filter(x => x.id !== requestId))
         fetchRequests()
       } else {
         toast.error(data.error || 'Failed')
@@ -218,6 +213,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
       toast.error('Error')
     }
   }
+
+  // Reject a friend request
   const handleRejectRequest = async (requestId: string): Promise<void> => {
     const tid = toast.loading('Rejecting friend request...')
     try {
@@ -231,7 +228,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
       const data = await res.json()
       if (res.ok) {
         toast.success(data.message || 'Rejected')
-        setRequests((r) => r.filter((x) => x.id !== requestId))
+        setRequests(r => r.filter(x => x.id !== requestId))
         fetchRequests()
       } else {
         toast.error(data.error || 'Failed')
@@ -242,7 +239,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
     }
   }
 
-  // badge count
+  // Combined badge count
   const badgeCount = requests.length + newDMs.length
 
   return (
@@ -278,14 +275,13 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ refreshKey, onBellC
         )}
       </button>
 
-      {mounted &&
-        isOpen &&
+      {mounted && isOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999] bg-transparent pointer-events-none">
             <div
               id="notification-dropdown"
               className="fixed top-16 right-4 w-80 bg-gray-800 rounded-xl shadow-xl border border-gray-700/50 overflow-hidden pointer-events-auto"
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             >
               <div className="p-4 border-b border-gray-700/50">
                 <h3 className="text-lg font-semibold text-white">Notifications</h3>
