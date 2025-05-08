@@ -33,7 +33,7 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
 
   // Price: ticket cost for scratch-win, otherwise price per share
   const displayPrice = isWin
-    ? transaction.price.toString()
+    ? `${scratchCostMap[transaction.stockSymbol] || transaction.price} tokens`
     : `$${transaction.price.toFixed(2)}`;
   // Total: total shares won for scratch-win, otherwise total transaction value
   const displayTotal = isWin

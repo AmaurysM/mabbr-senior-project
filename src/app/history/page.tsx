@@ -501,7 +501,7 @@ const StockNotes = () => {
       <main className="flex-1 p-6 overflow-y-auto bg-gray-900 min-h-full">
         {/* Note View */}
         {viewMode === "note" && selectedTx ? (
-          <div className="max-w-3xl mx-auto lg:mx-0 space-y-6">
+          <div className="max-w-3xl mx-auto space-y-6">
             <TransactionDetails transaction={selectedTx} />
             
             {["public", "private"].map((type) => (

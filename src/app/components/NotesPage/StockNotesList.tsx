@@ -1,12 +1,13 @@
 import { UserTransaction, UserTransactions } from "@/lib/prisma_types";
 
 const StockNotesList = (
-    { transactions, selectedTransactionId, setSelectedTransactionId, getNotePreview }
+    { transactions, selectedTransactionId, setSelectedTransactionId, getNotePreview, highlightText }
         : {
             transactions: UserTransactions,
             selectedTransactionId: string | null,
             setSelectedTransactionId: (id: string) => void,
-            getNotePreview: (transaction: UserTransaction) => string
+            getNotePreview: (transaction: UserTransaction) => string,
+            highlightText: string
         }
 ) => {
     return transactions.length > 0 ? (
