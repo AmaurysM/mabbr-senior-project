@@ -93,7 +93,7 @@ const LootboxTile = ({ lootbox }: { lootbox: LootboxWithStocks }) => {
             {lootbox.name || `${rarity.name} Case`}
           </span>
         </div>
-        <div className="bg-black/50 rounded px-2 py-1">
+        <div className="hidden sm:block bg-black/50 rounded px-2 py-1">
           <span className={clsx("text-sm font-bold", rarity.text)}>
             {tokenCost} tokens
           </span>
