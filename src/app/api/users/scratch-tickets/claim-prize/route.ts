@@ -255,19 +255,19 @@ export async function POST(request: NextRequest) {
           const ticketPrice = ticketDetails?.price || 0;
           // Build multi-line public note
           const publicNoteLines = entries.map(([symbol, info]) => `Won ${info.shares.toFixed(2)} shares of ${symbol}`);
-          await tx.transaction.create({
-            data: {
-              userId: session.user.id,
+            await tx.transaction.create({
+              data: {
+                userId: session.user.id,
               stockSymbol: symbols.join(', '),
-              type: 'WIN',
+                type: 'WIN',
               quantity: count,
               price: ticketPrice,
               totalCost: Number(totalShares.toFixed(2)),
-              status: 'SCRATCH_WIN',
+                status: 'SCRATCH_WIN',
               publicNote: publicNoteLines.join('\n'),
-              privateNote: null
-            }
-          });
+                privateNote: null
+              }
+            });
         } else if (ticketDetails?.type === 'money') {
           // Cash prize
           const cashVal = prize.cash || 0;

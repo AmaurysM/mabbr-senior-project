@@ -411,7 +411,8 @@ const generateGrid = (ticketType: string, isBonus: boolean = false, rngFn: () =>
   return grid;
 };
 
-// Check for winning patterns in all directions: contiguous runs of 3+ base symbols, then optional trailing multipliers
+// Updated winning pattern checker: allows multipliers appearing before, after or inter-mixed with a run of 3+ identical base symbols.
+// A multiplier only counts if at least 3 base symbols of the same type appear in the run.
 const checkWinningPatterns = (grid: ScratchCell[]): {
   wins: { symbolType: SymbolType; count: number; multiplier: number; cellValues?: number[] }[];
   winningCells: number[];
@@ -419,23 +420,25 @@ const checkWinningPatterns = (grid: ScratchCell[]): {
   const SIZE = 5;
   const wins: { symbolType: SymbolType; count: number; multiplier: number; cellValues?: number[] }[] = [];
   const winningCells = new Set<number>();
-  const directions: [number, number][] = [[0, 1], [1, 0], [1, 1], [1, -1]];
+  const directions: [number, number][] = [
+    [0, 1],   // horizontal
+    [1, 0],   // vertical
+    [1, 1],   // diagonal ↘
+    [1, -1]   // diagonal ↙
+  ];
 
-  // Scan each direction, only counting runs that start after an empty cell
   directions.forEach(([dr, dc]) => {
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
-        const idx0 = r * SIZE + c;
-        const t0 = grid[idx0].symbol.type;
-        if (t0 === 'empty' || t0.startsWith('multiplier')) continue;
-        // ensure head-of-segment
+        // Ensure we only start scanning from the head of a segment (preceded by empty)
         const pr = r - dr, pc = c - dc;
         if (pr >= 0 && pr < SIZE && pc >= 0 && pc < SIZE) {
           if (grid[pr * SIZE + pc].symbol.type !== 'empty') continue;
         }
-        // build this segment
+
+        // Build contiguous non-empty segment in this direction
         const segment: number[] = [];
-        for (let k = 0;; k++) {
+        for (let k = 0; ; k++) {
           const nr = r + dr * k;
           const nc = c + dc * k;
           if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
@@ -443,37 +446,55 @@ const checkWinningPatterns = (grid: ScratchCell[]): {
           if (grid[idx].symbol.type === 'empty') break;
           segment.push(idx);
         }
-        // scan the segment for base runs
+
+        // Scan inside segment to find runs that satisfy the new rule
         let i = 0;
         while (i < segment.length) {
-          const idxB = segment[i];
-          const typeB = grid[idxB].symbol.type;
-          if (typeB.startsWith('multiplier')) { i++; continue; }
-          // count contiguous same-base
-          let j = i;
-          while (j < segment.length && grid[segment[j]].symbol.type === typeB) j++;
-          const count = j - i;
-          if (count >= 3) {
-            // include up to two trailing multipliers
-            let mult = 1;
-            let end = j;
-            for (let m = 0; m < 2 && end < segment.length; m++, end++) {
-              const sym = grid[segment[end]].symbol;
-              if (sym.type.startsWith('multiplier')) {
-                mult *= sym.value;
-              } else {
-                break;
-              }
-            }
-            // record win cells
-            const runIdxs = segment.slice(i, end);
-            const values = segment.slice(i, j).map(x => grid[x].symbol.value);
-            wins.push({ symbolType: typeB, count, multiplier: mult, cellValues: values });
-            runIdxs.forEach(x => winningCells.add(x));
-            i = end;
-          } else {
-            i = j;
+          // Skip standalone multipliers
+          if (grid[segment[i]].symbol.type.startsWith('multiplier')) {
+            i++;
+            continue;
           }
+
+          // Establish base symbol (first non-multiplier)
+          const baseType = grid[segment[i]].symbol.type as SymbolType;
+          let baseCount = 0;
+          let multiplierProduct = 1;
+          const runIndices: number[] = [];
+
+          let j = i;
+          while (j < segment.length) {
+            const cell = grid[segment[j]];
+            const t = cell.symbol.type;
+            if (t === baseType) {
+              baseCount++;
+              runIndices.push(segment[j]);
+              j++;
+            } else if (t.startsWith('multiplier')) {
+              multiplierProduct *= cell.symbol.value;
+              runIndices.push(segment[j]);
+              j++;
+            } else {
+              break; // Different base symbol encountered – end of this run
+            }
+          }
+
+          if (baseCount >= 3) {
+            // Collect cell values (only the base symbol cells)
+            const cellValues = runIndices
+              .filter(idx => grid[idx].symbol.type === baseType)
+              .map(idx => grid[idx].symbol.value);
+
+            wins.push({
+              symbolType: baseType,
+              count: baseCount,
+              multiplier: multiplierProduct,
+              cellValues
+            });
+            runIndices.forEach(idx => winningCells.add(idx));
+          }
+
+          i = j; // Continue scanning after processed run
         }
       }
     }
