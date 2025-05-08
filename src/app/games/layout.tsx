@@ -196,7 +196,7 @@ export default function GamesLayout({
                   activeTab === value
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700/50'
-                }`}
+                } ${value === Tab.dailyDraw ? 'hidden' : ''}`}
               >
                 {getTabIcon(value)}
                 <span className='flex-grow text-center'>{getDisplayName(value)}</span>

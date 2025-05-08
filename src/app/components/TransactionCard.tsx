@@ -48,6 +48,11 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   // Detect scratch win entries
   const isScratchWin = status === 'SCRATCH_WIN';
 
+  // Determine scratch prize type based on note
+  const scratchPrizeType = isScratchWin ? (
+    publicNote?.includes('tokens') ? 'tokens' : publicNote?.includes('$') ? 'cash' : 'shares'
+  ) : null;
+
   // Format the timestamp
   const formattedTime = formatDistanceToNow(
     new Date(timestamp),
@@ -106,7 +111,11 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
     if (isBuy) return 'text-green-400';
     if (isSell) return 'text-red-400';
     if (isLootboxPurchase || isLootboxRedeem) return 'text-blue-400';
-    if (isScratchWin) return 'text-yellow-400';
+    if (isScratchWin) {
+      if (scratchPrizeType === 'tokens') return 'text-yellow-400';
+      if (scratchPrizeType === 'cash') return 'text-green-400';
+      return 'text-blue-400'; // shares
+    }
     if (isDailyDrawWin) return 'text-purple-400';
     return 'text-gray-400';
   };
@@ -134,9 +143,10 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
         </div>
         <div className={`text-right ${getCostColor()}`}>
           {isScratchWin ? (
-            // scratch win: display total shares won
             <div className="font-bold">
-              {totalCost.toFixed(2)} shares
+              {scratchPrizeType === 'tokens' && `${totalCost.toLocaleString()} tokens`}
+              {scratchPrizeType === 'cash' && `$${totalCost.toFixed(2)}`}
+              {scratchPrizeType === 'shares' && `${totalCost.toFixed(2)} shares`}
             </div>
           ) : isDailyDrawWin ? (
             <div className="font-bold">DAILY DRAW WIN</div>

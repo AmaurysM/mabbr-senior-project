@@ -461,7 +461,9 @@ const CombinedProfilePage = () => {
                                         <div className="text-sm sm:text-base text-gray-400">{email}</div>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 w-full sm:w-auto mt-3 sm:mt-0">
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
                                     {/* Cash */}
                                     <div className="text-center bg-white/10 border border-white/20 rounded-lg p-2 sm:p-3 md:p-4 whitespace-nowrap overflow-hidden text-ellipsis">
                                         <div className="text-xs sm:text-sm text-gray-400">Cash</div>
