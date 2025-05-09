@@ -78,13 +78,15 @@ const TransactionDetails = ({ transaction }: { transaction: UserTransaction }) =
             <div className="text-gray-400">
               {new Date(transaction.timestamp).toLocaleDateString()}
             </div>
-            <Link
-              href={`/stock/${transaction.stockSymbol}`}
-              className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors group"
-            >
-              <span>View Stock</span>
-              <FaAngleRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            {(isBuy || isSell) && (
+              <Link
+                href={`/stock/${transaction.stockSymbol}`}
+                className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors group"
+              >
+                <span>View Stock</span>
+                <FaAngleRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
