@@ -14,7 +14,7 @@ export default function GamesPage() {
     if (storedActive) {
       router.push(`/games/${storedActive.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
     } else {
-      router.push('/games/daily-draw');
+      router.push('/games/token-market');
     }
   }, [router]);
 

@@ -64,7 +64,7 @@ export default function GamesLayout({
     if (pathname.includes('stock-predictor')) return Tab.stockPredictor;
     if (pathname.includes('crypto-minesweeper')) return Tab.cryptoMinesweeper;
     if (pathname.includes('token-market')) return Tab.tokenMarket;
-    return Tab.dailyDraw; // default
+    return Tab.tokenMarket; // default
   };
 
   const [activeTab, setActiveTab] = useState<Tab>(getActiveTabFromPathname());
@@ -174,6 +174,16 @@ export default function GamesLayout({
     }
   };
 
+  // Order sidebar tabs, featuring Token Market first and removing Daily Draw
+  const sidebarTabs: Tab[] = [
+    Tab.tokenMarket,
+    Tab.lootboxes,
+    Tab.scratchOffs,
+    Tab.stocket,
+    Tab.stockPredictor,
+    Tab.cryptoMinesweeper,
+  ];
+
   return (
     <div className="flex h-full">
       {/* Left Sidebar (Fixed) */}
@@ -188,7 +198,7 @@ export default function GamesLayout({
         
         <div className='sticky top-0 space-y-8'>
           <nav className='space-y-2'>
-            {Object.values(Tab).map((value) => (
+            {sidebarTabs.map((value) => (
               <button
                 key={value}
                 onClick={() => handleTabClick(value)}
@@ -196,15 +206,10 @@ export default function GamesLayout({
                   activeTab === value
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700/50'
-                } ${value === Tab.dailyDraw ? 'hidden' : ''}`}
+                }`}
               >
                 {getTabIcon(value)}
                 <span className='flex-grow text-center'>{getDisplayName(value)}</span>
-                {value === Tab.dailyDraw && (
-                  <span className='text-xs font-medium px-1.5 py-0.5 min-w-8 text-center rounded bg-gray-700 text-gray-300 ml-1 shrink-0'>
-                    {timeRemaining}
-                  </span>
-                )}
               </button>
             ))}
           </nav>

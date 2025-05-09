@@ -259,7 +259,6 @@ const StockNotes = () => {
           setPublicNoteText(selectedTx.publicNote || "");
           setEditingPublicNote(false);
         } else {
-          Op
           setPrivateNoteText(selectedTx.privateNote || "");
           setEditingPrivateNote(false);
         }
@@ -605,15 +604,17 @@ const StockNotes = () => {
                   {renderTimePeriodSelector()}
                 </div>
 
-                <div className="flex-1 flex justify-center md:justify-end">
-                  <Link
-                    href={`/stock/${selectedHx.stock?.name}`}
-                    className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors group"
-                  >
-                    <span>View Stock</span>
-                    <FaAngleRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                </div>
+                {stockData && selectedHx.stock?.name && (
+                  <div className="flex-1 flex justify-center md:justify-end">
+                    <Link
+                      href={`/stock/${selectedHx.stock.name}`}
+                      className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors group"
+                    >
+                      <span>View Stock</span>
+                      <FaAngleRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                  </div>
+                )}
               </div>
 
 

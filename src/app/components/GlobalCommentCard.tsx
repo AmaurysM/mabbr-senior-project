@@ -354,39 +354,40 @@ const DiscordCommentCard = ({
         if (symbol) {
           const data = stockData[symbol] || stockDataCache[symbol];
           const isLoading = loadingStocks.includes(symbol);
-          const isPositive = data?.isPositive ?? true;
+          const hasData = !!data;
+          const isPositive = data?.isPositive ?? false;
+
+          const chipClass = isLoading
+            ? 'bg-gray-700/50 text-gray-300 border border-gray-600/30'
+            : hasData
+              ? (isPositive ? 'bg-green-900/20 text-green-300 border border-green-700/30' : 'bg-red-900/20 text-red-300 border border-red-700/30')
+              : 'bg-gray-700/50 text-gray-300 border border-gray-600/30';
+
+          const ChipContent = (
+            <span
+              className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${chipClass} ${hasData ? 'cursor-pointer hover:opacity-80' : ''} transition-opacity`}
+            >
+              {symbol}
+              {isLoading ? (
+                <span className="ml-1 w-3 h-3 rounded-full bg-gray-600 animate-pulse"></span>
+              ) : hasData ? (
+                <span className="ml-1 font-mono">{isPositive ? '↑' : '↓'}</span>
+              ) : null}
+            </span>
+          );
 
           formattedContent.push(
-            <Link href={`/stock/${symbol}`} key={`stock-${i}`} className="inline-block relative group">
-              <span
-                className={`inline-flex items-center px-2 py-0.5 mx-1 rounded text-xs font-medium ${isLoading
-                  ? 'bg-gray-700/50 text-gray-300 border border-gray-600/30'
-                  : isPositive
-                    ? 'bg-green-900/20 text-green-300 border border-green-700/30'
-                    : 'bg-red-900/20 text-red-300 border border-red-700/30'
-                  } cursor-pointer hover:opacity-80 transition-opacity`}
-              >
-                {symbol}
-                {isLoading ? (
-                  <span className="ml-1 w-3 h-3 rounded-full bg-gray-600 animate-pulse"></span>
-                ) : (
-                  <span className="ml-1 font-mono">
-                    {isPositive ? '↑' : '↓'}
-                  </span>
-                )}
-              </span>
-
-              {/* Tooltip with fixed position above the symbol */}
-              <div className="absolute opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[9999]"
-                style={{
-                  bottom: '100%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  marginBottom: '5px'
-                }}>
-                <StockTooltip symbol={symbol} data={data || null} isLoading={isLoading} />
-              </div>
-            </Link>
+            hasData ? (
+              <Link href={`/stock/${symbol}`} key={`stock-${i}`} className="inline-block relative group">
+                {ChipContent}
+                {/* Tooltip */}
+                <div className="absolute opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[9999]" style={{ bottom:'100%', left:'50%', transform:'translateX(-50%)', marginBottom:'5px'}}>
+                  <StockTooltip symbol={symbol} data={data || null} isLoading={isLoading} />
+                </div>
+              </Link>
+            ) : (
+              <span key={`stock-${i}`} className="inline-block">{ChipContent}</span>
+            )
           );
         }
         i += 2; // Skip the symbol part

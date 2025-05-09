@@ -25,13 +25,13 @@ const DailyMarketPulseButton: React.FC = () => {
   };
 
   // Handle vote submission
-  const handleVoteSubmit = () => {
+  const handleVoteSubmit = (bonusData: { tokenCount: number; bonusAmount: number }) => {
     setHasVoted(true);
     setIsOpen(false); // Auto close panel on submission
     // Show confirmation toast
     toast({
       title: 'Daily Market Pulse',
-      description: 'You claimed your 50 tokens',
+      description: `You claimed your ${bonusData.bonusAmount} tokens. Total tokens: ${bonusData.tokenCount}`,
     });
   };
 
@@ -103,28 +103,32 @@ const DailyMarketPulseButton: React.FC = () => {
     if (!mounted || !isOpen) return null;
 
     const portalContent = (
-      <div className="fixed inset-x-0 top-16 flex justify-center animate-slideDown px-4 overflow-y-auto">
-        <div 
-          ref={overlayRef}
-          className="w-full max-w-5xl bg-gray-900/95 backdrop-blur-md shadow-2xl rounded-xl overflow-y-auto max-h-[calc(100vh-5rem)]"
-        >
-          <div className="p-2">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-white ml-3">Daily Market Pulse</h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-white p-2"
-              >
-                ✕
-              </button>
+      <div className="fixed inset-x-0 top-16 bottom-0 flex items-start justify-center animate-slideDown px-4 overflow-y-auto">
+        <div className="relative w-full max-w-5xl">
+          {/* Background panel behind vote panel */}
+          <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-md shadow-2xl rounded-xl pointer-events-none" />
+          <div
+            ref={overlayRef}
+            className="relative overflow-visible z-20"
+          >
+            <div className="p-2">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xl font-bold text-white ml-3">Daily Market Pulse</h2>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-400 hover:text-white p-2"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className={`${hasVoted ? 'bg-blue-500/20 border border-blue-500/40' : 'bg-yellow-400/20'} rounded-lg p-3 mb-4`}>
+                <p className={`${hasVoted ? 'text-blue-300' : 'text-yellow-300'} font-medium text-center`}>
+                  {hasVoted ? "Daily Tokens Claimed" : "Submit to claim your free daily token!"}
+                </p>
+              </div>
             </div>
-            <div className={`${hasVoted ? 'bg-blue-500/20 border border-blue-500/40' : 'bg-yellow-400/20'} rounded-lg p-3 mb-4`}>
-              <p className={`${hasVoted ? 'text-blue-300' : 'text-yellow-300'} font-medium text-center`}>
-                {hasVoted ? "Daily Tokens Claimed" : "Submit to claim your free daily token!"}
-              </p>
-            </div>
+            <DailyMarketVotePanel isOverlay={true} showTokenMessage={false} onVoteSubmit={handleVoteSubmit} />
           </div>
-          <DailyMarketVotePanel isOverlay={true} showTokenMessage={false} onVoteSubmit={handleVoteSubmit} />
         </div>
       </div>
     );
