@@ -32,7 +32,7 @@ export const POST = withDebugHeaders(async (request: NextRequest) => {
 
         console.log('[LOGIN_BONUS] Current tokenCount:', currentUser.tokenCount);
 
-        const tokenBonus = 50; // Set token bonus amount
+        const tokenBonus = 100; // Set token bonus amount
         const newTokenCount = (currentUser.tokenCount || 0) + tokenBonus;
         
         // Update user with new token count

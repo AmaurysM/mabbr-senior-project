@@ -57,7 +57,7 @@ const MARKET_INDICES = {
 interface DailyMarketVotePanelProps {
   isOverlay?: boolean; // Optional prop to indicate if used as an overlay
   showTokenMessage?: boolean; // Optional prop to show token message
-  onVoteSubmit?: () => void; // Callback when vote is submitted
+  onVoteSubmit?: (data: { tokenCount: number; bonusAmount: number }) => void; // Callback when vote is submitted
 }
 
 const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({ 
@@ -168,7 +168,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
 
       toast({
         title: "Success",
-        description: `Vote submitted successfully! You earned 50 tokens. Current tokens: ${bonusData.tokenCount}`,
+        description: `Vote submitted successfully! You earned ${bonusData.bonusAmount} tokens. Current tokens: ${bonusData.tokenCount}`,
       });
 
       // Set hasVoted to true instead of closing the panel
@@ -181,7 +181,7 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
       
       // Call the callback if provided
       if (onVoteSubmit) {
-        onVoteSubmit();
+        onVoteSubmit({ tokenCount: bonusData.tokenCount, bonusAmount: bonusData.bonusAmount });
       }
 
     } catch (error) {
@@ -502,8 +502,9 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                 
                 {!isCustomStock ? (
                   <div className="relative">
-                    <div 
-                      onClick={() => !hasVoted && setShowStockDropdown(!showStockDropdown)}
+                    <div
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => !hasVoted && setShowStockDropdown((prev) => !prev)}
                       className={`w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white ${hasVoted ? 'cursor-default opacity-80' : 'cursor-pointer'} flex justify-between items-center`}
                     >
                       <span className={`${!voteData.topPick ? 'text-gray-400' : 'text-white'}`}>
@@ -610,8 +611,9 @@ const DailyMarketVotePanel: React.FC<DailyMarketVotePanelProps> = ({
                 <h3 className="text-lg font-medium text-white mb-3">Which index will outperform today?</h3>
                 
                 <div className="relative">
-                  <div 
-                    onClick={() => !hasVoted && setShowIndexDropdown(!showIndexDropdown)}
+                  <div
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => !hasVoted && setShowIndexDropdown((prev) => !prev)}
                     className={`w-full px-4 py-3 bg-gray-700/50 border border-white/10 rounded-lg text-white ${hasVoted ? 'cursor-default opacity-80' : 'cursor-pointer'} flex justify-between items-center`}
                   >
                     <span className={`${!voteData.marketTrend ? 'text-gray-400' : 'text-white'}`}>
