@@ -32,7 +32,6 @@ const PortfolioTable = () => {
 
         const data: PortfolioResponse = await res.json();
 
-
         // Map the positions from API to holdings including averagePrice
         const rawHoldings = Object.entries(data.positions)
           .filter(([_, position]) => position.shares > 0)
@@ -41,11 +40,11 @@ const PortfolioTable = () => {
             userId: "",
             stockId: "",
             quantity: position.shares,
-            averagePrice: position.averagePrice, // include averagePrice from API response
+            averagePrice: position.averagePrice,
             stock: {
               id: "",
               name: symbol,
-              price: 0, // placeholder, to be replaced with current price
+              price: 0,
             },
           }));
 
@@ -60,7 +59,9 @@ const PortfolioTable = () => {
 
               const stockData = await priceRes.json();
               const price =
-                abbreviateNumber(stockData?.quoteResponse?.result?.[0]?.regularMarketPrice) ?? 0;
+                abbreviateNumber(
+                  stockData?.quoteResponse?.result?.[0]?.regularMarketPrice
+                ) ?? 0;
 
               return {
                 ...holding,
@@ -74,7 +75,7 @@ const PortfolioTable = () => {
                 `Failed to fetch price for ${holding.stock.name}`,
                 err
               );
-              return holding; // fallback to original with price 0
+              return holding;
             }
           })
         );
@@ -114,10 +115,13 @@ const PortfolioTable = () => {
               {holdings.map((holding) => {
                 const profitLoss =
                   (holding.stock.price - holding.averagePrice) * holding.quantity;
+                const formattedPL = profitLoss.toFixed(2);
                 return (
                   <tr key={holding.id} className="border-b border-gray-700">
                     <td className="py-2 px-4 text-gray-200">{holding.stock.name}</td>
-                    <td className="py-2 px-4 text-gray-200">{abbreviateNumber(holding.quantity)}</td>
+                    <td className="py-2 px-4 text-gray-200">
+                      {abbreviateNumber(holding.quantity)}
+                    </td>
                     <td className="py-2 px-4 text-gray-200">
                       ${abbreviateNumber(holding.stock.price)}
                     </td>
@@ -125,10 +129,13 @@ const PortfolioTable = () => {
                       ${abbreviateNumber(holding.stock.price * holding.quantity)}
                     </td>
                     <td
-                      className={`py-2 px-4 ${profitLoss >= 0 ? "text-green-400" : "text-red-400"
-                        }`}
+                      className={`py-2 px-4 ${
+                        profitLoss >= 0 ? "text-green-400" : "text-red-400"
+                      }`}
                     >
-                      {profitLoss >= 0 ? "+" : "-"}${Math.abs(profitLoss)}
+                      {profitLoss >= 0 ? "+" : "-"}${Math.abs(Number(
+                        formattedPL
+                      )).toFixed(2)}
                     </td>
                   </tr>
                 );
@@ -141,6 +148,7 @@ const PortfolioTable = () => {
             {holdings.map((holding) => {
               const profitLoss =
                 (holding.stock.price - holding.averagePrice) * holding.quantity;
+              const formattedPL = profitLoss.toFixed(2);
               return (
                 <div
                   key={holding.id}
@@ -152,7 +160,9 @@ const PortfolioTable = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Quantity:</span>
-                    <span className="text-white">{abbreviateNumber(holding.quantity)}</span>
+                    <span className="text-white">
+                      {abbreviateNumber(holding.quantity)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Current Price:</span>
@@ -163,17 +173,20 @@ const PortfolioTable = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-400">Total Value:</span>
                     <span className="text-white">
-                      ${abbreviateNumber(holding.stock.price * holding.quantity)}
+                      ${abbreviateNumber(
+                        holding.stock.price * holding.quantity
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Profit/Loss:</span>
                     <span
-                      className={`${profitLoss >= 0 ? "text-green-400" : "text-red-400"
-                        }`}
+                      className={`${
+                        profitLoss >= 0 ? "text-green-400" : "text-red-400"
+                      }`}
                     >
                       {profitLoss >= 0 ? "+" : "-"}$
-                      {Math.abs(profitLoss).toFixed(2)}
+                      {Math.abs(Number(formattedPL)).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -185,7 +198,6 @@ const PortfolioTable = () => {
         <p className="text-gray-400 text-center">No holdings found.</p>
       )}
     </div>
-
   );
 };
 
