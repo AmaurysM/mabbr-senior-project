@@ -1,53 +1,55 @@
 // src/app/components/Roulette.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { authClient }       from "@/lib/auth-client";
-import { abbreviateNumber } from "@/lib/utils";
+import React, { useState, useEffect } from "react";
+import { authClient }        from "@/lib/auth-client";
+import { abbreviateNumber }  from "@/lib/utils";
+import RouletteWheel         from "./RouletteWheel";
 
+const WHEEL_ORDER = [
+  0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,
+  23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,
+  35,3,26
+];
 const RED_SET = new Set([
   1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36
 ]);
 
 export default function Roulette() {
-  const { data: session } = authClient.useSession();
-  const [balance, setBalance]     = useState(0);
-  const [message, setMessage]     = useState("");
+  const { data: session }     = authClient.useSession();
+  const [balance, setBalance] = useState(0);
   const [betAmount, setBetAmount] = useState(5);
-  const [result, setResult]       = useState<number | null>(null);
-  const [ballPos, setBallPos]     = useState<{ x: number; y: number } | null>(null);
+  const [message, setMessage]     = useState("");
+  const [rotation, setRotation]   = useState(0);
+  const [spinning, setSpinning]   = useState(false);
 
-  const boardRef = useRef<HTMLDivElement>(null);
-  const cellRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  // Load user balance
+  // Load initial balance
   useEffect(() => {
     if (!session?.user?.id) return;
     fetch("/api/user/portfolio", { credentials: "include" })
-      .then(res => res.json())
-      .then(data => {
-        if (typeof data.balance === "number") {
-          setBalance(data.balance);
-        }
-      })
+      .then(r => r.json())
+      .then(d => typeof d.balance === "number" && setBalance(d.balance))
       .catch(console.error);
   }, [session?.user?.id]);
 
-  // Place a bet and handle spin
-  const placeBet = async (bet: {
+  const handleSpin = async (bet: {
     type: "straight" | "color";
     number?: number;
     color?: "red" | "black";
     amount: number;
   }) => {
     if (!session?.user?.id) {
-      alert("Please sign in to play.");
+      alert("Please sign in to play."); 
       return;
     }
     if (bet.amount < 1 || bet.amount > balance) {
       alert(`Bet must be between $1 and $${abbreviateNumber(balance)}`);
       return;
     }
+
+    setSpinning(true);
+    // Deduct stake immediately
+    setBalance(b => b - bet.amount);
 
     const res  = await fetch("/api/games/roulette", {
       method: "POST",
@@ -58,94 +60,107 @@ export default function Roulette() {
     const json = await res.json();
     if (!res.ok) {
       alert(json.error);
+      setSpinning(false);
       return;
     }
 
-    // Update state from response
-    setBalance(json.balance);
-    setResult(json.result);
-    setMessage(
-      json.profit >= 0
-        ? `🎉 You hit ${json.result}! +$${abbreviateNumber(json.profit)}`
-        : `💔 ${json.result}. -$${abbreviateNumber(-json.profit)}`
-    );
+    // Compute spin rotation to land on json.result
+    const idx = WHEEL_ORDER.indexOf(json.result);
+    const fullSpins = 5;
+    const delta = fullSpins * 360 + (360 - idx * (360 / WHEEL_ORDER.length));
+    setRotation(r => r + delta);
 
-    // Animate ball to winning slot
-    const cell  = cellRefs.current[json.result];
-    const board = boardRef.current;
-    if (cell && board) {
-      const bRect = board.getBoundingClientRect();
-      const cRect = cell.getBoundingClientRect();
-      setBallPos({
-        x: cRect.left - bRect.left + cRect.width / 2 - 8,
-        y: cRect.top  - bRect.top  + cRect.height / 2 - 8,
-      });
-    }
+    // When wheel stops, payout
+    const onStop = () => {
+      setSpinning(false);
+      setBalance(json.balance);
+      setMessage(
+        json.profit >= 0
+          ? `🎉 You hit ${json.result}! +$${abbreviateNumber(json.profit)}`
+          : `💔 ${json.result}. -$${abbreviateNumber(-json.profit)}`
+      );
+    };
+
+    // Pass onStop handler into the wheel component via prop
+    setOnWheelStop(() => onStop);
   };
 
+  // Because onStop is dynamic, wrap in state to pass stable reference
+  const [onWheelStop, setOnWheelStop] = useState<() => void>(() => () => {});
+
   return (
-    <div className="max-w-lg mx-auto mt-8 p-6 bg-gray-900 rounded-2xl shadow-lg text-gray-100">
-      <h1 className="text-3xl font-bold mb-2 text-center">Roulette</h1>
-      <p className="text-center mb-4">
+    <div className="max-w-5xl mx-auto p-6 bg-gray-900 text-gray-100 rounded-2xl shadow-lg">
+      <h1 className="text-3xl font-bold text-center mb-6">Roulette</h1>
+      <p className="text-center mb-8">
         Balance: <span className="font-mono">${abbreviateNumber(balance)}</span>
       </p>
 
-      {/* Bet amount input */}
-      <div className="flex justify-center items-center mb-6 gap-2">
-        <input
-          type="number"
-          min={1}
-          max={Math.floor(balance)}
-          value={betAmount}
-          onChange={e => setBetAmount(Number(e.target.value))}
-          className="w-24 p-2 bg-gray-800 rounded-lg text-center"
-        />
-        <span>per spin</span>
-      </div>
+      <div className="grid lg:grid-cols-2 gap-12">
+        {/* Left: Table Grid */}
+        <div>
+          <div className="flex justify-center items-center mb-4 gap-2">
+            <input
+              type="number"
+              min={1}
+              max={Math.floor(balance)}
+              value={betAmount}
+              onChange={e => setBetAmount(Number(e.target.value))}
+              className="w-20 p-2 bg-gray-800 rounded text-center"
+            />
+            <span className="text-gray-400">per spin</span>
+          </div>
 
-      {/* Color bets */}
-      <div className="flex justify-center gap-4 mb-6">
-        <button
-          onClick={() => placeBet({ type: "color", color: "red", amount: betAmount })}
-          className="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-500 transition"
-        >
-          Bet ${betAmount} Red
-        </button>
-        <button
-          onClick={() => placeBet({ type: "color", color: "black", amount: betAmount })}
-          className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
-        >
-          Bet ${betAmount} Black
-        </button>
-      </div>
+          <div className="flex justify-center gap-4 mb-6">
+            <button
+              disabled={spinning}
+              onClick={() => handleSpin({ type: "color", color: "red", amount: betAmount })}
+              className="px-4 py-2 bg-red-600 rounded hover:bg-red-500 disabled:opacity-50"
+            >
+              Bet ${betAmount} Red
+            </button>
+            <button
+              disabled={spinning}
+              onClick={() => handleSpin({ type: "color", color: "black", amount: betAmount })}
+              className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              Bet ${betAmount} Black
+            </button>
+          </div>
 
-      {/* Number grid with ball */}
-      <div ref={boardRef} className="relative grid grid-cols-6 gap-2 mb-6">
-        {ballPos && (
-          <div
-            className="absolute w-4 h-4 bg-white rounded-full shadow transition-all duration-1000 ease-out"
-            style={{ left: ballPos.x, top: ballPos.y }}
+          <div className="grid grid-cols-6 gap-2">
+            {WHEEL_ORDER.map((num) => (
+              <button
+                key={num}
+                disabled={spinning}
+                onClick={() => handleSpin({ type: "straight", number: num, amount: betAmount })}
+                className={
+                  `aspect-square flex items-center justify-center rounded-md font-mono transition ` +
+                  (RED_SET.has(num)
+                    ? "bg-red-700 hover:bg-red-600"
+                    : "bg-gray-800 hover:bg-gray-700") +
+                  " disabled:opacity-50"
+                }
+              >
+                {num}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: Spinning Wheel */}
+        <div className="flex justify-center">
+          <RouletteWheel
+            order={WHEEL_ORDER}
+            redSet={RED_SET}
+            rotation={rotation}
+            spinning={spinning}
+            onStop={onWheelStop}
           />
-        )}
-        {Array.from({ length: 37 }, (_, i) => (
-          <button
-            key={i}
-            ref={el => { cellRefs.current[i] = el; }}     // callback ref returns void
-            onClick={() => placeBet({ type: "straight", number: i, amount: betAmount })}
-            className={`
-              aspect-square flex items-center justify-center 
-              rounded-md font-mono font-medium transition 
-              ${RED_SET.has(i) ? "bg-red-700 hover:bg-red-600" : "bg-gray-800 hover:bg-gray-700"}
-            `}
-          >
-            {i}
-          </button>
-        ))}
+        </div>
       </div>
 
-      {/* Result message */}
       {message && (
-        <div className="p-4 bg-gray-800 rounded-lg text-center text-lg">
+        <div className="mt-8 p-4 bg-gray-800 rounded text-center text-lg">
           {message}
         </div>
       )}
