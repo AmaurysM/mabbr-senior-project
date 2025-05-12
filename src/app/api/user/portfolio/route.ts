@@ -50,17 +50,14 @@ export async function GET(req: NextRequest) {
       include: { stock: true }
     });
 
-    // Prepare positions with computed average purchase price
+    // Calculate holdings using current stock price instead of purchase average
     const positions: Record<string, { shares: number; averagePrice: number }> = {};
-    await Promise.all(
-      userStocks.map(async (us) => {
-        const avgPrice = await computeAveragePrice(userId, us.stock.name);
-        positions[us.stock.name] = {
-          shares: us.quantity / 100,
-          averagePrice: avgPrice
-        };
-      })
-    );
+    userStocks.forEach((us) => {
+      positions[us.stock.name] = {
+        shares: us.quantity / 100,
+        averagePrice: us.stock.price
+      };
+    });
 
     return NextResponse.json({
       balance: user.balance,
