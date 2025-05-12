@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         // Get the current user
         const user = await tx.user.findUnique({
           where: { id: session.user.id },
-          select: { id: true, tokenCount: true }
+          select: { id: true, tokenCount: true, balance: true }
         });
         
         if (!user) {
@@ -132,9 +132,8 @@ export async function POST(request: NextRequest) {
         
         // Update token balance
         let updateData: any = {
-          tokenCount: {
-            increment: prize.tokens || 0
-          }
+          tokenCount: { increment: prize.tokens || 0 },
+          balance: { increment: prize.cash || 0 }
         };
         
         // Handle stock shares if any
