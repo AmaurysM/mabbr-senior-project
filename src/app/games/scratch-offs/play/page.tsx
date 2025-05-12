@@ -1185,17 +1185,27 @@ const ScratchOffPlayContent = () => {
         const symbolType = win.symbolType;
         const multiplier = win.multiplier;
         
+        // Calculate ticket type multiplier for Mystic Chance (random) and Diamond Scratch
+        let ticketTypeMultiplier = 1;
+        if (ticket && ticket.ticket) {
+          if (ticket.ticket.type === 'random') {
+            ticketTypeMultiplier = 10;
+          } else if (ticket.ticket.type === 'diamond') {
+            ticketTypeMultiplier = 50;
+          }
+        }
+        
         // Handle token amount symbols - sum values first, then multiply
         if (symbolType.startsWith('token_')) {
           if (win.cellValues) {
             // Sum all token values, then apply multiplier
             const totalValue = win.cellValues.reduce((sum, val) => sum + val, 0);
-            tokenPrize += totalValue * multiplier;
+            tokenPrize += totalValue * multiplier * ticketTypeMultiplier;
           } else {
             // Fallback to old calculation if cellValues is not available
             const amount = parseInt(symbolType.replace('token_', ''));
             const baseValue = win.count * amount;
-            tokenPrize += baseValue * multiplier;
+            tokenPrize += baseValue * multiplier * ticketTypeMultiplier;
           }
         }
         // Handle stock symbols
@@ -1235,13 +1245,13 @@ const ScratchOffPlayContent = () => {
             // Sum all cash values, then apply multiplier (similar to tokens)
             const totalValue = win.cellValues.reduce((sum, val) => sum + val, 0);
             // No longer apply divisor - use full cash values
-            cashPrize += totalValue * multiplier;
+            cashPrize += totalValue * multiplier * ticketTypeMultiplier;
           } else {
             // Fallback to old calculation if cellValues is not available
             const amount = parseInt(symbolType.replace('cash_', ''));
             // Use full amount without divisor
             const baseValue = win.count * amount;
-            cashPrize += baseValue * multiplier;
+            cashPrize += baseValue * multiplier * ticketTypeMultiplier;
           }
         }
         // Handle regular symbols (legacy support)
@@ -1264,30 +1274,6 @@ const ScratchOffPlayContent = () => {
             cashPrize += baseValue * multiplier;
           } else if (symbolType === 'stock') {
             stockPrize += baseValue * multiplier;
-          }
-        }
-        
-        // Special handling for token amounts in Mystic Chance and Diamond Scratch
-        if (symbolType.startsWith('token_')) {
-          // Apply special multipliers for these ticket types
-          if (ticket && ticket.ticket) {
-            if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
-              const specialMultiplier = ticket.ticket.type === 'random' ? 10 : 50;
-              // If we already calculated the value, multiply it by the special multiplier
-              tokenPrize *= specialMultiplier;
-            }
-          }
-        }
-        
-        // Special handling for cash amounts in Mystic Chance and Diamond Scratch
-        if (symbolType.startsWith('cash_')) {
-          // Apply special multipliers for these ticket types
-          if (ticket && ticket.ticket) {
-            if (ticket.ticket.type === 'random' || ticket.ticket.type === 'diamond') {
-              const specialMultiplier = ticket.ticket.type === 'random' ? 10 : 50;
-              // If we already calculated the value, multiply it by the special multiplier
-              cashPrize *= specialMultiplier;
-            }
           }
         }
       });
