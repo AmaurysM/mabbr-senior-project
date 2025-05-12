@@ -71,13 +71,16 @@ const PaperTradingAccountHeader = () => {
           <div className="bg-gray-700/40 rounded-xl p-4 border border-white/5">
             <h3 className="text-lg font-medium text-gray-300 mb-1">Net Worth</h3>
             <p className="text-2xl font-semibold text-green-400">
-              ${(portfolio?.balance ?? 0 + Object.entries(portfolio?.positions || {}).reduce(
-                (total, [symbol, position]) => {
-                  const stock = swrStocks.find(s => s.symbol === symbol);
-                  return total + (stock ? position.shares * stock.price : 0);
-                },
-                0
-              )).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${(
+                (portfolio?.balance ?? 0)
+                + Object.entries(portfolio?.positions || {}).reduce(
+                    (total, [symbol, position]) => {
+                      const stock = swrStocks.find(s => s.symbol === symbol);
+                      return total + (stock ? position.shares * stock.price : 0);
+                    },
+                    0
+                  )
+              ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
