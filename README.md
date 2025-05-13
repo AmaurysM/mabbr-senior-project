@@ -64,22 +64,32 @@ pnpm install
 
 ## Environment Variables
 
-Create a `.env.local` in the project root:
+Create a `.env` in the project root:
 
 ```env
-DATABASE_URL="mongodb://user:pass@host:port/db"
+DATABASE_URL="your-db-url"
 NEXTAUTH_SECRET="your-session-secret"
+BETTER_AUTH_URL="http://localhost:3000/api/auth"
+EMAIL_VERIFICATION_CALLBACK_URL="http://localhost:3000/api/auth/verify-email"
+
+SENDGRID_API_KEY="your-sendgrid-api-key"
+NEXT_PUBLIC_EMAIL_FROM="support@example.com"
+ARCJET_KEY="your-arcjet-key"
+ALPHA_VANTAGE_API_KEY="your-alpha-vantage-key"
+
+OPENAI_API_KEY="your-openai-key"
+
 AWS_S3_BUCKET_NAME="your-s3-bucket"
 AWS_REGION="your-region"
 AWS_ACCESS_KEY_ID="your-access-key"
 AWS_SECRET_ACCESS_KEY="your-secret-key"
-OPENAI_API_KEY="your-openai-key"
-BETTER_AUTH_URL="http://localhost:3000/api/auth"
-EMAIL_VERIFICATION_CALLBACK_URL="http://localhost:3000/api/auth/verify-email"
+
 GITHUB_CLIENT_ID="your-github-id"
 GITHUB_CLIENT_SECRET="your-github-secret"
+
 GOOGLE_CLIENT_ID="your-google-id"
 GOOGLE_CLIENT_SECRET="your-google-secret"
+
 DISCORD_CLIENT_ID="your-discord-id"
 DISCORD_CLIENT_SECRET="your-discord-secret"
 ```
