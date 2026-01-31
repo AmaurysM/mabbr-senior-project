@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { UserTransactions } from "@/lib/prisma_types";
-import yahooFinance from "yahoo-finance2";
+import { yahooFinance } from "@/lib/yahooFinance";
 
 export async function GET(req: Request) {
   try {

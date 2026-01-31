@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import yahooFinance from "yahoo-finance2";
+const yahooFinance = require('node-yahoo-finance2').default;
 import { auth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {

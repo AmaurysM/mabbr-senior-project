@@ -4,15 +4,15 @@ import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { 
-  FaArrowLeft, 
-  FaArrowUp, 
-  FaChartLine, 
-  FaExchangeAlt, 
-  FaDollarSign, 
-  FaDollarSign as FaDollar, 
+import {
+  FaArrowLeft,
+  FaArrowUp,
+  FaChartLine,
+  FaExchangeAlt,
+  FaDollarSign,
+  FaDollarSign as FaDollar,
   FaArrowDown,
-  FaTimes 
+  FaTimes
 } from "react-icons/fa";
 import { TransformedStockData } from "@/app/api/stocks/live/route";
 import StockDetails from "@/app/components/StockDetails";
@@ -47,6 +47,9 @@ const validIntervals = [
   "3mo",
 ];
 
+// Valid Yahoo Finance periods
+const validPeriods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"];
+
 interface UserPortfolio {
   balance: number;
   positions: {
@@ -68,10 +71,10 @@ const StockPage = () => {
   const [series, setSeries] = useState<SeriesData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [period, setPeriod] = useState("2025-01-01");
-  const [interval, setInterval] = useState("1d");
+  const [period, setPeriod] = useState("1y"); // FIXED: Use valid period format
+  const [selectedInterval, setSelectedInterval] = useState("1d");
   const [stockData, setStockData] = useState<TransformedStockData | null>(null);
-  
+
   // Trade section state
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [isDollarAmount, setIsDollarAmount] = useState(true);
@@ -94,7 +97,7 @@ const StockPage = () => {
       setError("");
       try {
         const response = await fetch(
-          `/api/stocks/live?symbol=${symbol}&period=${period}&interval=${interval}`
+          `/api/stocks/live?symbol=${symbol}&period=${period}&interval=${selectedInterval}`
         );
         if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -130,7 +133,7 @@ const StockPage = () => {
     };
 
     fetchStockData();
-  }, [symbol, period, interval]);
+  }, [symbol, period, selectedInterval]);
 
   // Add portfolio fetching
   useEffect(() => {
@@ -147,12 +150,12 @@ const StockPage = () => {
       }
     };
     fetchPortfolio();
-    
-    let intervalId: NodeJS.Timeout | null = null;
+
+    let intervalId: any = null;
     if (user) {
-      intervalId = setInterval(fetchPortfolio, 30000) as NodeJS.Timeout;
+      intervalId = setInterval(fetchPortfolio, 30000);
     }
-    
+
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
@@ -170,10 +173,10 @@ const StockPage = () => {
     }
 
     try {
-      const quantity = isDollarAmount 
-        ? Number(estimatedShares) 
+      const quantity = isDollarAmount
+        ? Number(estimatedShares)
         : Number(amount);
-        
+
       if (isNaN(quantity) || quantity <= 0) {
         setTradeError("Invalid quantity");
         return;
@@ -191,7 +194,7 @@ const StockPage = () => {
           privateNote,
         }),
       });
-      
+
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || 'Trade failed');
@@ -202,7 +205,7 @@ const StockPage = () => {
       setPublicNote('');
       setPrivateNote('');
       setTradeError('');
-      
+
       // Refresh portfolio data
       const portfolioRes = await fetch('/api/user/portfolio');
       const portfolioData = await portfolioRes.json();
@@ -420,6 +423,47 @@ const StockPage = () => {
         </div>
       </div>
 
+      {/* Period and Interval Selector
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 mb-4">
+        <div className="flex flex-col gap-4">
+          <div>
+            <h3 className="text-white mb-2">Period</h3>
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {validPeriods.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${period === p
+                    ? 'bg-teal-500 text-white'
+                    : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
+                    }`}
+                >
+                  {p.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="text-white mb-2">Interval</h3>
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {validIntervals.map((int) => (
+                <button
+                  key={int}
+                  onClick={() => setSelectedInterval(int)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${selectedInterval === int
+                    ? 'bg-teal-500 text-white'
+                    : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
+                    }`}
+                >
+                  {int.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div> */}
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-4 mb-4">
         {/* Left Column */}
@@ -432,21 +476,19 @@ const StockPage = () => {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setTradeType('buy')}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                      tradeType === 'buy'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-700/30 text-gray-400'
-                    }`}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${tradeType === 'buy'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-700/30 text-gray-400'
+                      }`}
                   >
                     Buy
                   </button>
                   <button
                     onClick={() => setTradeType('sell')}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                      tradeType === 'sell'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-700/30 text-gray-400'
-                    }`}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${tradeType === 'sell'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-700/30 text-gray-400'
+                      }`}
                   >
                     Sell
                   </button>
@@ -455,21 +497,19 @@ const StockPage = () => {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setIsDollarAmount(true)}
-                    className={`px-3 py-1 rounded-md transition-colors ${
-                      isDollarAmount
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400'
-                    }`}
+                    className={`px-3 py-1 rounded-md transition-colors ${isDollarAmount
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400'
+                      }`}
                   >
                     $
                   </button>
                   <button
                     onClick={() => setIsDollarAmount(false)}
-                    className={`px-3 py-1 rounded-md transition-colors ${
-                      !isDollarAmount
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400'
-                    }`}
+                    className={`px-3 py-1 rounded-md transition-colors ${!isDollarAmount
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400'
+                      }`}
                   >
                     Shares
                   </button>
@@ -509,13 +549,13 @@ const StockPage = () => {
                 className="w-full px-4 py-3 bg-gray-800/30 rounded-lg border border-white/5 focus:border-blue-500/50 focus:outline-none transition-colors text-white placeholder-gray-500"
               />
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={handleTrade}
                   className={`flex-1 py-3 ${tradeType === 'buy' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'} text-white rounded-lg font-medium transition-colors`}
                 >
                   {tradeType === 'buy' ? 'Buy' : 'Sell'} {symbol}
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setAmount('');
                     setPublicNote('');
@@ -622,16 +662,16 @@ const StockPage = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Analyst Rating Component */}
           {stockData && (
-            <StockAnalystRating 
+            <StockAnalystRating
               recommendationMean={stockData.recommendationMean}
               recommendationKey={stockData.recommendationKey}
               numberOfAnalystOpinions={stockData.numberOfAnalystOpinions}
             />
           )}
-          
+
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-white/10 flex flex-col" style={{ height: '250px' }}>
             <div className="flex flex-col h-full">
               <h2 className="text-xl font-bold text-white mb-3">About {stockData.shortName || symbol}</h2>
@@ -639,8 +679,8 @@ const StockPage = () => {
                 {stockData.longBusinessSummary || 'No description available.'}
               </div>
               {stockData.longBusinessSummary && (
-                <button 
-                  onClick={() => setIsFullScreenSummary(true)} 
+                <button
+                  onClick={() => setIsFullScreenSummary(true)}
                   className="text-blue-400 text-sm hover:text-blue-300 self-start"
                 >
                   Read More
@@ -657,7 +697,7 @@ const StockPage = () => {
           <div className="max-w-4xl mx-auto bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-white/10">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">About {stockData.shortName || symbol}</h2>
-              <button 
+              <button
                 onClick={() => setIsFullScreenSummary(false)}
                 className="p-2 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white transition-colors"
               >
@@ -668,7 +708,7 @@ const StockPage = () => {
               {stockData.longBusinessSummary || 'No description available.'}
             </div>
             <div className="mt-8 flex justify-end">
-              <button 
+              <button
                 onClick={() => setIsFullScreenSummary(false)}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >

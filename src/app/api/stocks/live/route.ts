@@ -1,6 +1,6 @@
 // app/api/stocks/live/route.ts
 import { NextResponse } from "next/server";
-import yahooFinance from "@/lib/yahooFinance";
+import YahooFinance from "yahoo-finance2";
 
 const validIntervals = [
   "1d",
@@ -18,7 +18,16 @@ const validIntervals = [
   "3mo",
 ] as const;
 
-const validPeriods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y", "max"] as const;
+const validPeriods = [
+  "1d",
+  "5d",
+  "1mo",
+  "3mo",
+  "6mo",
+  "1y",
+  "5y",
+  "max",
+] as const;
 
 export interface TransformedStockData {
   symbol: string;
@@ -56,7 +65,7 @@ export interface TransformedStockData {
 }
 
 function getValidatedInterval(
-  param: string | null
+  param: string | null,
 ): (typeof validIntervals)[number] {
   if (
     param &&
@@ -65,22 +74,19 @@ function getValidatedInterval(
     return param as (typeof validIntervals)[number];
   }
   console.warn(
-    `Invalid or missing interval "${param}" provided. Defaulting to "1d".`
+    `Invalid or missing interval "${param}" provided. Defaulting to "1d".`,
   );
   return "1d";
 }
 
 function getValidatedPeriod(
-  param: string | null
+  param: string | null,
 ): (typeof validPeriods)[number] {
-  if (
-    param &&
-    validPeriods.includes(param as (typeof validPeriods)[number])
-  ) {
+  if (param && validPeriods.includes(param as (typeof validPeriods)[number])) {
     return param as (typeof validPeriods)[number];
   }
   console.warn(
-    `Invalid or missing period "${param}" provided. Defaulting to "1y".`
+    `Invalid or missing period "${param}" provided. Defaulting to "1y".`,
   );
   return "1y";
 }
@@ -90,118 +96,116 @@ function getValidatedPeriod(
  */
 function getPeriodAsDate(period: string): string {
   const now = new Date();
-  
+
   if (period === "1d") {
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
-    return yesterday.toISOString().split('T')[0];
+    return yesterday.toISOString().split("T")[0];
   } else if (period === "5d") {
     const fiveDaysAgo = new Date(now);
     fiveDaysAgo.setDate(now.getDate() - 5);
-    return fiveDaysAgo.toISOString().split('T')[0];
+    return fiveDaysAgo.toISOString().split("T")[0];
   } else if (period === "1mo") {
     const oneMonthAgo = new Date(now);
     oneMonthAgo.setMonth(now.getMonth() - 1);
-    return oneMonthAgo.toISOString().split('T')[0];
+    return oneMonthAgo.toISOString().split("T")[0];
   } else if (period === "3mo") {
     const threeMonthsAgo = new Date(now);
     threeMonthsAgo.setMonth(now.getMonth() - 3);
-    return threeMonthsAgo.toISOString().split('T')[0];
+    return threeMonthsAgo.toISOString().split("T")[0];
   } else if (period === "6mo") {
     const sixMonthsAgo = new Date(now);
     sixMonthsAgo.setMonth(now.getMonth() - 6);
-    return sixMonthsAgo.toISOString().split('T')[0];
+    return sixMonthsAgo.toISOString().split("T")[0];
   } else if (period === "1y") {
     const oneYearAgo = new Date(now);
     oneYearAgo.setFullYear(now.getFullYear() - 1);
-    return oneYearAgo.toISOString().split('T')[0];
+    return oneYearAgo.toISOString().split("T")[0];
   } else if (period === "5y") {
     const fiveYearsAgo = new Date(now);
     fiveYearsAgo.setFullYear(now.getFullYear() - 5);
-    return fiveYearsAgo.toISOString().split('T')[0];
+    return fiveYearsAgo.toISOString().split("T")[0];
   } else if (period === "max") {
     return "1900-01-01"; // Very old date to get all available data
   }
-  
+
   // Default to 1 month ago
   const oneMonthAgo = new Date(now);
   oneMonthAgo.setMonth(now.getMonth() - 1);
-  return oneMonthAgo.toISOString().split('T')[0];
+  return oneMonthAgo.toISOString().split("T")[0];
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const symbol = url.searchParams.get("symbol") || "AAPL";
-  
+
   const periodParam = url.searchParams.get("period");
   const validPeriod = getValidatedPeriod(periodParam);
   const period1 = getPeriodAsDate(validPeriod);
-  
+
   const intervalParam = url.searchParams.get("interval");
   const interval = getValidatedInterval(intervalParam);
 
   try {
-    console.log(`Fetching chart data for ${symbol} with period1=${period1} and interval=${interval}`);
-    
-    const chartData = await yahooFinance.chart(symbol, {
+    console.log(
+      `Fetching chart data for ${symbol} with period1=${period1} and interval=${interval}`,
+    );
+    const yf = new YahooFinance();
+
+    const chartData = await yf.chart(symbol, {
       period1: period1,
       interval: interval,
       includePrePost: false,
     });
-
-    const stockData = await yahooFinance.quoteSummary(symbol, {
+    //const stockData = await yf.quote(symbol);
+    const stockData = await yf.quoteSummary(symbol, {
       modules: [
         "price",
-        "assetProfile",
         "summaryDetail",
         "financialData",
-        "defaultKeyStatistics"
-      ]
+        "defaultKeyStatistics",
+        "assetProfile",
+      ],
     });
-
     // Transform stockData
     const transformedStockData: TransformedStockData = {
-      symbol: stockData.price?.symbol,
-      regularMarketPrice: stockData.price?.regularMarketPrice,
-      regularMarketChange: stockData.price?.regularMarketChange,
-      regularMarketChangePercent: stockData.price?.regularMarketChangePercent,
-      regularMarketVolume: stockData.price?.regularMarketVolume,
+      symbol: stockData.price?.symbol || "N/A",
+      regularMarketPrice: stockData.price?.regularMarketPrice || 0,
+      regularMarketChange: stockData.price?.regularMarketChange || 0,
+      regularMarketChangePercent:
+        stockData.price?.regularMarketChangePercent || 0,
+      regularMarketVolume: stockData.price?.regularMarketVolume || 0,
       regularMarketOpen: stockData.price?.regularMarketOpen,
       regularMarketDayHigh: stockData.price?.regularMarketDayHigh,
       regularMarketDayLow: stockData.price?.regularMarketDayLow,
       regularMarketPreviousClose: stockData.price?.regularMarketPreviousClose,
-      
-      // Summary details
+
       marketCap: stockData.summaryDetail?.marketCap,
       trailingPE: stockData.summaryDetail?.trailingPE,
       dividendYield: stockData.summaryDetail?.dividendYield,
       averageVolume: stockData.summaryDetail?.averageVolume,
       fiftyTwoWeekHigh: stockData.summaryDetail?.fiftyTwoWeekHigh,
       fiftyTwoWeekLow: stockData.summaryDetail?.fiftyTwoWeekLow,
-      
-      // Financial data
+
       targetMeanPrice: stockData.financialData?.targetMeanPrice,
       profitMargins: stockData.financialData?.profitMargins,
       operatingMargins: stockData.financialData?.operatingMargins,
       returnOnAssets: stockData.financialData?.returnOnAssets,
       returnOnEquity: stockData.financialData?.returnOnEquity,
-      
-      // Key statistics
+
       enterpriseValue: stockData.defaultKeyStatistics?.enterpriseValue,
       forwardPE: stockData.defaultKeyStatistics?.forwardPE,
       earningsPerShare: stockData.defaultKeyStatistics?.trailingEps,
       bookValue: stockData.defaultKeyStatistics?.bookValue,
-      
-      // Company profile
-      sector: stockData.assetProfile?.sector,
-      industry: stockData.assetProfile?.industry,
-      website: stockData.assetProfile?.website,
-      longBusinessSummary: stockData.assetProfile?.longBusinessSummary,
-      shortName: stockData.price?.shortName,
-      
-      // Analyst ratings
+
+      sector: stockData.assetProfile?.sector || "N/A",
+      industry: stockData.assetProfile?.industry || "N/A",
+      website: stockData.assetProfile?.website || "N/A",
+      longBusinessSummary: stockData.assetProfile?.longBusinessSummary || "N/A",
+      shortName: stockData.price?.shortName || "N/A",
+
       recommendationMean: stockData.financialData?.recommendationMean,
-      recommendationKey: stockData.financialData?.recommendationKey,
+      recommendationKey: stockData.financialData?.recommendationKey || "N/A",
       numberOfAnalystOpinions: stockData.financialData?.numberOfAnalystOpinions,
     };
 
@@ -209,7 +213,7 @@ export async function GET(request: Request) {
     if (!chartData?.quotes?.length) {
       return NextResponse.json(
         { error: "No historical data found for the given period" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -233,7 +237,9 @@ export async function GET(request: Request) {
         })
         .filter(Boolean),
     };
-    
+
+    console.log(transformedStockData, "-----------------------");
+
     return NextResponse.json({
       transformedStockData,
       series: [
@@ -251,19 +257,20 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error fetching stock data:", error);
-    
+
     // Provide more detailed error information
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
     return NextResponse.json(
-      { 
-        error: "Error fetching stock data", 
+      {
+        error: "Error fetching stock data",
         details: errorMessage,
         symbol,
         period: periodParam,
-        interval: intervalParam
+        interval: intervalParam,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

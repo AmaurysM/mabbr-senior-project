@@ -4,7 +4,6 @@ import useSWR from "swr";
 interface StockData {
   symbol: string;
   name: string;
-  description?: string;
   price: number;
   change: number;
   changePercent: number;
@@ -14,38 +13,54 @@ interface StockData {
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch");
+
+  // ⛔️ IMPORTANT: handle non-JSON responses
+  if (!res.ok) {
+    const text = await res.text();
+    if (text.includes("Too Many Requests")) {
+      console.warn("Rate limited by stock API");
+      return { stocks: [] };
+    }
+    throw new Error(text || "Failed to fetch stocks");
+  }
+
   return res.json();
 };
 
 const useStockData = (symbols: string[], searchTerm: string) => {
+  // 🔒 Stable key (prevents refetch loops)
+  const key = React.useMemo(() => {
+    if (symbols.length === 0) return null;
+    return `/api/stocks?symbols=${symbols.sort().join(",")}`;
+  }, [symbols]);
+
   const { data, error, mutate } = useSWR<{ stocks: StockData[] }>(
-    symbols.length > 0 ? `/api/stocks?symbols=${symbols.join(",")}` : null,
+    key,
     fetcher,
     {
-      refreshInterval: 10000, // Refresh every 10 seconds
-      revalidateOnFocus: true,
-      dedupingInterval: 5000,
+      refreshInterval: 0,          // ❌ disable auto-polling
+      revalidateOnFocus: false,    // ❌ disable tab refetch
+      dedupingInterval: 30_000,    // ✅ 30s cache
+      keepPreviousData: true,
     }
   );
 
-  // Filter stocks based on search term
   const filteredStocks = React.useMemo(() => {
     const stocks = data?.stocks || [];
     if (!searchTerm.trim()) return stocks;
+
     const term = searchTerm.toLowerCase().trim();
     return stocks.filter(
-      (stock) =>
-        stock &&
-        (stock.symbol.toLowerCase().includes(term) ||
-          (stock.name && stock.name.toLowerCase().includes(term)))
+      stock =>
+        stock.symbol.toLowerCase().includes(term) ||
+        stock.name?.toLowerCase().includes(term)
     );
   }, [data?.stocks, searchTerm]);
 
   return {
     stocks: data?.stocks || [],
     filteredStocks,
-    isLoading: !error && !data,
+    isLoading: !data && !error,
     isError: error,
     mutate,
   };

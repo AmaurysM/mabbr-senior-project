@@ -1,7 +1,7 @@
 // /app/api/companyName/route.ts (or /pages/api/companyName.ts if using pages dir)
 
 import { NextResponse } from 'next/server';
-import yahooFinance from 'yahoo-finance2';
+import { yahooFinance } from "@/lib/yahooFinance";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

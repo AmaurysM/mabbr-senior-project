@@ -9,11 +9,18 @@ const aj = arcjet({
     protectSignup({
       email: {
         mode: "LIVE",
-        block: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"],
+        // ✅ REQUIRED: use deny instead of block
+        deny: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"],
       },
       bots: {
         mode: "LIVE",
-        allow: [],
+        allow: [
+          "GOOGLE_CRAWLER",
+          "GOOGLE_CRAWLER_NEWS",
+          "BING_CRAWLER",
+          "CATEGORY:SEARCH_ENGINE",
+          "CURL",
+        ],
       },
       rateLimit: {
         mode: "LIVE",
@@ -31,18 +38,19 @@ export async function POST(req: NextRequest) {
   const { email } = requestBody;
 
   try {
-    // Only protect the request if email is provided
     if (email) {
       const arcjetReq = new Request(req.url, {
         method: req.method,
         headers: req.headers,
         body: JSON.stringify(requestBody),
       });
+
       const decision = await aj.protect(arcjetReq, { email });
 
       if (decision.isDenied()) {
         if (decision.reason.isEmail()) {
-          let message = "";
+          let message = "Invalid email.";
+
           if (decision.reason.emailTypes.includes("INVALID")) {
             message = "Email address format is invalid. Is there a typo?";
           } else if (decision.reason.emailTypes.includes("DISPOSABLE")) {
@@ -50,24 +58,18 @@ export async function POST(req: NextRequest) {
           } else if (decision.reason.emailTypes.includes("NO_MX_RECORDS")) {
             message =
               "Your email domain does not have an MX record. Is there a typo?";
-          } else {
-            message = "Invalid email.";
           }
 
           return NextResponse.json(
-            {
-              message,
-              reason: decision.reason,
-            },
-            { status: 400 }
+            { message, reason: decision.reason },
+            { status: 400 },
           );
-        } else {
-          return NextResponse.json({ message: "Forbidden" }, { status: 403 });
         }
+
+        return NextResponse.json({ message: "Forbidden" }, { status: 403 });
       }
     }
 
-    // Forward the request to Better Auth's handler.
     const authReq = new Request(req.url, {
       method: req.method,
       headers: req.headers,
@@ -82,7 +84,7 @@ export async function POST(req: NextRequest) {
         message: "Internal Server Error",
         details: error instanceof Error ? error.message : error,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

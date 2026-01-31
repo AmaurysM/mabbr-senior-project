@@ -1,40 +1,41 @@
 import React from 'react';
 import { formatNumber } from '@/lib/utils';
+import { TransformedStockData } from '../api/stocks/live/route';
 
-interface StockDetailsProps {
-  detailedData: {
-    symbol: string;
-    regularMarketPrice: number;
-    regularMarketChange: number;
-    regularMarketChangePercent: number;
-    regularMarketVolume: number;
-    regularMarketOpen?: number;
-    regularMarketDayHigh?: number;
-    regularMarketDayLow?: number;
-    regularMarketPreviousClose?: number;
-    marketCap?: number;
-    trailingPE?: number;
-    dividendYield?: number;
-    averageVolume?: number;
-    fiftyTwoWeekHigh?: number;
-    fiftyTwoWeekLow?: number;
-    targetMeanPrice?: number;
-    profitMargins?: number;
-    operatingMargins?: number;
-    returnOnAssets?: number;
-    returnOnEquity?: number;
-    enterpriseValue?: number;
-    forwardPE?: number;
-    earningsPerShare?: number;
-    bookValue?: number;
-    sector?: string;
-    industry?: string;
-    website?: string;
-    longBusinessSummary?: string;
-  };
-}
+// interface StockDetailsProps {
+//   detailedData: {
+//     symbol: string;
+//     regularMarketPrice: number;
+//     regularMarketChange: number;
+//     regularMarketChangePercent: number;
+//     regularMarketVolume: number;
+//     regularMarketOpen?: number;
+//     regularMarketDayHigh?: number;
+//     regularMarketDayLow?: number;
+//     regularMarketPreviousClose?: number;
+//     marketCap?: number;
+//     trailingPE?: number;
+//     dividendYield?: number;
+//     averageVolume?: number;
+//     fiftyTwoWeekHigh?: number;
+//     fiftyTwoWeekLow?: number;
+//     targetMeanPrice?: number;
+//     profitMargins?: number;
+//     operatingMargins?: number;
+//     returnOnAssets?: number;
+//     returnOnEquity?: number;
+//     enterpriseValue?: number;
+//     forwardPE?: number;
+//     earningsPerShare?: number;
+//     bookValue?: number;
+//     sector?: string;
+//     industry?: string;
+//     website?: string;
+//     longBusinessSummary?: string;
+//   };
+// }
 
-const StockDetails: React.FC<StockDetailsProps> = ({ detailedData }) => {
+const StockDetails = ({ detailedData }: {detailedData: TransformedStockData}) => {
   const formatPercent = (value: number | undefined) => {
     if (!value) return 'N/A';
     return `${(value * 100).toFixed(2)}%`;

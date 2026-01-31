@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import yahooFinance from '@/lib/yahooFinance';
+import { yahooFinance } from "@/lib/yahooFinance";
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';

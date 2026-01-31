@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import yahooFinance from '@/lib/yahooFinance';
+import { yahooFinance } from "@/lib/yahooFinance";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -7,6 +7,8 @@ export const revalidate = 0;
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get('symbol') || 'NVDA';
+
+  console.log("0000000000000000000000000000000")
 
   try {
     console.log(`Fetching data for symbol: ${symbol}`);
@@ -79,6 +81,8 @@ export async function GET(request: Request) {
         }]
       }
     };
+
+    console.log(transformedData,"------------------------");
 
     console.log('Transformed data:', JSON.stringify(transformedData, null, 2));
     return NextResponse.json(transformedData);

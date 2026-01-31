@@ -1,6 +1,5 @@
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from "yahoo-finance2";
 
-// Suppress the survey notice
-yahooFinance.suppressNotices(['yahooSurvey']);
-
-export default yahooFinance; 
+export const yahooFinance = new YahooFinance({
+  suppressNotices: ["yahooSurvey"], // optional
+});
